@@ -1,0 +1,274 @@
+# Laws of Software
+
+Pithy, opinionated rules I work by. Every law has receipts in the repos I run
+(`rdkit-rs/rdkit`, `rdkit-rs/rdkit-debian`, `rdkit-rs/cheminee`,
+`knievel-ads/knievel`). Where a repo breaks a law, I say so — the rule survives
+because the exception is named.
+
+## The Build Rules
+
+### 1. Build natively per arch. Stitch with a manifest.
+
+Native runners beat emulation on speed, debuggability, and cache hit rate. A
+matrix of arch-specific runners + a tiny `docker manifest create` job to
+fan-in is the recipe.
+
+- `cheminee/.github/workflows/build_docker_images.yml:14-20` — matrix of
+  `buildjet-16vcpu-ubuntu-2204` and `…-arm`; a separate 2-vCPU `push` job at
+  L118-143 stitches with `docker manifest create -x86_64 -aarch64`.
+- `rdkit-debian/.github/workflows/build.yml:57-64` — same shape on
+  GitHub-hosted `ubuntu-latest` and `ubuntu-24.04-arm`.
+
+**Exception, not aspiration:** `knievel/.github/workflows/release.yml:54-89`
+falls back to `setup-qemu-action` + buildx for the multi-arch *server* image
+because a hosted Linux arm64 runner isn't worth the spend yet. Native is the
+default; emulation is a budget decision and you write it down.
+
+### 2. Don't compile your app inside Docker.
+
+Cargo cache, sccache, and your debugger all live on the host. A Dockerfile
+that runs `cargo build` throws away the host's cache, hides errors behind a
+buildx layer, and makes "rebuild and try again" a 90-second round trip
+instead of a 2-second one. The image's job is to *package* a binary, not
+produce one.
+
+- `cheminee/Dockerfile:43-45` — `COPY target/release/cheminee
+  /usr/local/bin/cheminee`. No `cargo` in the Dockerfile. The build happens on
+  the runner with sccache (`build_docker_images.yml:82-83`).
+- `knievel/Dockerfile:67-70` — explicit comment: *"The Node build runs OUTSIDE
+  the container so pnpm's store cache works natively, and the Dockerfile
+  stays free of a Node toolchain."*
+
+**Honest exception:** if the artifact only ever ships as a container, the
+in-Docker build cost is paid once at release. The knievel server image *does*
+compile inside Docker (`knievel/Dockerfile:22-56`) for exactly that reason —
+it's never distributed any other way. The CLI binaries from the same repo,
+which *are* distributed standalone, build natively
+(`release.yml:108-151`). **The artifact's distribution shape determines the
+build shape.**
+
+**Other honest exception:** building a *system library* (RDKit C++ → `.deb`)
+inside a pinned `debian:bookworm` container is fine — that's using Docker as
+a clean toolchain for a one-shot, S3-cached output, not as your inner-loop
+compiler (`rdkit-debian/.github/workflows/build.yml:65`,
+`rdkit-debian/Dockerfile`).
+
+### 3. A tag is a vote of confidence. Don't re-run CI on it.
+
+Tags are cut from `main`. `main` is already green because branch protection
+made it green. Re-running the per-PR matrix on the tag commit is a tautology
+that costs ~25 min of release wall-time and produces near-zero new signal.
+Release workflows do only tag-specific work: build, sign, publish, attest.
+
+- `knievel/.github/workflows/release.yml:14-23` is the manifesto: *"this
+  workflow trusts the PR gate and only does the things that are intrinsically
+  tag-specific."*
+- `cheminee/.github/workflows/build_docker_images.yml:1-4` and
+  `generate_ruby_gem.yaml:1-3` both `on: push: tags: ['*']` with no `needs:`
+  on tests.
+- `cheminee/test_suite.yml:2` runs only on `pull_request` — it doesn't even
+  *exist* for tags.
+
+**Corollary:** tag-triggered jobs are parallel siblings, not chained.
+Cheminee's tag fans out to a Docker build *and* a Ruby gem build at the same
+time off the same tag.
+
+## The Release & Artifact Rules
+
+### 4. Pin by digest, not by floating tag.
+
+OCI tags are mutable references; digests aren't. Once a consumer pulls a
+digest, that's the bits they have forever. Don't re-point a tag — cut a new
+patch.
+
+- `knievel/RELEASE_PLAYBOOK.md:71-83`, with the Helm chart pinning
+  `image.tag=sha256:<digest>` at L99-100.
+
+### 5. Cache big upstreams in S3, not in your build system.
+
+GitHub Actions cache, runner cache, layer cache — all of it evicts. RDKit
+takes ~30 minutes to compile from source; we never do, because we built it
+once and put the tarball in `s3://rdkit-rs-debian/`. Every downstream `curl`s
+it.
+
+- Producer: `rdkit-debian/.github/workflows/build.yml:117` pushes to S3.
+- Consumers: `rdkit/.github/workflows/test_suite.yml:41-46`,
+  `cheminee/Dockerfile:11-21` curl prebuilt
+  `rdkit_2024_09_1_ubuntu_22_04_*.tar.gz` from the bucket.
+
+### 6. Disable build-time downloads in vendored C++ deps.
+
+CMake's habit of fetching from GitHub at configure time is incompatible with
+reproducible, offline-capable builds. Turn the features off rather than
+maintain patch sets.
+
+- `rdkit-debian/build.sh:38-43` — `-DRDK_BUILD_COORDGEN_SUPPORT=OFF
+  -DRDK_BUILD_MAEPARSER_SUPPORT=OFF -DRDK_BUILD_FREESASA_SUPPORT=OFF`.
+
+### 7. The version of the upstream lives in the tag.
+
+A `git tag` should answer "what RDKit is in this build?" without reading a
+lockfile.
+
+- `rdkit-debian` tag format `Release_YYYY_MM_P+BUILD_NUMBER`
+  (`rdkit-debian/.github/workflows/build.yml:31-43`) — upstream version
+  + packaging revision in one string.
+
+### 8. `sccache`/`rust-cache` everywhere, identically configured.
+
+Pinned action SHA, identical setup steps across every workflow in every repo.
+Drift here means cache-misses you never debug.
+
+- `mozilla/sccache-action@eaed7fb9...` reused verbatim at
+  `rdkit/.github/workflows/test_suite.yml:23-30` and
+  `cheminee/.github/workflows/test_suite.yml:20-27`.
+- `knievel/.github/actions/rust-setup/action.yml` centralizes
+  `Swatinem/rust-cache` so every CI job inherits the same setup.
+
+## The Service & API Rules
+
+### 9. The OpenAPI spec is the contract. Server and clients derive from it.
+
+Hand-written clients drift. The spec lives in code (annotations on handlers),
+gets emitted as a build artifact, and CI fails if the checked-in spec ever
+disagrees with the source.
+
+- `cheminee/src/rest_api/api/api_v1.rs:24-37` — `#[OpenApi]` +
+  `#[oai(path = "...", method = "post")]` (`poem-openapi`); spec is derived
+  from source.
+- `knievel/.github/workflows/ci.yml:162-169` — `openapi-drift` job runs
+  `cargo xtask openapi --check` so a hand-edited spec fails CI.
+
+### 10. Generated clients live in their own repo. Upstream commits, downstream publishes. Same tag.
+
+Clients are not vendored into the server repo, and they're not published from
+the server repo either. The server's tag workflow generates the client code
+and pushes a commit (with the matching version/tag) to the client repo. The
+client repo's own CI takes it from there: it builds and publishes to the
+language registry. This keeps three concerns from tangling: the API source of
+truth, the generated artifact, and the language-specific release machinery.
+
+- `cheminee/.github/workflows/generate_ruby_gem.yaml:65-83` — the upstream
+  tag job runs `cheminee rest-api-server spec -o openapi.json`, runs
+  `openapi-generators/openapitools-generator-action`, then auto-commits to
+  `cheminee-ruby`. The downstream repo's `rake release` does the actual
+  publish.
+- `knievel/.github/workflows/release.yml:299-315, 362-369` — `release-ruby-gem`
+  regenerates from `openapi.yaml` at upstream tag time and pushes to the
+  client repo, which owns publishing.
+
+**Why same tag:** a consumer reading a bug report that says "broken in
+v1.4.2" needs to find v1.4.2 of the client. Different tags between server and
+client means a lookup table no one maintains.
+
+**Why downstream publishes:** RubyGems / npm / crates.io credentials live
+where the artifact is. The server repo doesn't need a `GEM_HOST_API_KEY`; the
+client repo does. Blast radius shrinks; secrets stay scoped.
+
+### 11. One binary, many subcommands.
+
+The server, the bulk-indexer, and the ops tools live in the same binary and
+ship in the same image. `kubectl exec` and run an ops command in the
+production image — same code, same deps, no separate "tools" container to
+keep in sync.
+
+- `cheminee/src/main.rs:15-32` — `clap` subcommands: `rest-api-server`,
+  `bulk-index`, `index-sdf`, `fetch-pubchem`, all the searches.
+- `cheminee/charts/cheminee/templates/deployment.yaml:41-44` — pod runs
+  `cheminee rest-api-server`; the same image runs `cheminee index-sdf` via
+  `kubectl exec`.
+
+### 12. Schema versions are values in a registry, not migrations.
+
+For analytical schemas where multiple shapes coexist (`descriptor_v1`,
+`descriptor_v2`, …), bumping a key is cheaper and safer than running a
+migration over historical data.
+
+- `cheminee/src/schema/mod.rs:10` — `LIBRARY: HashMap<&'static str, Schema>`
+  keyed by version; old indexes keep working.
+
+### 13. Migrations on transactional schemas are additive forever.
+
+The opposite of #11, for OLTP. `ADD COLUMN`, `CREATE TABLE`, `CREATE INDEX`
+only. No `DROP`. A column marked deprecated for ≥ 6 months can be dropped
+with a commit linking the deprecation. Enforced in CI.
+
+- `knievel/RELEASE_CHECKLIST.md:51-55`, gated by
+  `cargo xtask lint-migrations` at `ci.yml:136`.
+
+### 14. Tenancy enforced at three layers, with a CI assertion.
+
+Postgres RLS, query-layer re-check, and a manifest gate that asserts every
+endpoint has a cross-tenant test. One layer of tenancy enforcement is one
+bug away from a leak.
+
+- `knievel/ARCHITECTURE.md:230-235`, with `xtask check-cross-tenant` at
+  `ci.yml:137`.
+
+### 15. Make staleness explicit. Make lossiness named.
+
+A read snapshot that's seconds stale serves decisions; a fake `/health` that
+hides a degraded writer doesn't. If a path is intentionally lossy, it has a
+counter with a name.
+
+- `knievel/ARCHITECTURE.md:294-301` — 5 s staleness SLO; `events.dropped`
+  counter for the lossy-by-design events channel.
+- `cheminee/charts/cheminee/templates/deployment.yaml:61-68` — liveness
+  points at `/api/v1/openapi.json` with `# TODO: We need a low-cost health
+  endpoint`. **An honest TODO in a manifest beats a fake `/health`.**
+
+## The Code-Layout Rules
+
+### 16. Workspace crates move in lockstep.
+
+If `-sys` and the high-level crate are in one workspace, they release
+together. FFI version skew is a footgun; remove the gun.
+
+- `rdkit/README.md:24-35` mandates `cargo workspaces version patch`;
+  `rdkit/Cargo.toml:19` pins `rdkit-sys = { path = "rdkit-sys", version =
+  "0.4.9" }`.
+
+### 17. Enforce file-pairing conventions in `build.rs`.
+
+If your FFI requires a `.rs` bridge to be paired with a `.cc` impl and a `.h`
+header, a missing pair should panic the build, not silently ignore the orphan.
+
+- `rdkit/rdkit-sys/build.rs:80-103` walks `src/bridge/*.rs` and panics if
+  `wrapper/src/<name>.cc` or `wrapper/include/<name>.h` is missing.
+
+## The Workflow Rules
+
+### 18. One workflow per release event, not per artifact.
+
+Splitting "publish image" and "publish gem" into separate workflows feels
+modular and multiplies the trigger surface. Keep release jobs in one
+workflow, fanned out by `needs:` only when there's a real dependency.
+
+- `knievel/ARCHITECTURE.md:378-382` calls this out explicitly.
+
+### 19. Release workflows must be re-run-safe.
+
+Image push is idempotent by digest. Gem publish refuses to overwrite. A
+half-finished release is the most expensive kind, so plan to re-run from any
+step.
+
+- `knievel/RELEASE_PLAYBOOK.md:118-134`; `release.yml:7-12` sets
+  `cancel-in-progress: false`; `release.yml:429-432` refuses to re-publish a
+  taken gem version.
+
+---
+
+## Caveats
+
+- **Law 1 isn't strict.** `knievel/release.yml:54` uses qemu+buildx and
+  `cross` for Linux musl. Native is the goal; emulation is the budget
+  fallback for arm64 Linux until pricing changes.
+- **Law 2 isn't strict.** The knievel server image compiles in Docker; the
+  rdkit-debian `.deb` builds in Docker. Both are deliberate. The
+  refinement (build shape follows distribution shape; pinned-toolchain
+  containers OK for system deps) is part of the law, not an evasion of it.
+- **Dependencies in `Cargo.toml` should be wired into the binary or
+  removed.** `cheminee/Cargo.toml:19,21` pulls in `prometheus` and the
+  `poem` `prometheus` feature, but no `/metrics` route is wired
+  (`grep` confirms). Listed-but-unwired is dead weight; either ship the
+  endpoint or drop the dep.
