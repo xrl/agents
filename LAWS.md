@@ -2,7 +2,7 @@
 
 Pithy, opinionated rules I work by. Every law has receipts in the repos I run
 (`rdkit-rs/rdkit`, `rdkit-rs/rdkit-debian`, `rdkit-rs/cheminee`,
-`knievel-ads/knievel`). Where a repo breaks a law, I say so — the rule survives
+`knievel-ads/knievel`, `vasovagal/corti`). Where a repo breaks a law, I say so — the rule survives
 because the exception is named.
 
 ## The Build Rules
@@ -255,6 +255,13 @@ step.
 - `knievel/RELEASE_PLAYBOOK.md:118-134`; `release.yml:7-12` sets
   `cancel-in-progress: false`; `release.yml:429-432` refuses to re-publish a
   taken gem version.
+
+## The Dependency Rules
+
+### 20. New deps enter at their latest stable — verified upstream, not from memory.
+
+- **Anti-receipt:** `corti` PR #37 pinned `sccache 0.10.0`; mozilla/sccache was already at `0.15.0` (2026-04-29).
+- **Exception:** pin behind latest only with a written reason + link.
 
 ---
 
