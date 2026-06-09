@@ -263,6 +263,67 @@ step.
 - **Anti-receipt:** `corti` PR #37 pinned `sccache 0.10.0`; mozilla/sccache was already at `0.15.0` (2026-04-29).
 - **Exception:** pin behind latest only with a written reason + link.
 
+## The Workstation Rules
+
+Receipts here include the workstation itself, not just repos — these laws were
+bought with a disk-full incident and probe builds, both dated.
+
+### 21. One global rustc-wrapper. Commit it into a repo only paired with CI that installs sccache.
+
+`~/.cargo/config.toml` setting `[build] rustc-wrapper = "sccache"` covers every
+repo and every worktree on the machine — one line, zero per-repo config. But
+cargo hard-errors when the wrapper binary is missing, so committing the wrapper
+into a repo's `.cargo/config.toml` makes sccache *mandatory* for every fresh
+clone and every CI runner. That's only legal when the repo's CI installs
+sccache itself.
+
+- `~/.cargo/config.toml:6-7` — the global wrapper; verified 2026-06-09 that no
+  repo under `~/code` overrides `rustc-wrapper` (knievel's `.cargo/config.toml`
+  is just an `[alias]` section), so this one line is the whole local story.
+- `corti/.cargo/config.toml:14` commits the wrapper deliberately — paired with
+  `corti/.github/actions/rust-setup/action.yml:43-46` installing sccache
+  v0.15.0 via pinned `mozilla-actions/sccache-action` (LAWS §8).
+- vagus takes the other lawful branch: no committed wrapper, global wrapper
+  locally, `Swatinem/rust-cache` in CI
+  (`vagus/.github/actions/rust-setup/action.yml:36`). Both shapes are fine;
+  committed-wrapper-without-CI-install is the only broken one.
+
+### 22. sccache caches your dependencies, not your crates. "non-cacheable: incremental" is healthy.
+
+Workspace-member crates compile incrementally under the dev profile, and
+sccache cannot cache incremental compiles — so `sccache --show-stats` showing
+your own crates as "non-cacheable, reason: incremental" is the system working,
+not broken. Don't "fix" it with `CARGO_INCREMENTAL=0` locally: every `CARGO_*`
+env var is hashed into the sccache key, so setting it inconsistently splits the
+cache namespace and causes spurious *dependency* misses — and it buys nothing
+anyway, because workspace-crate keys embed the checkout path (`-C metadata` /
+`--out-dir`), so they never hit across worktrees. Judge sccache by the only
+number that matters: `sccache --zero-stats`, then the first build in a fresh
+worktree with the same `Cargo.lock` should show ~100% hits on registry deps.
+
+- Probe-verified on this workstation, 2026-06-09: fresh dir + same `Cargo.lock`
+  = 100% dep cache hits; `CARGO_INCREMENTAL=0` probe = zero new cross-worktree
+  hits on workspace crates (path-bound keys).
+- Never cacheable regardless: proc-macros, build-script binaries, any linked
+  crate-type, and the link step itself. Budget your expectations accordingly.
+- CI is the exception that proves the env-var rule:
+  `corti/.github/actions/rust-setup/action.yml:58` sets `CARGO_INCREMENTAL=0`
+  — correct *there*, because every run is a fresh checkout at one path and
+  sccache silently bypasses incremental builds otherwise. The law is about
+  your laptop.
+
+### 23. An abandoned worktree hoards its target/ forever. Remove worktrees when the branch lands.
+
+`target/` is per-checkout, gitignored, and invisible from the main repo —
+nothing ever GCs it. The drill when a branch lands: push anything unpushed,
+then `git worktree remove <path>` + `git worktree prune`. Never bare `rm -rf`
+a worktree directory — it strands the admin entry in `.git/worktrees/`.
+
+- **Anti-receipt:** 43.6G across four stale `.claude/worktrees/` in claria +
+  cousteau (22G, 10G, 7G, 3.8G of `target/`), found 2026-06-09 during a
+  disk-full incident — one of them sitting on 3 unpushed commits the whole
+  time.
+
 ---
 
 ## Caveats
