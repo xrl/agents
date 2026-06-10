@@ -324,6 +324,42 @@ a worktree directory — it strands the admin entry in `.git/worktrees/`.
   disk-full incident — one of them sitting on 3 unpushed commits the whole
   time.
 
+## The GitOps Rules
+
+### 24. Kubernetes core services should use selfHeal.
+
+ArgoCD's `automated` sync without `selfHeal` only re-applies on new commits.
+A resource deleted or mutated live stays that way until the next push — for a
+quiet infra app, that can be months. Controllers, operators, networking,
+cert-manager resources, observability: `automated: {prune: true, selfHeal:
+true}`. Business apps may omit selfHeal deliberately so manual debugging
+tweaks aren't reverted within seconds; that omission is a choice to write
+down, not a default to inherit.
+
+- **Receipt:** scientist-hq k3, 2026-06-09. The ARC webhook's cert-manager
+  `Certificate`/`Issuer` were drift-deleted (origin unknown); the Secret
+  stayed behind so nothing looked wrong; the cert silently aged past its
+  May 10 renewal and expired June 9 — GHA couldn't start workers for 80
+  minutes. The app's last commit was Nov 11. Fixed in
+  `k3-applications@553385e`.
+
+### 25. Apps that install CRDs use ServerSideApply — and must be able to reach Synced.
+
+Client-side apply fails on large CRDs (`metadata.annotations: Too long: may
+not be more than 262144 bytes`). Use SSA for any CRD-installing app, and for
+truly huge CRDs the split pattern: a dedicated `<app>-crds` Application plus
+`helm.skipCrds` on the main app. SSA alone may still diff forever on
+apiserver-normalized fields (`preserveUnknownFields` pruned on write,
+`conversion.strategy` defaulted) — pair it with ServerSideDiff or
+`ignoreDifferences`. The second half is the law's point: an app that can't
+reach Synced becomes wallpaper, and wallpaper hides real drift.
+
+- **Receipt:** the same outage. The ARC app had been OutOfSync/Failed on its
+  5 CRDs since at least November; the permanently red app masked the
+  Certificate drift that caused the incident. `k3-applications@b92954b..4ad839f`
+  (crds app, ignoreDifferences, skipCrds) got it to Synced for the first
+  time since Nov 2025.
+
 ---
 
 ## Caveats
