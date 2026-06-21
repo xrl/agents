@@ -360,6 +360,39 @@ reach Synced becomes wallpaper, and wallpaper hides real drift.
   (crds app, ignoreDifferences, skipCrds) got it to Synced for the first
   time since Nov 2025.
 
+### 26. Inline `values: |` in the ApplicationSet, not a per-app values file.
+
+A standalone per-application values file is one more file to find, diff, and
+keep in sync with the generator that consumes it. Keep the overrides where the
+Application is declared: an inline `values: |` block in the ApplicationSet
+template. Don't add new per-app values files to a GitOps values repo; the
+direction of travel is to migrate the existing ones *into* ApplicationSet
+literals. The file is the thing to avoid — not the chart, and not overrides
+themselves.
+
+### 27. A Helm chart may live in the values repo.
+
+The override-file rule (§26) is about *values files*, not charts. When the
+GitOps/values repo is the most sensible home for a chart — it's bespoke to this
+deployment, or co-evolves with the ApplicationSet that renders it — keep the
+chart there. Co-locating the chart with the Application that uses it is fine;
+only the standalone per-app values file is the smell.
+
+### 28. An inline override carries only real overrides. Never restate a default.
+
+A `values: |` block that copies a chart's `values.yaml` default verbatim adds
+zero information and silently pins you to today's default — the next chart bump
+that moves it sails past you. Include only the keys whose value meaningfully
+differs from the chart's `values.yaml`. If the line matches the default,
+delete it.
+
+### 29. Mirror the chart's `values.yaml` key order in the override.
+
+A reader diffing your override against the chart should scan top-to-bottom
+once, not jump around. If `foo:` precedes `bar:` in the chart's `values.yaml`,
+`foo:` precedes `bar:` in your override block. Override order is a function of
+the chart, not of when you happened to add each key.
+
 ---
 
 ## Caveats
