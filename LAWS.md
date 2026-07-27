@@ -324,6 +324,62 @@ a worktree directory — it strands the admin entry in `.git/worktrees/`.
   disk-full incident — one of them sitting on 3 unpushed commits the whole
   time.
 
+### 30. sccache aggressively on every Rust project. Never share `main`'s `target/`.
+
+Many worktrees each cold-compiling the same dependency graph burns CPU and
+disk for nothing. The fix is sccache (§21). The fix is *not* pointing every
+worktree at one `CARGO_TARGET_DIR`: cargo takes an exclusive lock on the target
+directory, so a dev server in one worktree and a test run in another serialize
+behind `Blocking waiting for file lock on build directory`. sccache buys the
+reuse without the lock. Say the cost out loud: `target/` stays per-worktree and
+stays large. sccache stops you *recompiling*; it does not stop you *storing*.
+
+- **Receipt**, claria rollout on this workstation, 2026-07-26: fresh worktree,
+  cold cache, 138s. Fresh worktree, warm cache, quiet machine, 55s at ~98% hit
+  rate.
+- **Methodology, and it's a trap:** sccache stats are global across every client
+  on the machine, so a concurrent build in an unrelated project lands inside
+  your delta. The contended runs measured that day were discarded, not averaged
+  in. `--zero-stats`, one build, read stats — on a quiet machine or not at all.
+- 2.5G of cache after a full build + test + clippy matrix against a 32 GiB cap.
+  The cap is a ceiling, not a reservation; don't size your disk for it.
+- **Finding that contradicted the assumption going in:** `cc-rs` picks up the
+  rustc-wrapper on its own — 823 `c [clang]` hits — so C/C++ in native deps is
+  cached without wrapping `cc` separately.
+- The non-cacheable ceiling is proc-macros: `serde_derive`, `specta-macros`,
+  `tokio-macros`, `zerocopy-derive` refused with reason `crate-type`, 490 of 622
+  non-cacheable calls. That's §22 working, not a miss to chase.
+
+### 31. Worktrees are aggressive, branch-per-agent, and siblings of the main checkout.
+
+If the main checkout is `~/code/org/foo` (origin
+`https://github.com/org/foo`), then branch `perf/make-faster` lives at
+`~/code/org/foo-perf-make-faster`. Flat, sibling, named for the branch. One
+flavor of worktree, no nesting schemes, no per-tool directory.
+
+The naming is the small half. The law is that worktrees must be **in the
+developer's face**. `ls ~/code/org` is the dashboard: a sibling list that keeps
+growing is a signal that code is not landing in `main` fast enough and branches
+are going stale. A hidden `.claude/worktrees/` deletes that signal, and what you
+can't see you don't reap (§23).
+
+**Tooling consequence:** Claude Code's built-in agent worktree isolation creates
+worktrees under `.claude/worktrees/` and therefore violates this law. Honoring
+it means agents create worktrees explicitly —
+`git worktree add ../foo-perf-make-faster -b perf/make-faster` — rather than
+relying on the built-in.
+
+- **Anti-receipt, the second time:** §23's incident recurred seven weeks later.
+  2026-07-26, ~47GB across five stale `.claude/worktrees/` in claria alone (15G,
+  14G, 13G, 5.4G, plus one already cleaned), disk at 94% with 26 GiB free, every
+  one of them on a branch already merged to `main`. Same-day cleanup reclaimed
+  the ~47GB. A law broken twice in seven weeks by the same hidden directory is
+  the argument for the sibling convention.
+- **Corollary:** `cargo clean` before switching worktrees is a disk-management
+  reflex, not hygiene. Each worktree owns its `target/` and cargo's
+  fingerprinting handles staleness — cleaning throws away work you then rebuild.
+  Reap whole worktrees; don't clean live ones.
+
 ## The GitOps Rules
 
 ### 24. Kubernetes core services should use selfHeal.
