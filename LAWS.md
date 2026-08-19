@@ -327,12 +327,13 @@ a worktree directory — it strands the admin entry in `.git/worktrees/`.
 ### 30. sccache aggressively on every Rust project. Never share `main`'s `target/`.
 
 Many worktrees each cold-compiling the same dependency graph burns CPU and
-disk for nothing. The fix is sccache (§21). The fix is *not* pointing every
-worktree at one `CARGO_TARGET_DIR`: cargo takes an exclusive lock on the target
-directory, so a dev server in one worktree and a test run in another serialize
-behind `Blocking waiting for file lock on build directory`. sccache buys the
-reuse without the lock. Say the cost out loud: `target/` stays per-worktree and
-stays large. sccache stops you *recompiling*; it does not stop you *storing*.
+disk for nothing. The first fix is sccache (§21). The fix is *not* pointing
+every worktree at one `CARGO_TARGET_DIR`: cargo takes an exclusive lock on the
+target directory, so a dev server in one worktree and a test run in another
+serialize behind `Blocking waiting for file lock on build directory`. sccache
+buys compiler reuse without the Cargo lock. Say the cost out loud: `target/`
+stays per-worktree and stays large. sccache stops you *recompiling*; it does not
+stop you *storing*. Physical deduplication is a separate requirement (§32).
 
 - **Receipt**, claria rollout on this workstation, 2026-07-26: fresh worktree,
   cold cache, 138s. Fresh worktree, warm cache, quiet machine, 55s at ~98% hit
@@ -341,8 +342,11 @@ stays large. sccache stops you *recompiling*; it does not stop you *storing*.
   on the machine, so a concurrent build in an unrelated project lands inside
   your delta. The contended runs measured that day were discarded, not averaged
   in. `--zero-stats`, one build, read stats — on a quiet machine or not at all.
-- 2.5G of cache after a full build + test + clippy matrix against a 32 GiB cap.
-  The cap is a ceiling, not a reservation; don't size your disk for it.
+- 2.5G of cache after a full build + test + clippy matrix against the original
+  32 GiB cap. By 2026-08-18 the cache had reached all 32 GiB while worktree
+  targets stayed full-sized. A later build wave drove the disk to 115 MiB free
+  even after a first reduction to 16 GiB; the emergency cap is now 8 GiB. A
+  ceiling is not a reservation, but it absolutely belongs in the disk budget.
 - **Finding that contradicted the assumption going in:** `cc-rs` picks up the
   rustc-wrapper on its own — 823 `c [clang]` hits — so C/C++ in native deps is
   cached without wrapping `cc` separately.
@@ -379,6 +383,32 @@ relying on the built-in.
   reflex, not hygiene. Each worktree owns its `target/` and cargo's
   fingerprinting handles staleness — cleaning throws away work you then rebuild.
   Reap whole worktrees; don't clean live ones.
+
+### 32. Share bytes, not Cargo lock domains.
+
+True concurrent builds require a private `target/` per worktree. Efficient
+concurrent builds require those private files to share physical storage
+underneath Cargo. A content-addressed store materialized through copy-on-write
+reflinks gives each target a separate inode and lock domain while APFS stores
+unchanged extents once. Logical isolation and physical sharing are compatible;
+a shared `CARGO_TARGET_DIR` is not required.
+
+- **Receipt, isolated `kache 0.14.2` probe, 2026-08-18:** two divergent
+  worktree roots built concurrently with no Cargo build-directory wait. Of 56
+  cacheable cold requests, 28 compiled and the peer restored 28; roughly 210
+  MiB across two logical targets was cache-backed CoW data against a 98 MiB
+  content-addressed store. Rebuilding both from deleted targets took 9–10 s,
+  with 100% zero-copy restores.
+- **Counter-receipt, post-hoc dedupe:** `fclones` found only 2.2 GB of exact
+  duplicate files among 23.7 GB of ≥1 MiB files in three existing Dekopon
+  targets. Reflinking after the fact helps, but it pays the disk peak first and
+  needs a build-free maintenance window.
+- **The tool is not yet the law:** kache remains an opt-in pilot while its
+  hidden-input correctness boundary is audited (notably
+  `kunobi-ninja/kache#760`) and large-crate incremental edit loops are measured.
+  The durable rule is separate locks plus shared immutable bytes. See
+  `RUST_WORKTREES.md` for the rollout gates and Cargo's native fine-grained
+  locking roadmap.
 
 ## The GitOps Rules
 
