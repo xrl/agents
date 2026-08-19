@@ -168,48 +168,12 @@ defines the `clap` commands; its deployment runs `rest-api-server`, while the
 same image can `kubectl exec … index-sdf`
 (`cheminee/charts/cheminee/templates/deployment.yaml:41-44`).
 
-### 12. Schema versions are values in a registry, not migrations.
-
-When historical shapes coexist (`descriptor_v1`, `descriptor_v2`, …), add a
-version key instead of rewriting history. `cheminee/src/schema/mod.rs:10` keeps
-a version-keyed `HashMap<&'static str, Schema>` so old indexes remain valid.
-
 ### 13. Migrations on transactional schemas are additive forever.
 
-For OLTP—the opposite of §12—allow `ADD COLUMN`, `CREATE TABLE`, and
-`CREATE INDEX`; no `DROP` until a ≥6-month deprecation linked by the removal
-commit. Knievel documents this at `knievel/RELEASE_CHECKLIST.md:51-55` and
-enforces it with `cargo xtask lint-migrations`
-(`knievel/.github/workflows/ci.yml:136`).
-
-### 14. Tenancy enforced at three layers, with a CI assertion.
-
-Use Postgres RLS, a query-layer re-check, and a CI manifest gate requiring a
-cross-tenant test for every endpoint (`knievel/ARCHITECTURE.md:230-235`,
-`xtask check-cross-tenant` at `knievel/.github/workflows/ci.yml:137`). One layer
-is one bug from a leak.
-
-### 15. Make staleness explicit. Make lossiness named.
-
-State stale-read bounds; name and count intentional loss. Knievel declares a
-5-second staleness SLO and `events.dropped` counter
-(`knievel/ARCHITECTURE.md:294-301`). Cheminee honestly marks its OpenAPI
-liveness probe as a TODO instead of inventing `/health`
-(`cheminee/charts/cheminee/templates/deployment.yaml:61-68`).
-
-## The Code-Layout Rules
-
-### 16. Workspace crates move in lockstep.
-
-Release colocated FFI layers together; version skew is a footgun.
-`rdkit/README.md:24-35` mandates `cargo workspaces version patch`, and
-`rdkit/Cargo.toml:19` pairs the path dependency with version `0.4.9`.
-
-### 17. Enforce file-pairing conventions in `build.rs`.
-
-Missing FFI bridge/implementation/header peers should fail the build, not be
-ignored. `rdkit/rdkit-sys/build.rs:80-103` walks each `src/bridge/*.rs` and
-requires matching `wrapper/src/<name>.cc` and `wrapper/include/<name>.h`.
+For OLTP, allow `ADD COLUMN`, `CREATE TABLE`, and `CREATE INDEX`; no `DROP`
+until a ≥6-month deprecation linked by the removal commit. Knievel documents
+this at `knievel/RELEASE_CHECKLIST.md:51-55` and enforces it with
+`cargo xtask lint-migrations` (`knievel/.github/workflows/ci.yml:136`).
 
 ## The Workflow Rules
 
@@ -361,11 +325,6 @@ precise `ignoreDifferences`. Permanently red apps hide real drift.
 Keep real overrides in the generating ApplicationSet's `values: |` block.
 Migrate existing standalone per-app values files there; the file—not charts or
 overrides—is the smell.
-
-### 27. A Helm chart may live in the values repo.
-
-§26 forbids standalone per-app values files, not charts. Co-locate a bespoke or
-co-evolving chart with its ApplicationSet when that is its natural home.
 
 ### 28. An inline override carries only real overrides. Never restate a default.
 
