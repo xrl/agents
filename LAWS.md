@@ -16,29 +16,17 @@ architecture matrix, then fan in to a small `docker manifest create` job.
   uses native x86_64/arm runners and a 2-vCPU manifest job;
   `rdkit-debian/.github/workflows/build.yml:57-64` does the same on
   GitHub-hosted runners.
-- **Budget exception:** `knievel/.github/workflows/release.yml:54-89` uses
-  QEMU/buildx and `cross` for Linux musl because hosted Linux arm64 is not worth
-  the spend. Write down such emulation decisions.
 
 ### 2. Don't compile your app inside Docker.
 
-Build apps on the host, where Cargo/sccache/debuggers turn observed ~90-second
-buildx loops into ~2-second rebuilds; Docker should package the result.
+Compile on the host, where native compiler/package caches and debuggers keep the
+inner loop fast and understandable; Docker only packages the finished artifact.
+Containerized compilation makes cache behavior and failures harder to inspect.
+Observed buildx loops fell from ~90 seconds to ~2-second host rebuilds.
 
-- **Receipts:** `cheminee/Dockerfile:43-45` copies `target/release/cheminee`
-  after runner+sccache compilation
-  (`cheminee/.github/workflows/build_docker_images.yml:82-83`).
-  `knievel/Dockerfile:67-70` keeps Node compilation outside so pnpm's native
-  cache works and the image needs no Node toolchain.
-- **Distribution exception:** a container-only artifact may pay the Docker
-  compile cost once at release. Knievel's server does
-  (`knievel/Dockerfile:22-56`), while its standalone CLIs build natively
-  (`knievel/.github/workflows/release.yml:108-151`). Build shape follows
-  distribution shape.
-- **Toolchain exception:** a pinned container may build a one-shot, cached
-  system library. RDKit C++ becomes an S3-cached `.deb` this way
-  (`rdkit-debian/.github/workflows/build.yml:65`,
-  `rdkit-debian/Dockerfile`).
+- `cheminee/Dockerfile:43-45` copies a runner-built `target/release/cheminee`.
+- `knievel/Dockerfile:67-70` likewise keeps Node compilation outside so pnpm's
+  native cache works and the image carries no Node toolchain.
 
 ### 3. A tag is a vote of confidence. Don't re-run CI on it.
 
@@ -60,34 +48,16 @@ signal.
 OCI tags move; digests do not. Consumers pin digests, and changed bits get a new
 patch release (`knievel/RELEASE_PLAYBOOK.md:71-83,99-100`).
 
-### 5. Cache big upstreams in S3, not in your build system.
+### 5. CI builds always use a cache. Fast feedback preserves momentum.
 
-Ephemeral runner/layer caches evict. Compile expensive upstreams once: RDKit
-costs ~30 minutes. `rdkit-debian/.github/workflows/build.yml:117` uploads it to
-`s3://rdkit-rs-debian/`; `rdkit/.github/workflows/test_suite.yml:41-46` and
-`cheminee/Dockerfile:11-21` download the prebuilt tarballs.
+Cache setup is always worth the upfront investment. Cache compiler outputs,
+dependencies, package-manager stores, and expensive upstream artifacts from the
+first workflow; centralize setup so jobs share keys and behavior.
 
-### 6. Disable build-time downloads in vendored C++ deps.
-
-Configure-time GitHub fetches break reproducible/offline builds. Disable those
-features rather than patching them (`rdkit-debian/build.sh:38-43` disables
-CoordGen, MaeParser, and FreeSASA downloads).
-
-### 7. The version of the upstream lives in the tag.
-
-A tag should identify the upstream without a lockfile. `rdkit-debian` uses
-`Release_YYYY_MM_P+BUILD_NUMBER`
-(`rdkit-debian/.github/workflows/build.yml:31-43`): upstream version plus
-packaging revision.
-
-### 8. `sccache`/`rust-cache` everywhere, identically configured.
-
-Pin action SHAs and centralize setup; drift creates opaque misses. The same
-`mozilla/sccache-action@eaed7fb9…` appears in
-`rdkit/.github/workflows/test_suite.yml:23-30` and
-`cheminee/.github/workflows/test_suite.yml:20-27`;
-`knievel/.github/actions/rust-setup/action.yml` centralizes
-`Swatinem/rust-cache`.
+- `rdkit-debian/.github/workflows/build.yml:117` promotes its ~30-minute RDKit
+  build to S3; downstream jobs download it instead of rebuilding.
+- The same pinned `mozilla/sccache-action@eaed7fb9…` serves RDKit and Cheminee;
+  `knievel/.github/actions/rust-setup/action.yml` centralizes Rust caches.
 
 ### 33. Publish crates from CI over OIDC. Stored registry tokens are bootstrap credentials, not operating credentials.
 
@@ -138,13 +108,16 @@ token, register with a `trusted-publishing` token, then revoke both.
 
 ## The Service & API Rules
 
-### 9. The OpenAPI spec is the contract. Server and clients derive from it.
+### 9. Use poem-openapi: the implementation generates the contract.
 
-Handwritten clients drift. Generate the spec from handler annotations and fail
-CI when the checked-in copy differs.
+For Rust HTTP APIs, use `poem-openapi` every time. Handler types and annotations
+are the source of truth; the OpenAPI document is generated from them. Do not use
+tooling that makes code and a handwritten spec compete, because they will
+drift. If the generated document is checked in, CI must reject regeneration
+diffs.
 
-- `cheminee/src/rest_api/api/api_v1.rs:24-37` derives it with `#[OpenApi]` and
-  `#[oai(...)]`.
+- `cheminee/src/rest_api/api/api_v1.rs:24-37` derives the API with `#[OpenApi]`
+  and `#[oai(...)]`.
 - `knievel/.github/workflows/ci.yml:162-169` runs
   `cargo xtask openapi --check`.
 
@@ -159,44 +132,6 @@ versions directly searchable.
   pushes to `cheminee-ruby`; that repo runs `rake release`.
 - `knievel/.github/workflows/release.yml:299-315,362-369` generates from
   `openapi.yaml` and pushes to its client repo for publication.
-
-### 11. One binary, many subcommands.
-
-Ship server, bulk, and ops commands in one image so production has the exact
-ops code it needs, not a drifting tools container. `cheminee/src/main.rs:15-32`
-defines the `clap` commands; its deployment runs `rest-api-server`, while the
-same image can `kubectl exec … index-sdf`
-(`cheminee/charts/cheminee/templates/deployment.yaml:41-44`).
-
-### 13. Migrations on transactional schemas are additive forever.
-
-For OLTP, allow `ADD COLUMN`, `CREATE TABLE`, and `CREATE INDEX`; no `DROP`
-until a ≥6-month deprecation linked by the removal commit. Knievel documents
-this at `knievel/RELEASE_CHECKLIST.md:51-55` and enforces it with
-`cargo xtask lint-migrations` (`knievel/.github/workflows/ci.yml:136`).
-
-## The Workflow Rules
-
-### 18. One workflow per release event, not per artifact.
-
-Separate artifact workflows multiply trigger surfaces. Keep release jobs in one
-workflow and use `needs:` only for real dependencies
-(`knievel/ARCHITECTURE.md:378-382`).
-
-### 19. Release workflows must be re-run-safe.
-
-Plan recovery from every step: digest pushes are idempotent; registry publishes
-may not be. `knievel/RELEASE_PLAYBOOK.md:118-134`,
-`knievel/.github/workflows/release.yml:7-12` disables cancellation, and
-`knievel/.github/workflows/release.yml:429-432` refuses an existing gem version.
-
-## The Dependency Rules
-
-### 20. New deps enter at their latest stable — verified upstream, not from memory.
-
-- **Anti-receipt:** Corti PR #37 chose sccache 0.10.0 when 0.15.0 was current
-  (2026-04-29).
-- Pin older only with a written reason and link.
 
 ## The Workstation Rules
 
@@ -335,11 +270,3 @@ future chart changes. Delete any override equal to `values.yaml`.
 
 Mirror the chart's key order so comparison is one top-to-bottom scan; order by
 the chart, not insertion history.
-
----
-
-## Caveats
-
-- `cheminee/Cargo.toml:19,21` includes `prometheus` and Poem's `prometheus`
-  feature but exposes no `/metrics` route. Wire listed dependencies into the
-  binary or remove them.
