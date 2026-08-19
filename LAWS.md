@@ -125,6 +125,71 @@ Drift here means cache-misses you never debug.
 - `knievel/.github/actions/rust-setup/action.yml` centralizes
   `Swatinem/rust-cache` so every CI job inherits the same setup.
 
+### 33. Publish crates from CI over OIDC. Stored registry tokens are bootstrap credentials, not operating credentials.
+
+crates.io Trusted Publishing exchanges a GitHub OIDC JWT for a registry token
+scoped to the registered crates. The token expires after 30 minutes, and
+`rust-lang/crates-io-auth-action` revokes it again in its post step. A stored
+API token can also be crate-scoped, endpoint-scoped, and given an expiry — do
+not exaggerate its blast radius — but it remains an independently reusable
+bearer credential that has to be distributed, rotated, and revoked. Eliminate
+the standing CI secret; use OIDC for steady-state publishing.
+
+`id-token: write` belongs only on the smallest publish job. It is a **job-wide
+capability**, not a permission granted to the auth step: any action or command
+in that job can request a valid JWT for the same workflow identity. Therefore:
+
+- SHA-pin every `uses:` edge in the privileged job, including actions reached
+  through local composite actions. Pinning only the auth action is not enough.
+- Build, test, and run `cargo publish --dry-run` without `id-token: write` first.
+  Keep the real publish job short and give it no permission beyond
+  `id-token: write` and, if it checks out source, `contents: read`.
+- Bind a protected GitHub Environment when branch/tag or reviewer gates are
+  available, and register that same environment at crates.io.
+- Pass the action's token output only to the publish step. Never persist or log
+  it, even though expiry and the post-step revocation bound a leak.
+
+**The crates.io side is a JSON API, not just a settings form.** Use a short-lived
+setup token with the `trusted-publishing` endpoint scope and only the intended
+crate scopes:
+
+```
+POST https://crates.io/api/v1/trusted_publishing/github_configs
+Authorization: <scoped setup token>
+{"github_config":{"crate":"claria-core","repository_owner":"claria-ai",
+                  "repository_name":"claria","workflow_filename":"publish.yml",
+                  "environment":"release"}}
+```
+
+For a workspace, derive the crate list from `cargo metadata`; its `publish`
+field already distinguishes unrestricted publishing (`null`), disabled
+publishing (`[]`), and named registries. Do not maintain a second crate array.
+`cargo publish --workspace` derives dependency order and waits for each crate
+to reach the index before publishing dependants.
+
+The GitHub binding is repository-owner identity, repository, workflow
+**filename**, and optional environment — not a branch or tag. Rename the
+workflow or change its environment and the exchange stops authenticating until
+the configs are updated.
+
+**The first publish still needs an API token under crates.io's current model.**
+The config endpoint authenticates and scope-checks the caller, then resolves
+`crate` as an existing crate before storing a binding. A new name therefore
+returns `404 crate "x" does not exist`. Verified against the live API on
+2026-08-18: all twelve Claria 0.32.0 crates reached exactly that post-auth
+failure. Bootstrap them once with an expiring token scoped to `publish-new`,
+register Trusted Publishing with a token scoped to `trusted-publishing`, then
+revoke the setup credentials. Bootstrap with tokens; do not operate with them.
+
+- **Source receipt:** crates.io's token-exchange controller sets a 30-minute
+  expiry; `crates-io-auth-action@c6f97d42` (v1.0.5's verified commit) performs
+  the exchange and its post action sends the revocation.
+- **Workspace receipt:** `claria#135` / `a3d2299` derives twelve publishable
+  crates from metadata and automates the JSON registration. Review also found
+  the important near-miss: its OIDC-enabled job still reaches floating action
+  refs, directly and through `rust-setup`. Those refs must be SHA-pinned or
+  moved to an unprivileged job before that workflow is safe to merge.
+
 ## The Service & API Rules
 
 ### 9. The OpenAPI spec is the contract. Server and clients derive from it.
