@@ -178,9 +178,17 @@ stale `.git/worktrees/` administration.
 
 ### 30. sccache aggressively on every Rust project. Never share `main`'s `target/`.
 
-Each worktree needs its own `target/`; a shared `CARGO_TARGET_DIR` takes a coarse
-Cargo lock and serializes agents. sccache reuses compilation without that lock,
-but each target still stores restored files. Physical deduplication is §32.
+Each worktree needs its own `target/`. A shared `CARGO_TARGET_DIR` or
+`build.build-dir` takes a coarse Cargo lock and serializes agents. Across
+divergent commits, it also serves the other worktree's code. sccache reuses
+compilation without that lock, but each target still stores restored files.
+Physical deduplication is §32.
+
+- **Wrong-code receipt, 2026-09-10:** two dekopon worktrees shared one
+  build-dir. The divergent one reported 40/40 Fresh, linked main's code, and
+  its tests passed. Cargo hashes path packages relative to the workspace root
+  (`rust-lang/cargo#17312`, a duplicate of #12516). `-Zfine-grain-locking` still
+  reran 49/50 units and hung 2 of 5 pairs.
 
 - **Claria receipt, 2026-07-26:** fresh worktree: 138 s cold, 55 s warm at ~98%
   hits. Because stats are machine-global, measure with `--zero-stats` and one
@@ -224,10 +232,15 @@ preserve locks/mutation; shared extents avoid N physical copies.
 - **fclones counter-receipt:** only 2.2 GiB of exact duplicates among 23.7 GiB
   of large files in three Dekopon targets; post-hoc dedupe also requires idle
   builds and pays the disk peak first.
-- kache remains a pilot pending hidden-input correctness
-  (`kunobi-ninja/kache#760`) and large-crate incremental testing. The
-  architecture—not the tool—is law; see
-  `RUST_WORKTREES.md`.
+- **kache 0.19.0 on `dekopon-storage-host`, 2026-09-10:** workspace crates
+  hit across worktree paths. Deleted targets rebuilt at 62/63 hits, leaving
+  2.7 MiB of APFS private bytes each. Tests and a checksum scrub passed.
+- kache remains a pilot pending these (#760 closed 2026-08-20):
+  - `kunobi-ninja/kache#971`: restored files keep mode 444.
+  - #998: cc DWARF archives miss per checkout.
+  - Clippy under the wrapper.
+  - One full-workspace `KACHE_VERIFY=1` run.
+- The architecture, not the tool, is law; see `RUST_WORKTREES.md`.
 
 ## The GitOps Rules
 

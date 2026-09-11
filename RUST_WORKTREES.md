@@ -1,6 +1,6 @@
 # Concurrent Rust worktrees without N× disk
 
-Status: **kache pilot; sccache remains the machine-wide default** (2026-08-18).
+Status: **kache pilot, measured on dekopon; sccache remains the machine-wide default** (updated 2026-09-11; first written 2026-08-18).
 
 ## Verdict
 
@@ -8,11 +8,22 @@ The right boundary is:
 
 - **Separate Cargo lock domains:** every worktree keeps its own `target/`.
 - **Shared physical bytes:** compiler outputs live once in a content-addressed store and are materialized into each `target/` with copy-on-write clones.
-- **Bounded storage:** the compiler store has a hard cap, and stale worktrees still get reaped.
-
-That gives agents true concurrent Cargo processes without paying for N physical copies of every identical artifact. A shared `CARGO_TARGET_DIR` is the wrong abstraction: Cargo protects it with build/artifact locks, so independent agents serialize. Plain per-worktree targets are safe but multiply disk. `sccache` avoids compilation, but its normal restore writes another physical copy into every target.
+- **Bounded storage:** the compiler store has a hard cap, and idle targets still get reaped.
 
 On APFS, a reflink is the missing primitive. It gives every target file a separate inode and therefore separate mutation/locking semantics, while unchanged extents share physical blocks. This is **logical isolation with physical sharing**, not a shared build directory.
+
+Two things are now settled:
+
+1. **Sharing a target or build dir is incorrect, not just slow.**
+   - Worktrees at different commits map each workspace crate to the same unit slot.
+   - Freshness compares mtimes, so one worktree can run the other's code while its tests pass.
+   - Reproduced on dekopon on 2026-09-10. Upstream this is cargo#17312, closed as a duplicate of #12516, which is still open. Cargo says it is "unlikely to change the relative paths".
+2. **kache is the only shipping tool that shares build outputs correctly on APFS.**
+   - On a real dekopon package it reused workspace crates across worktree paths and copied zero bytes on restore.
+   - It took no build-dir lock and passed tests and a checksum scrub.
+   - It remains gated on open macOS bugs (below).
+
+There is no VFS route. macOS has no overlayfs, and FSKit, macFUSE and fuse-t all route every rustc file operation through user space.
 
 ## Current machine state
 
@@ -22,16 +33,17 @@ Production/default:
 - Global wrapper in `~/.cargo/config.toml`
 - Local cache in `~/Library/Caches/Mozilla.sccache`
 - Hard cap: 8 GiB
-- Per-worktree `target/`; no global `CARGO_TARGET_DIR`
+- Per-worktree `target/`; no global `CARGO_TARGET_DIR` or `build.build-dir`
 
 Pilot tooling:
 
-- Homebrew `kache 0.14.2`, installed but **not** the global wrapper
-- Pilot config: `~/.config/kache/config.toml`
-- Local-only 8 GiB store; no daemon or remote cache
-- Homebrew `fclones 0.35.0` for read-only duplicate measurement and possible offline APFS reflink migration
+- Homebrew `kache 0.19.0`, installed but **not** the global wrapper
+- Pilot config `~/.config/kache/config.toml`: local-only, `local_max_size = "8GiB"`, `cache_executables = false`
+  - Without that pin, kache 0.17+ defaults to 5% of the disk (~23 GiB here).
+- kache 0.19 auto-starts a daemon from `kache stats` and similar subcommands. Stop it with `kache daemon stop` until running a daemon is a deliberate decision.
+- Homebrew `fclones 0.35.0` for read-only duplicate measurement
 
-Do not run `kache init` yet: it would replace the global sccache wrapper and install a daemon before the pilot gates below are complete.
+Do not run `kache init`: it replaces the global sccache wrapper and installs the daemon as a service.
 
 ## What was measured
 
@@ -39,7 +51,26 @@ Do not run `kache init` yet: it would replace the global sccache wrapper and ins
 
 The machine-wide sccache reached its old 32 GiB ceiling while worktree targets remained full-sized. Reducing it to 16 GiB reclaimed about 16 GiB, but another concurrent build wave later drove the disk to 115 MiB free. The emergency ceiling is now 8 GiB.
 
-This does not make sccache bad. Its pre-incident cumulative hit rate was about 74% overall and 67% for Rust, with local hits around 3 ms. It makes deleting a target cheap to recover from. It does not make a live target small.
+Its pre-incident cumulative hit rate was about 74% overall and 67% for Rust, with local hits around 3 ms. It makes deleting a target cheap to recover from. It does not make a live target small:
+
+- It never caches incremental workspace crates.
+- Rust cache keys still include the checkout path. `SCCACHE_BASEDIRS` normalizes C/C++ only (mozilla/sccache#2652).
+- The opt-in clone-restore mode (mozilla/sccache#2739, `file_clone`) is open with no reviews. Even if merged, it would share dependencies only.
+
+### Where a dekopon target's bytes are
+
+A read-only split of a live 14.2 GiB target (2026-09-10):
+
+| Component | GiB |
+|---|---|
+| incremental | 4.3 |
+| `.o` | 2.8 |
+| rlib | 2.8 |
+| 47 test/bin executables | 2.0 |
+| rmeta | 1.0 |
+| proc-macro dylibs | 0.3 |
+
+rlib+rmeta, the part any dependency dedup can share, is ~27%. Incremental is ~30%.
 
 ### Post-hoc APFS deduplication helps, but is cleanup rather than architecture
 
@@ -48,29 +79,75 @@ A read-only `fclones` scan of three Dekopon targets selected 23.7 GB of files at
 Useful as a migration/maintenance tool, but it has three limits:
 
 1. The disk peak already happened before the scan.
-2. Hashing and replacement must not race a build.
+2. Hashing and replacement must not race a build. `fclones dedupe` only re-checks file length unless given `--modified-before`.
 3. Exact-byte matches miss semantically reusable outputs whose embedded paths differ.
 
-Never hardlink active Cargo outputs. If `fclones dedupe` is adopted, run it only behind a maintenance lock after every Cargo/rustc process is idle, and verify metadata-sensitive builds first.
+Never hardlink active Cargo outputs.
 
-### Zero-copy compiler-cache probe
+### Real-package comparison (2026-09-10)
 
-An isolated `kache 0.14.2` probe built two divergent worktree roots concurrently, each with a private target and the same dependency graph:
+`dekopon-storage-host`: 40 units, stable 1.97 with sccache, nightly 1.100, kache 0.19.0.
 
-- Cold concurrent wall time: 25.5 s.
-- 28 cacheable units compiled; the peer worktree restored the other 28.
-- No `Blocking waiting for file lock on build/artifact directory` message.
-- Target A: 151.6 MiB logical; target B: 132.2 MiB logical.
-- Kache identified about 210 MiB of those targets as cache-backed APFS CoW data against a 98.3 MiB content-addressed store.
-- Deleting both targets and rebuilding concurrently took about 9–10 s per worktree with all cacheable units hitting.
-- Restores were 100% zero-copy; no artifact bytes were copied.
-- Both produced binaries ran successfully; a full blob checksum scrub passed.
+"Physical" is APFS private size (`ATTR_CMNEXT_PRIVATESIZE`), the bytes shared with no clone. A live agent swarm moved `df` by 30 GiB mid-run, so `df` could not be used.
 
-The cost is stricter keying: warm-hit key computation averaged roughly 168 ms per unit in this small probe, much slower than sccache's local lookup. The wall-clock result stayed concurrent because Cargo and kache parallelized independent units.
+| Mechanism | Build | Fresh / rebuilt | Physical | Correct |
+|---|---|---|---|---|
+| Own target (baseline) | 10.4 s cold | 0/40 | 310 MiB | yes |
+| Cloned target, stable, divergent commit | clone 0.6 s + 3.2 s | 37/3 | 47 MiB | yes |
+| Cloned target, sources forced older than seed | 0.2 s | 40/0 | 0 | **no**: main's code, tests pass |
+| kache, two worktrees concurrently | 11.5 / 12.5 s | 30 restored cross-path | 23 + 11 MiB | yes |
+| kache, both targets deleted, rebuilt | 6.8 / 7.0 s | 62/63 hits | 2.7 + 2.5 MiB | yes |
+| Shared build-dir, coarse lock (nightly) | second waits for the whole first build | 40/0 | shared | **no** |
+| Shared build-dir, `-Zfine-grain-locking` | 9–16 s, hung 2/5 | 49/50 rerun | shared | **no** |
+| Cloned target + `-Zchecksum-freshness` | 0.17 s same commit / 1.7 s divergent | 40/0 ; 39/1 | 0 ; 97 MiB | yes |
+
+kache costs:
+
+- ~120–156 ms of key computation plus ~80 ms of dep-info per unit.
+- ~10 build scripts recompile on every build.
+- Edit loop: 1.55 s, then 1.44 s, then 0.59 s once its adaptive incremental lane engaged, against ~0.54 s flat for Cargo incremental + sccache.
+
+The 2026-08-18 kache 0.14.2 probe on a small two-root graph agreed:
+
+- The builds ran concurrently with no lock wait.
+- The peer restored 28 of 56 cacheable units.
+- Deleted targets rebuilt in 9–10 s with 100% zero-copy restores.
+
+## Shared target and build dirs are incorrect
+
+- **Same slot.** Path packages hash relative to the workspace root, so `crates/foo` is the same unit in every worktree (`build/dekopon-storage-host/145d5a5a2677edea/`). A newer dep-info written by another worktree counts as Fresh.
+- **Coarse lock.** The second worktree printed `Blocking waiting for file lock on build directory`, reported 40/40 Fresh, and linked main's code.
+- **`-Zfine-grain-locking`:**
+  - It waited on per-unit locks, then reran 49 of 50 units anyway: serialization without dedup.
+  - `cargo test` in the first worktree then ran the second worktree's test binaries.
+  - 2 of 5 concurrent pairs hung at 0% CPU in `flock`, and 2 of 4 more with `-Zchecksum-freshness` added.
 
 ## Candidate: kache
 
-[`kache`](https://github.com/kunobi-ninja/kache) is a `RUSTC_WRAPPER` with a content-addressed blob store. On APFS it reflinks blobs into each target, giving separate inodes and shared extents. Per-key locks prevent duplicate compiler work without introducing a single Cargo target lock.
+[`kache`](https://github.com/kunobi-ninja/kache) is a `RUSTC_WRAPPER` with a content-addressed blob store.
+
+- **Restores:** it tries an APFS clone first, then a hardlink (rlib/rmeta only, never executables), then a copy.
+- **Locks:** per-key locks prevent duplicate compiler work without introducing a single Cargo target lock.
+- **Path normalization:** checkout paths become `/kache/workspace` placeholders, and kache injects `--remap-path-prefix`.
+- **`CARGO_MANIFEST_DIR`:** it stays in the key, so a crate using `env!("CARGO_MANIFEST_DIR")` misses across worktrees instead of silently reusing the other checkout's path.
+
+Since 2026-08-18:
+
+- **#760** closed 2026-08-20.
+  - The reporter was using a shared `CARGO_TARGET_DIR`, and two kache path bugs were also fixed.
+  - Proc macros that read files through undeclared `std::fs` calls still need `extra_inputs`.
+- **0.15.0:** concurrent hardlink restores no longer share mutable inodes. The cache key format changed.
+- **0.17.0:** the size default is now 5% of the disk. `KACHE_VERIFY=1` recompiles every hit and compares.
+- **0.19.0:** fixes missing source info in macOS dSYMs for cached debug builds (#996).
+- **Maintenance:** one effective maintainer; 0.14.2 → 0.19.0 took 27 days. Pin versions and treat upgrades as events.
+
+Open (checked 2026-09-11):
+
+- **#971, no fix PR.** Restored rlib/rmeta keep the store's mode 444, so a later non-kache build in that target fails with "not writeable".
+  - Cargo's fingerprint ignores `RUSTC_WRAPPER`: switching sccache→kache is safe, kache→sccache breaks.
+  - Rollback: `chmod u+w` those files, or delete the target.
+- **#998, fix PR #999 open.** On macOS, `cc`-built archives with DWARF take a path-bound key, so `ring`, `zstd-sys` and `psm` miss in every checkout. This costs hit rate, not correctness; `CFLAGS=-g0` works around it.
+- **#720:** the macOS daemon times out on restart.
 
 Pilot command:
 
@@ -80,49 +157,95 @@ KACHE_VERIFY_RESTORES=always \
 cargo test -p <package>
 ```
 
-The global pilot config keeps it local-only, bounded to 8 GiB, disables executable caching, and does not install a daemon. Do not add `KACHE_FALLBACK=sccache` during disk measurements: two compiler stores obscure the result and consume the headroom the pilot is trying to preserve.
+Do not add `KACHE_FALLBACK=sccache` during disk measurements: two compiler stores obscure the result and consume the headroom the pilot is trying to preserve.
 
-### Gates before making it global
+### Gates before a swarm depends on it
 
-Kache is young and correctness matters more than hit rate.
+1. **Real-repo correctness:** one `KACHE_VERIFY=1` full dekopon workspace build + clippy + test.
+   - Run it in a quiet window; it recompiles every hit, so it counts as a heavy build.
+   - Package-level correctness passed on 2026-09-10.
+2. **Clippy:** unverified with `clippy-driver` as `RUSTC_WORKSPACE_WRAPPER` under kache.
+3. **Edit-loop latency:** ~1 s extra on the first two edits of a small crate. Re-measure on a large hot crate before choosing `cache.incremental_crates`.
+4. **Hidden compile inputs:** proc macros that read undeclared files need `extra_inputs`.
+5. **Debugger fidelity:** lldb needs `settings set target.source-map /kache/workspace <checkout>`. Executable caching stays off.
+6. **Native dependencies:** track #998. Pilot `CC="kache cc"` / `CXX="kache c++"` separately.
+7. **Store cap and daemon:** keep the 8 GiB pin, and decide the daemon explicitly.
+8. **Disk behavior:** measure with `df` or APFS private size, never `du` alone.
 
-1. **Real-repo correctness:** build/test Claria and Dekopon from two paths; compare behavior with uncached builds.
-2. **Edit-loop latency:** kache normally removes Cargo's incremental flag and uses an adaptive isolated incremental lane for changing primary units. Large hot crates may need `cache.incremental_crates`; measure before choosing names.
-3. **Hidden compile inputs:** audit proc macros and compile-time file reads. Kache supports per-crate `extra_inputs`, but [issue #760](https://github.com/kunobi-ninja/kache/issues/760) demonstrates an unresolved stale-hit case involving `include_dir!`/proc-macro file reads across worktrees.
-4. **Debugger fidelity:** executable caching stays off until LLDB and dSYM restoration are verified on macOS.
-5. **Native dependencies:** pilot `CC="kache cc"` / `CXX="kache c++"` separately. Unsupported compiler shapes pass through; do not assume `cc-rs` discovers kache the way it discovers sccache.
-6. **Integrity:** keep sampled or always-on restore verification during the pilot and run `kache doctor --checksums` periodically. Blob integrity does not prove an under-keyed compile was semantically correct, so required project tests remain the final gate.
-7. **Disk behavior:** use `kache clean --dry-run` and `df`, not `du` alone. `du` can report the logical size of every reflink even when APFS stores the extents once.
+### Scoped rollout (proposed, not executed)
 
-Only after those pass:
+1. **Byte-triggered reaper.** When free space drops below a floor, delete `target/` in worktrees with no live cargo/rustc, oldest first.
+   - It works under either wrapper; with kache a reaped target comes back in seconds.
+2. **Gate 1** in a quiet window.
+3. **Scope kache by directory, not globally:** `~/code/dekopon/.worktrees/.cargo/config.toml` with `build.rustc-wrapper = "/opt/homebrew/bin/kache"`.
+   - Cargo merges configs from the cwd upward, and deeper files beat `~/.cargo/config.toml`. The swarm switches; the main checkout and sibling repos stay on sccache.
+   - A build escapes that scope when cargo runs from outside the tree (`--manifest-path`), when the worktree lives elsewhere, or when `RUSTC_WRAPPER` / `CARGO_BUILD_RUSTC_WRAPPER` is set in the environment.
+   - Do not delete existing targets at the switch; they stay Fresh.
+4. **Amend the global incremental rule** for that scope in the same change: kache replaces Cargo incremental with its adaptive lane.
+5. **Hold the swarm at its 4-heavy-build cap**, record `df` and store size, then raise the cap.
 
-1. stop all Cargo/rustc work;
-2. replace the global wrapper with `/opt/homebrew/bin/kache`;
-3. run representative clean-target builds;
-4. verify reports, tests, debugging, and physical disk use;
-5. stop and remove the old sccache store only after rollback is no longer needed.
+## Clone-seeded targets (stable fallback)
 
-## Cargo's native direction
+`cp -c -R -p <base>/target <new>/target` clones a warm target in seconds with mtimes preserved; worktrunk's `wt step copy-ignored` does the same file by file.
 
-Cargo 1.97 has stabilized the split between:
+- Registry and git dependency units stay Fresh and share extents.
+- Every workspace crate rebuilds, because checkout mtimes are newer.
 
-- `target-dir`: final user-facing artifacts;
-- `build-dir`: intermediate dependencies, fingerprints, build-script output, and incremental state.
+Rules:
 
-Cargo also contains `-Zfine-grain-locking`, which replaces the whole-build-cache lock with per-unit locking and implicitly enables the new build-dir layout. This is directly aimed at concurrent build caches, but it remains nightly-only and its tracking work is still open:
+- **Sources must be newer than the seed.** A seed built after the checkout serves stale code. With source mtimes forced older, a divergent worktree reported 40/40 Fresh and ran main's code while its tests passed. Touch tracked files after seeding if the order is in doubt; never forge old mtimes.
+- **Seed only an empty `target/`,** from a base nobody builds into.
+- **Drift is safe.** Unit hashes do not depend on the worktree path, so Cargo.lock or feature drift just rebuilds.
+- **`CARGO_MANIFEST_DIR` is untracked.** A Fresh unit keeps the seed's value, so dekopon's test-support `workspace_root()` then points at the seed worktree.
+- **Avoid a single whole-directory `clonefile`.** It blocks changes to that tree while it runs, and worktrunk reverted it after a 236K-file target saturated APFS metadata IO.
+- **Unmeasured variant:** clone the frozen base tree *including sources*, then let git rewrite only the files that differ. Only changed crates would rebuild on stable. It carries the same `CARGO_MANIFEST_DIR` hazard.
 
-- [fine-grained locking #4282](https://github.com/rust-lang/cargo/issues/4282)
-- [per-user compiled artifact cache #5931](https://github.com/rust-lang/cargo/issues/5931)
+With `-Zchecksum-freshness` (config form `build.fingerprint = "content"`, cargo#17382), a cloned target is correct regardless of mtimes: 0 rebuilds on the same commit, one crate on a divergent commit. It is nightly-only; revisit when it stabilizes.
 
-A shared intermediate `build-dir` plus local final `target-dir`s may eventually become the native answer. Do not put `RUSTC_BOOTSTRAP=1` or nightly Cargo into the global developer path to get it early. The cache and locking implementation is still evolving, and divergent worktrees are exactly the correctness-sensitive case.
+kache makes clone-seeding redundant: it already restores dependencies as clones.
+
+## Cargo's native direction (corrected 2026-09-11)
+
+- **`build.build-dir` stabilized in Cargo 1.91** (2025-10-30), not 1.97 as this document previously said.
+  - 1.96 gave build-dir its own `.cargo-build-lock` (cargo#16708).
+  - 1.97 made `.cargo-lock` shared and added `.cargo-artifact-lock` (cargo#16886).
+- **The new per-unit build-dir layout** stabilized 2026-08-18 (cargo#17354) and ships in Cargo 1.100 on 2026-11-12.
+- **`-Zfine-grain-locking`** makes the build lock shared and adds one lock per unit; the artifact lock stays exclusive. It is still `-Z`, with no stabilization PR or FCP. It is not a sharing mechanism for divergent worktrees (above). Tracking: [cargo#4282](https://github.com/rust-lang/cargo/issues/4282).
+- **The cross-workspace cache** ([cargo#5931](https://github.com/rust-lang/cargo/issues/5931), 2026 project goal) targets nightly around October 2026.
+  - It covers registry and git packages only, hardlinked from a content-addressed store.
+  - Workspace crates are out of scope.
+- **cargo#17453** proposes moving all build-dir content into a reflink-first content-addressed store. Proposal only.
+- **Target-dir GC** (cargo#13136) has a PR idle since July; `-Zgc` covers only `~/.cargo`.
+
+Do not put `RUSTC_BOOTSTRAP=1` or nightly Cargo into the global developer path to get any of this early.
+
+## Dead ends
+
+- **Shared `CARGO_TARGET_DIR` or `build.build-dir`:** incorrect for divergent worktrees, and fine-grain locking hangs.
+- **Overlay or union filesystems for `target/`:** macOS has none. An FSKit passthrough filesystem burned 100–150% CPU, against 40% on macFUSE (Apple Developer Forums thread 799283), and fuse-t cannot set atime and mtime independently.
+- **APFS snapshots as a base layer:** volume-wide, read-only, and they need root plus an entitlement.
+- **Per-agent APFS volumes or disk images for sharing:** clones cannot cross volumes.
+- **A per-worktree `build.build-dir` under one cache root:** shares nothing, and removing the worktree no longer frees the bytes.
+- **Linux VM builds for macOS artifacts:** Docker's Mac file sharing can truncate timestamps to whole seconds, which breaks freshness. A target kept inside the VM only produces Linux artifacts.
 
 ## Agent rules
 
 1. Ordinary builds remain `cargo ...`; the configured wrapper is infrastructure, not something each agent invents.
-2. Never point concurrent worktrees at one `CARGO_TARGET_DIR` under Cargo's coarse lock.
+2. Never point concurrent worktrees at one `CARGO_TARGET_DIR` or `build.build-dir`. It serializes them and serves the wrong code.
 3. Never hardlink active build outputs. Reflinks are safe because later writes are copy-on-write.
-4. Do not run `cargo clean` as routine hygiene. Remove completed worktrees; delete an inactive target only under disk pressure.
-5. Prefer narrow package/test commands during iteration, then required workspace gates once.
-6. Treat compiler cache size and worktree target size separately in disk reports.
-7. `df` is the physical-space receipt on APFS. `du` is still useful for logical ownership, but it can double-count shared extents.
-8. A cache hit is executable code. Cache-key correctness, hidden inputs, toolchain identity, and local-only trust boundaries are security properties, not tuning details.
+4. Never forge source mtimes to make a copied target Fresh.
+5. Once kache has built a target, keep building it with kache, or `chmod u+w` it first (#971).
+6. Do not run `cargo clean` as routine hygiene. Remove completed worktrees; delete an inactive target only under disk pressure.
+7. Prefer narrow package/test commands during iteration, then required workspace gates once.
+8. Treat compiler cache size and worktree target size separately in disk reports.
+9. `df` or APFS private size is the physical-space receipt. `du` counts every clone at full size.
+10. A cache hit is executable code. Cache-key correctness, hidden inputs, toolchain identity, and local-only trust boundaries are security properties, not tuning details.
+
+## Sources
+
+- **kache:** kunobi-ninja/kache issues #720, #760, #971, #996, #998; PR #999; `docs/deduplication.mdx`
+- **sccache:** mozilla/sccache PR #2739; issue #2652
+- **Cargo:** rust-lang/cargo #4282, #5931, #12516, #13136, #14136, #16708, #16886, #17312, #17354, #17382, #17453
+- **Project goal:** [cargo cross-workspace cache](https://rust-lang.github.io/rust-project-goals/2026/cargo-cross-workspace-cache.html)
+- **worktrunk:** [`wt step copy-ignored`](https://worktrunk.dev/step/); max-sixty/worktrunk #736, #3150
+- **Practitioner write-up:** [howardjohn: shared Rust builds](https://blog.howardjohn.info/posts/shared-rust-build/) (2026-02-18)
