@@ -52,6 +52,11 @@ and compiler cache" is a verbatim copy. Change all three together. Rationale and
     reading undeclared files need `extra_inputs`), toolchain identity and the local-only trust
     boundary are security properties, not tuning details.
 
+12. The wrapper is a **host** setting. A Linux container (measurement harnesses, CI images) builds
+    with plain `cargo` and no wrapper: never mount `~/.cargo/config.toml` into it, never pass
+    `RUSTC_WRAPPER` in, never install kache inside it. Its target lives in a named volume, not
+    in the worktree's `target/`.
+
 ## Known open items at the switch
 
 - Gate 1 of the pilot (a `KACHE_VERIFY=1` full dekopon workspace build + clippy + test) had not
