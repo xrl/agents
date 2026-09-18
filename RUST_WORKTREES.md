@@ -1,6 +1,6 @@
 # Concurrent Rust worktrees without N× disk
 
-Status: **kache pilot, measured on dekopon; sccache remains the machine-wide default** (updated 2026-09-11; first written 2026-08-18).
+Status: **kache is the machine-wide wrapper since 2026-09-17** (owner decision; gates 1–3 below were not all met — see [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md) §Known open items). The agent-facing rules live in [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md); this document is the study and the rationale. (updated 2026-09-17; first written 2026-08-18)
 
 ## Verdict
 
@@ -27,23 +27,12 @@ There is no VFS route. macOS has no overlayfs, and FSKit, macFUSE and fuse-t all
 
 ## Current machine state
 
-Production/default:
-
-- Homebrew `sccache 0.17.0`
-- Global wrapper in `~/.cargo/config.toml`
-- Local cache in `~/Library/Caches/Mozilla.sccache`
-- Hard cap: 8 GiB
-- Per-worktree `target/`; no global `CARGO_TARGET_DIR` or `build.build-dir`
-
-Pilot tooling:
-
-- Homebrew `kache 0.19.0`, installed but **not** the global wrapper
-- Pilot config `~/.config/kache/config.toml`: local-only, `local_max_size = "8GiB"`, `cache_executables = false`
-  - Without that pin, kache 0.17+ defaults to 5% of the disk (~23 GiB here).
-- kache 0.19 auto-starts a daemon from `kache stats` and similar subcommands. Stop it with `kache daemon stop` until running a daemon is a deliberate decision.
-- Homebrew `fclones 0.35.0` for read-only duplicate measurement
-
-Do not run `kache init`: it replaces the global sccache wrapper and installs the daemon as a service.
+See [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md) §Machine state — the one place this is kept. In
+short: kache 0.22.0 is `build.rustc-wrapper` in `~/.cargo/config.toml`; store 20 GiB, local-only,
+no executables, daemon on demand and not installed as a service; sccache retired as the wrapper.
+History: sccache 0.17.0 was the default until 2026-09-17, with an 8 GiB cap after the 2026-09
+disk incident; kache ran as an env-override pilot (`RUSTC_WRAPPER=/opt/homebrew/bin/kache`) for
+pi-run builds from 2026-09-11.
 
 ## What was measured
 
@@ -149,17 +138,15 @@ Open (checked 2026-09-11):
 - **#998, fix PR #999 open.** On macOS, `cc`-built archives with DWARF take a path-bound key, so `ring`, `zstd-sys` and `psm` miss in every checkout. This costs hit rate, not correctness; `CFLAGS=-g0` works around it.
 - **#720:** the macOS daemon times out on restart.
 
-Pilot command:
+Verification command (kache is now the configured wrapper, so no env override):
 
 ```bash
-RUSTC_WRAPPER=/opt/homebrew/bin/kache \
-KACHE_VERIFY_RESTORES=always \
-cargo test -p <package>
+KACHE_VERIFY_RESTORES=always cargo test -p <package>
 ```
 
-Do not add `KACHE_FALLBACK=sccache` during disk measurements: two compiler stores obscure the result and consume the headroom the pilot is trying to preserve.
+Do not add `KACHE_FALLBACK=sccache`: two compiler stores obscure disk measurements and consume headroom.
 
-### Gates before a swarm depends on it
+### Gates (status at the 2026-09-17 switch)
 
 1. **Real-repo correctness:** one `KACHE_VERIFY=1` full dekopon workspace build + clippy + test.
    - Run it in a quiet window; it recompiles every hit, so it counts as a heavy build.
@@ -172,7 +159,10 @@ Do not add `KACHE_FALLBACK=sccache` during disk measurements: two compiler store
 7. **Store cap and daemon:** keep the 8 GiB pin, and decide the daemon explicitly.
 8. **Disk behavior:** measure with `df` or APFS private size, never `du` alone.
 
-### Scoped rollout (proposed, not executed)
+### Rollout (executed 2026-09-17, globally rather than scoped)
+
+The owner chose the global wrapper over the directory-scoped variant below, with a 20 GiB store,
+before gates 1–3 were closed. The scoped plan is kept for the record:
 
 1. **Byte-triggered reaper.** When free space drops below a floor, delete `target/` in worktrees with no live cargo/rustc, oldest first.
    - It works under either wrapper; with kache a reaped target comes back in seconds.
@@ -230,16 +220,8 @@ Do not put `RUSTC_BOOTSTRAP=1` or nightly Cargo into the global developer path t
 
 ## Agent rules
 
-1. Ordinary builds remain `cargo ...`; the configured wrapper is infrastructure, not something each agent invents.
-2. Never point concurrent worktrees at one `CARGO_TARGET_DIR` or `build.build-dir`. It serializes them and serves the wrong code.
-3. Never hardlink active build outputs. Reflinks are safe because later writes are copy-on-write.
-4. Never forge source mtimes to make a copied target Fresh.
-5. Once kache has built a target, keep building it with kache, or `chmod u+w` it first (#971).
-6. Do not run `cargo clean` as routine hygiene. Remove completed worktrees; delete an inactive target only under disk pressure.
-7. Prefer narrow package/test commands during iteration, then required workspace gates once.
-8. Treat compiler cache size and worktree target size separately in disk reports.
-9. `df` or APFS private size is the physical-space receipt. `du` counts every clone at full size.
-10. A cache hit is executable code. Cache-key correctness, hidden inputs, toolchain identity, and local-only trust boundaries are security properties, not tuning details.
+Moved to [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md), the single canonical copy that
+`~/.claude/CLAUDE.md` imports and `~/.pi/agent/AGENTS.md` mirrors.
 
 ## Sources
 
