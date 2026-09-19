@@ -2,7 +2,7 @@
 
 Opinionated rules with receipts from `rdkit-rs/rdkit`,
 `rdkit-rs/rdkit-debian`, `rdkit-rs/cheminee`, `knievel-ads/knievel`,
-`vasovagal/corti`, and this workstation. Named exceptions refine the rule;
+`vasovagal/corti`, `dekopon-agents/dekopon`, and this workstation. Named exceptions refine the rule;
 they do not silently waive it.
 
 ## The Build Rules
@@ -132,6 +132,114 @@ versions directly searchable.
   pushes to `cheminee-ruby`; that repo runs `rake release`.
 - `knievel/.github/workflows/release.yml:299-315,362-369` generates from
   `openapi.yaml` and pushes to its client repo for publication.
+
+## The Code & API Design Rules
+
+These rules generalize Dekopon's contribution and review conventions. The
+[source snapshot](https://github.com/dekopon-agents/dekopon/blob/4c91530f60ddb5113040ce78f29fd137e11b3f87/CONTRIBUTING.md#review-checklist)
+is a policy receipt, not a claim that every implementation already complies.
+
+### 34. Preserve error causes; report each failure once.
+
+Return an error that names the failed operation and preserves its cause, or
+record the cause at the point where the error is deliberately discarded.
+Silent `map_err(|_| …)`, `let _ = fallible()`, and multi-cause checks collapsed
+into a bool lose the evidence needed to debug. Avoid logging the same failure
+at every propagation layer; choose the reporting boundary. Preserve diagnostic
+meaning without exposing credentials or sensitive payloads.
+
+- **Policy receipt:** Dekopon's review checklist requires cause kind or errno
+  at discard sites and one report per refusal or failure cause.
+
+### 35. Classify errors by the decision callers must make.
+
+Model retryable versus permanent failures and executed versus not-executed
+outcomes where callers need those distinctions. Preserve an unknown outcome
+when an external effect may have happened; a timeout is not proof it did not.
+Never label permanent exhaustion transient or exit successfully with essential
+daemon work dead.
+
+- **Policy receipt:** Dekopon's review checklist classifies errors along
+  caller-action axes and rejects completed work being reported as timed out.
+
+### 36. Report all validation conflicts together.
+
+For authored configuration, collect independent conflicts and return them in
+one diagnostic pass. Never silently use last-wins duplicate keys. A malformed
+structure or unsafe dependency can prevent further checks; stop those checks
+rather than inventing secondary errors. Keep diagnostic work and output bounded.
+
+- **Policy receipt:** Dekopon's change guidelines require validation tests with
+  at least two simultaneous conflicts and assertions that both are reported.
+
+### 37. Bound everything that grows or blocks; give it an owner.
+
+Set limits for retained state and peer-controlled allocations. Enforce claimed
+lengths rather than trusting them when preallocating. Give threads, connections,
+and network reads an explicit lifecycle, deadlines where they can stall, and
+an observer for failure or exit. State retained across turns needs eviction or
+deduplication; deduplication alone does not bound unique entries.
+
+- **Policy receipt:** Dekopon's review checklist requires bounded growth,
+  ownership, deadlines, and exit observers.
+
+### 38. Construct expensive reusable resources once, not per request.
+
+Reuse HTTP/model clients, Wasmtime engines, linkers, compiled components, and
+workers at the process or session scope that owns them. Reuse must respect
+credential, tenant, concurrency, and lifecycle boundaries; do not turn
+request-specific mutable state into a global singleton.
+
+- **Policy receipt:** Dekopon's review checklist names these resources and
+  rejects constructing them per request or invocation.
+
+### 39. New public surface needs a real consumer now.
+
+A new public item, dependency, config field, or error variant needs a non-test
+consumer in the same change. Otherwise keep it private or delete it: parsed but
+unread configuration and unreachable variants are not useful scaffolding.
+For a library whose consumers ship separately, an explicit supported external
+use case and contract tests are the named exception; speculative extensibility
+is not.
+
+- **Policy receipt:** Dekopon's review checklist requires same-PR non-test
+  consumers; the external-library exception generalizes that application rule.
+
+### 40. Keep one definition per fact; test unavoidable mirrors.
+
+Share the authoritative definition rather than maintaining a second validator
+or constant by hand. When a packaging or trust boundary requires a mirror,
+carry an equality-pinning or conformance test. A mirror must not accept what
+the authority rejects. Sharing a definition is not permission to collapse
+otherwise independent security boundaries.
+
+- **Policy receipt:** Dekopon's review checklist requires shared definitions
+  or equality-pinning tests for mirrors of an authority.
+
+### 41. Tests pin behavior and failure causes, not implementation details.
+
+Name tests for the behavior they guarantee and keep them beside the owning
+code. Exercise failure paths and assert that the surfaced error or diagnostic
+retains the cause, rather than merely asserting failure. Pin stable CLI output
+where it is a contract. Use loopback mock peers; never depend on another
+application's real credential store.
+
+- **Policy receipt:** Dekopon's change guidelines specify behavior-named tests,
+  cause assertions, loopback peers, and credential-store isolation.
+
+### Rust-specific applications
+
+- Never hold tracing `Entered`/`EnteredSpan` guards across `.await`; use
+  `.instrument(span)` or a synchronous `in_scope` instead.
+- Avoid panics on user input, unnecessary async dependencies, and public APIs
+  based on `anyhow`; expose errors callers can act on. Avoid `unsafe` unless a
+  justified requirement and documented safety invariants warrant it.
+- Preserve project lint policy. Any justified allowance is site-scoped and
+  explains why it is safe, not widened to a module or crate for convenience.
+
+These applications come from the same source snapshot's **Change guidelines**
+and **Review checklist**; they are Rust-specific expressions of the rules,
+not a mandate to copy Dekopon's full lint configuration.
 
 ## The Workstation Rules
 
