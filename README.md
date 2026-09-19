@@ -19,10 +19,9 @@ These are navigation links, not `@include` directives. The repository `AGENTS.md
 routes relevant reads; it does not concatenate the guides or apply them globally
 when working in another repository. kache remains the standard host wrapper.
 
-The existing host adapters are unchanged: Claude's global file references
-`RUST_AGENT_RULES.md`; Pi's global file mirrors its operational body. This PR does
-not add a generator or claim that Pi expands Claude-style imports. The canonical
-host file and adapters must be synchronized when that policy changes.
+Claude's global file references `RUST_AGENT_RULES.md`; Pi's global file mirrors
+its operational body without expanding Claude-style imports. Keep the canonical
+host file and both adapters synchronized when host policy changes.
 
 To install the skill, copy the complete `skills/choose-orchestration/` directory
 into `~/.pi/agent/skills/`, reviewing any existing copy first, then run `/reload`.

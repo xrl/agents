@@ -26,15 +26,13 @@ Two things are now settled:
 2. **kache is the only shipping tool that shares build outputs correctly on APFS.**
    - On a real dekopon package it reused workspace crates across worktree paths and copied zero bytes on restore.
    - It took no build-dir lock and passed tests and a checksum scrub.
-   - It remains gated on open macOS bugs (below).
+   - Open macOS issues remained at adoption; the owner proceeded before all gates closed (see rollout below).
 
 There is no VFS route. macOS has no overlayfs, and FSKit, macFUSE and fuse-t all route every rustc file operation through user space.
 
 ## Current machine state
 
-See [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md) §Machine state — the one place this is kept. In
-short: kache 0.22.0 is `build.rustc-wrapper` in `~/.cargo/config.toml`; store 20 GiB, local-only,
-no executables, daemon on demand and not installed as a service; sccache retired as the wrapper.
+For current configuration, see [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md#machine-state).
 History: sccache 0.17.0 was the default until 2026-09-17, with an 8 GiB cap after the 2026-09
 disk incident; kache ran as an env-override pilot (`RUSTC_WRAPPER=/opt/homebrew/bin/kache`) for
 pi-run builds from 2026-09-11.
@@ -152,7 +150,9 @@ Open (checked 2026-09-11):
 - **#998, fix PR #999 open.** On macOS, `cc`-built archives with DWARF take a path-bound key, so `ring`, `zstd-sys` and `psm` miss in every checkout. This costs hit rate, not correctness; `CFLAGS=-g0` works around it.
 - **#720:** the macOS daemon times out on restart.
 
-Verification command (kache is now the configured wrapper, so no env override):
+Historical verification command; confirm installed-version semantics and obtain
+build authorization through [RUST_CACHE_VALIDATION.md](RUST_CACHE_VALIDATION.md)
+before use:
 
 ```bash
 KACHE_VERIFY_RESTORES=always cargo test -p <package>
@@ -170,7 +170,8 @@ Do not add `KACHE_FALLBACK=sccache`: two compiler stores obscure disk measuremen
 4. **Hidden compile inputs:** proc macros that read undeclared files need `extra_inputs`.
 5. **Debugger fidelity:** lldb needs `settings set target.source-map /kache/workspace <checkout>`. Executable caching stays off.
 6. **Native dependencies:** track #998. Pilot `CC="kache cc"` / `CXX="kache c++"` separately.
-7. **Store cap and daemon:** keep the 8 GiB pin, and decide the daemon explicitly.
+7. **Store cap and daemon:** the pilot proposed an 8 GiB pin and an explicit daemon
+   decision; the adopted configuration differed (see rollout below).
 8. **Disk behavior:** use controlled `df` deltas for reclaimed space. APFS private
    size describes exclusive bytes, not total occupancy; report shared extents as
    unaccounted when they cannot be measured. Never use `du` alone as physical usage.
@@ -200,7 +201,7 @@ before gates 1–3 were closed. The scoped plan is kept for the record:
 - Registry and git dependency units stay Fresh and share extents.
 - Every workspace crate rebuilds, because checkout mtimes are newer.
 
-Rules:
+Historical experiment constraints—not authorization to clone-seed targets:
 
 - **Sources must be newer than the seed.** A seed built after the checkout serves stale code. With source mtimes forced older, a divergent worktree reported 40/40 Fresh and ran main's code while its tests passed. Touch tracked files after seeding if the order is in doubt; never forge old mtimes.
 - **Seed only an empty `target/`,** from a base nobody builds into.

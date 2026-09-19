@@ -6,7 +6,7 @@ First read [host rules](RUST_AGENT_RULES.md).
 
 ## Status and authority
 
-As of 2026-09-19, this reorganization adds no new build evidence. The canonical
+As of 2026-09-19, no new build evidence is recorded here. The canonical
 [switch-time open items](RUST_AGENT_RULES.md#known-open-items-at-the-switch)
 remain unverified here: full-workspace correctness, native archive cross-path
 misses, debugger source mapping, and dedup-counter meaning. Clippy and edit-loop
@@ -18,7 +18,7 @@ Do not infer closure from adoption, elapsed time, or package-level success.
 1. Get authorization for the actual build or configuration change; this checklist
    is not authorization. Coordinate a quiet window for expensive measurements.
 2. Record repository/head, toolchain and kache versions, exact command, and scope.
-3. Check disk and active builds. Never share targets, bypass kache, or silently
+3. Check disk and active builds. Never share targets, bypass kache, or
    change incremental settings. Cleanup requires owner quiescence, not just `ps`.
 4. Confirm verification controls against the installed version before using them.
    The history mentions both `KACHE_VERIFY=1` and `KACHE_VERIFY_RESTORES=always`;
@@ -34,7 +34,7 @@ Do not infer closure from adoption, elapsed time, or package-level success.
 - Debugging/native archives: observed behavior and current issue status, not old
   issue labels copied forward as facts.
 
-Append new dated evidence here; update the canonical host file and its mirrors
-when closing a switch-time item. Keep old measurements in
-[RUST_CACHE_HISTORY.md](RUST_CACHE_HISTORY.md). On wrapper failures or suspicious
-results, stop and report; do not manufacture a green result by switching wrappers.
+Record dated receipts in [RUST_CACHE_HISTORY.md](RUST_CACHE_HISTORY.md). When
+closing a switch-time item, update the canonical host file and its mirrors,
+linking the receipt. On wrapper failures or suspicious results, stop and report;
+do not manufacture a green result by switching wrappers.

@@ -1,7 +1,7 @@
 # Code & API design
 
-Read before implementation or code review. **Keep causes, bound resources,
-reuse safely, and require a real consumer.**
+Read before implementation or code review. **Keep one authority, preserve causes,
+bound resources, reuse safely, require real consumers, and test behavior.**
 
 ## The Service & API Rules
 
@@ -114,7 +114,6 @@ application's real credential store.
 - Preserve project lint policy. Any justified allowance is site-scoped and
   explains why it is safe, not widened to a module or crate for convenience.
 
-These applications come from the same source snapshot's **Change guidelines**
-and **Review checklist**; they are Rust-specific expressions of the rules,
-not a mandate to copy Dekopon's full lint configuration.
+Source: the snapshot above, **Change guidelines** and **Review checklist**.
+Do not copy Dekopon's full lint configuration.
 

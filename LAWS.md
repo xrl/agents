@@ -35,11 +35,13 @@ projects below; that is a receipt for those environments, not a universal result
 - `knievel/Dockerfile:67-70` likewise keeps Node compilation outside so pnpm's
   native cache works and the image carries no Node toolchain.
 
-### 3. A tag is a vote of confidence. Don't re-run CI on it.
+<a id="3-a-tag-is-a-vote-of-confidence-dont-re-run-ci-on-it"></a>
+
+### 3. Tags from protected, green main need release work, not duplicate CI.
 
 A tag cut from branch-protected, green `main` needs only tag-specific work:
-build, sign, publish, attest. Re-running the PR matrix adds ~25 minutes, not
-signal.
+build, sign, publish, attest. Do not repeat the already-passed PR matrix solely
+because a tag was created.
 
 - **Receipts:** `knievel/.github/workflows/release.yml:14-23` states this
   contract; `cheminee/.github/workflows/build_docker_images.yml:1-4` and
@@ -123,26 +125,7 @@ token, register with a `trusted-publishing` token, then revoke both.
   revokes it.
 - **Near-miss:** `claria#135` / `a3d2299` derives and registers twelve crates,
   but its OIDC job reaches floating actions directly and through `rust-setup`.
-  Pin or move them before merge.
-
-## Relocated code rules
-
-Rules 9–10 and 34–41, plus Rust-specific applications, now live in
-[CODE_DESIGN_RULES.md](CODE_DESIGN_RULES.md). Legacy anchors are retained below.
-
-<a id="the-service--api-rules"></a>
-<a id="the-code--api-design-rules"></a>
-<a id="9-one-authoritative-api-contract-poem-openapi-for-implementation-first-rust-services"></a>
-<a id="10-generated-clients-live-in-their-own-repo-upstream-commits-downstream-publishes-same-tag"></a>
-<a id="34-preserve-error-causes-report-each-failure-once"></a>
-<a id="35-classify-errors-by-the-decision-callers-must-make"></a>
-<a id="36-report-all-validation-conflicts-together"></a>
-<a id="37-bound-everything-that-grows-or-blocks-give-it-an-owner"></a>
-<a id="38-construct-expensive-reusable-resources-once-not-per-request"></a>
-<a id="39-new-public-surface-needs-a-real-consumer-now"></a>
-<a id="40-keep-one-definition-per-fact-test-unavoidable-mirrors"></a>
-<a id="41-tests-pin-behavior-and-failure-causes-not-implementation-details"></a>
-<a id="rust-specific-applications"></a>
+  Historical evidence for the pinning requirement above, not a current merge instruction.
 
 ## The Workstation Rules
 
@@ -160,14 +143,18 @@ See [RUST_CACHE_HISTORY.md](RUST_CACHE_HISTORY.md).
 
 ### 23. An abandoned worktree hoards its target/ forever. Remove worktrees when the branch lands.
 
-A worktree's gitignored `target/` has no GC. After pushing anything unpushed,
-run `git worktree remove <path>` and `git worktree prune`; bare `rm -rf` leaves
-stale `.git/worktrees/` administration.
+A worktree's gitignored `target/` has no GC. Before removal, obtain the owner's
+agreement that no new commands will start until cleanup finishes, then verify
+no build is running there. Preserve dirty work and push unpushed commits before
+running `git worktree remove <path>` and `git worktree prune`; bare `rm -rf`
+leaves stale `.git/worktrees/` administration.
 
 - **Anti-receipt, 2026-06-09:** four stale hidden Claria/Cousteau worktrees held
   43.6 GiB (22/10/7/3.8), including one with three unpushed commits.
 
-### 30. Use kache as the standard host compiler cache. Never share `main`'s `target/`.
+<a id="30-use-kache-as-the-standard-host-compiler-cache-never-share-mains-target"></a>
+
+### 30. Use kache on the host. Never share targets between worktrees.
 
 See [RUST_WORKTREES.md](RUST_WORKTREES.md).
 
@@ -238,3 +225,22 @@ or a required replica count. Delete defaults that carry no independent policy.
 
 Mirror the chart's key order so comparison is one top-to-bottom scan; order by
 the chart, not insertion history.
+
+<a id="the-service--api-rules"></a>
+<a id="the-code--api-design-rules"></a>
+<a id="9-one-authoritative-api-contract-poem-openapi-for-implementation-first-rust-services"></a>
+<a id="10-generated-clients-live-in-their-own-repo-upstream-commits-downstream-publishes-same-tag"></a>
+<a id="34-preserve-error-causes-report-each-failure-once"></a>
+<a id="35-classify-errors-by-the-decision-callers-must-make"></a>
+<a id="36-report-all-validation-conflicts-together"></a>
+<a id="37-bound-everything-that-grows-or-blocks-give-it-an-owner"></a>
+<a id="38-construct-expensive-reusable-resources-once-not-per-request"></a>
+<a id="39-new-public-surface-needs-a-real-consumer-now"></a>
+<a id="40-keep-one-definition-per-fact-test-unavoidable-mirrors"></a>
+<a id="41-tests-pin-behavior-and-failure-causes-not-implementation-details"></a>
+<a id="rust-specific-applications"></a>
+
+## Relocated code rules
+
+Rules 9–10 and 34–41, plus Rust-specific applications, now live in
+[CODE_DESIGN_RULES.md](CODE_DESIGN_RULES.md). Legacy anchors above retain old links.
