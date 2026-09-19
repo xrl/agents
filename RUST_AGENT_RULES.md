@@ -2,7 +2,7 @@
 
 Canonical text. `~/.claude/CLAUDE.md` imports this file; `~/.pi/agent/AGENTS.md` §"Rust worktrees
 and compiler cache" is a verbatim copy. Change all three together. Rationale and measurements:
-[RUST_WORKTREES.md](RUST_WORKTREES.md). Updated 2026-09-17.
+[RUST_WORKTREES.md](RUST_WORKTREES.md). Updated 2026-09-19.
 
 ## Machine state
 
@@ -41,16 +41,25 @@ and compiler cache" is a verbatim copy. Change all three together. Rationale and
    `git worktree prune`; never `rm -rf` a registered worktree.
 9. Parallel agent workers each own a worktree whose `target/` grows to tens of GB. The
    orchestrator deletes a worker's `target/` at hand-off (commits integrated, no cargo/rustc
-   running there). With kache a reaped target comes back in seconds, so this is the cheap lever;
+   running there, and the owner has agreed no new commands will start until cleanup completes).
+   A process snapshot is not mutual exclusion. With kache a reaped target comes back in seconds,
+   so this is the cheap lever;
    the store and any target with a live build are never the lever.
 10. Under disk pressure: check live `cargo`/`rustc` processes and registered worktrees first;
     remove inactive per-worktree `target/` directories before touching the store; never stop or
     purge the store while builds are active. Follow the `free-up-worktree-space` skill rather than
-    guessing. Report compiler-store size and worktree-target size separately; `df` or APFS
-    private size is the receipt, `du` counts every clone at full size.
+    guessing. Obtain an ownership handoff or quiescence agreement before removal, preventing
+    new builds until cleanup completes. Report compiler-store size and worktree-target size
+    separately. Use controlled `df` deltas for reclamation; APFS private size measures only
+    exclusive bytes, not total occupancy. Shared extents can outlive store eviction; do not
+    sum private sizes as total usage. `du` counts every clone at full size.
 11. A cache hit is executable code. Cache-key correctness, hidden compile inputs (proc macros
     reading undeclared files need `extra_inputs`), toolchain identity and the local-only trust
     boundary are security properties, not tuning details.
+12. The wrapper is a **host** setting. A Linux container (measurement harnesses, CI images) builds
+    with plain `cargo` and no wrapper: never mount `~/.cargo/config.toml` into it, never pass
+    `RUSTC_WRAPPER` in, never install kache inside it. Its target lives in a named volume, not
+    in the worktree's `target/`.
 
 ## Known open items at the switch
 

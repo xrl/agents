@@ -3,7 +3,8 @@
 Opinionated workflow and environment guides for human-and-agent development.
 
 - [Laws of Software](LAWS.md) — concise rules with receipts.
-- [Concurrent Rust worktrees without N× disk](RUST_WORKTREES.md) — Cargo lock boundaries, why shared build dirs serve wrong code, sccache, APFS reflinks, the kache pilot, and cleanup policy.
+- [Concurrent Rust worktrees without N× disk](RUST_WORKTREES.md) — Cargo lock boundaries, why shared build dirs serve wrong code, historical sccache measurements, APFS reflinks, standard kache adoption, and cleanup policy.
+- [Rust agent rules](RUST_AGENT_RULES.md) — canonical current host policy: kache, private targets, safe cleanup, and outstanding validation gates.
 
 ## Pi skills
 
