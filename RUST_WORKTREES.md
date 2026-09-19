@@ -77,9 +77,14 @@ Never hardlink active Cargo outputs.
 
 `dekopon-storage-host`: 40 units, stable 1.97 with sccache, nightly 1.100, kache 0.19.0.
 
-"Physical" is APFS private size (`ATTR_CMNEXT_PRIVATESIZE`), the bytes shared with no clone. A live agent swarm moved `df` by 30 GiB mid-run, so `df` could not be used.
+The table reports APFS private size (`ATTR_CMNEXT_PRIVATESIZE`), the bytes shared
+with no clone, not total physical occupancy. Shared extents retained by multiple
+targets still occupy storage even after store eviction; adding store size to
+target-private sizes can undercount them. A live agent swarm moved `df` by 30 GiB
+mid-run, so controlled `df` deltas were unavailable and total occupancy was not
+established by this measurement.
 
-| Mechanism | Build | Fresh / rebuilt | Physical | Correct |
+| Mechanism | Build | Fresh / rebuilt | Private bytes | Correct in tested case |
 |---|---|---|---|---|
 | Own target (baseline) | 10.4 s cold | 0/40 | 310 MiB | yes |
 | Cloned target, stable, divergent commit | clone 0.6 s + 3.2 s | 37/3 | 47 MiB | yes |
@@ -134,7 +139,11 @@ Open (checked 2026-09-11):
 
 - **#971, no fix PR.** Restored rlib/rmeta keep the store's mode 444, so a later non-kache build in that target fails with "not writeable".
   - Cargo's fingerprint ignores `RUSTC_WRAPPER`: switching sccache→kache is safe, kache→sccache breaks.
-  - Rollback: `chmod u+w` those files, or delete the target.
+  - Do not chmod restored artifacts: a hardlink fallback may share the store's
+    inode, so changing permissions can make the cache object writable too.
+    If the owner authorizes rollback, first establish a quiescent ownership
+    handoff, then delete the inactive target and rebuild. Wrapper changes remain
+    prohibited without that authorization; see the canonical machine rules.
 - **#998, fix PR #999 open.** On macOS, `cc`-built archives with DWARF take a path-bound key, so `ring`, `zstd-sys` and `psm` miss in every checkout. This costs hit rate, not correctness; `CFLAGS=-g0` works around it.
 - **#720:** the macOS daemon times out on restart.
 
@@ -157,14 +166,19 @@ Do not add `KACHE_FALLBACK=sccache`: two compiler stores obscure disk measuremen
 5. **Debugger fidelity:** lldb needs `settings set target.source-map /kache/workspace <checkout>`. Executable caching stays off.
 6. **Native dependencies:** track #998. Pilot `CC="kache cc"` / `CXX="kache c++"` separately.
 7. **Store cap and daemon:** keep the 8 GiB pin, and decide the daemon explicitly.
-8. **Disk behavior:** measure with `df` or APFS private size, never `du` alone.
+8. **Disk behavior:** use controlled `df` deltas for reclaimed space. APFS private
+   size describes exclusive bytes, not total occupancy; report shared extents as
+   unaccounted when they cannot be measured. Never use `du` alone as physical usage.
 
 ### Rollout (executed 2026-09-17, globally rather than scoped)
 
 The owner chose the global wrapper over the directory-scoped variant below, with a 20 GiB store,
 before gates 1–3 were closed. The scoped plan is kept for the record:
 
-1. **Byte-triggered reaper.** When free space drops below a floor, delete `target/` in worktrees with no live cargo/rustc, oldest first.
+1. **Byte-triggered reaper.** When free space drops below a floor, obtain an
+   ownership handoff or quiescence agreement preventing new build commands,
+   then confirm no live cargo/rustc before deleting an inactive `target/`, oldest
+   first. A process snapshot alone is not a safe deletion window.
    - It works under either wrapper; with kache a reaped target comes back in seconds.
 2. **Gate 1** in a quiet window.
 3. **Scope kache by directory, not globally:** `~/code/dekopon/.worktrees/.cargo/config.toml` with `build.rustc-wrapper = "/opt/homebrew/bin/kache"`.
@@ -190,7 +204,12 @@ Rules:
 - **Avoid a single whole-directory `clonefile`.** It blocks changes to that tree while it runs, and worktrunk reverted it after a 236K-file target saturated APFS metadata IO.
 - **Unmeasured variant:** clone the frozen base tree *including sources*, then let git rewrite only the files that differ. Only changed crates would rebuild on stable. It carries the same `CARGO_MANIFEST_DIR` hazard.
 
-With `-Zchecksum-freshness` (config form `build.fingerprint = "content"`, cargo#17382), a cloned target is correct regardless of mtimes: 0 rebuilds on the same commit, one crate on a divergent commit. It is nightly-only; revisit when it stabilizes.
+With `-Zchecksum-freshness` (config form `build.fingerprint = "content"`, cargo#17382),
+the demonstrated mtime-based stale-source problem was avoided: 0 rebuilds on the
+same commit, one crate on a divergent commit. This does not establish relocation
+correctness: compiled-in paths such as `CARGO_MANIFEST_DIR` still need separate
+validation or a rebuild of path-sensitive units. It is nightly-only; revisit
+when it stabilizes.
 
 kache makes clone-seeding redundant: it already restores dependencies as clones.
 

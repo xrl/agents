@@ -17,12 +17,16 @@ architecture matrix, then fan in to a small `docker manifest create` job.
   `rdkit-debian/.github/workflows/build.yml:57-64` does the same on
   GitHub-hosted runners.
 
-### 2. Don't compile your app inside Docker.
+### 2. Prefer host compilation when it produces runtime-compatible artifacts.
 
-Compile on the host, where native compiler/package caches and debuggers keep the
-inner loop fast and understandable; Docker only packages the finished artifact.
-Containerized compilation makes cache behavior and failures harder to inspect.
-Observed buildx loops fell from ~90 seconds to ~2-second host rebuilds.
+Compile on the host when its target, sysroot, native libraries, and runtime ABI
+match deployment requirements; Docker can then package the finished artifact.
+Matching CPU architecture alone is insufficient: a macOS executable cannot run
+in Linux, and a newer host glibc can exceed the runtime image's version.
+Use a pinned container builder with appropriate cache mounts when it establishes
+the required environment. Measure the full loop rather than banning containers.
+Observed buildx loops fell from ~90 seconds to ~2-second host rebuilds in the
+projects below; that is a receipt for those environments, not a universal result.
 
 - `cheminee/Dockerfile:43-45` copies a runner-built `target/release/cheminee`.
 - `knievel/Dockerfile:67-70` likewise keeps Node compilation outside so pnpm's
@@ -48,11 +52,13 @@ signal.
 OCI tags move; digests do not. Consumers pin digests, and changed bits get a new
 patch release (`knievel/RELEASE_PLAYBOOK.md:71-83,99-100`).
 
-### 5. CI builds always use a cache. Fast feedback preserves momentum.
+### 5. Cache expensive reusable CI work when it improves total job time.
 
-Cache setup is always worth the upfront investment. Cache compiler outputs,
-dependencies, package-manager stores, and expensive upstream artifacts from the
-first workflow; centralize setup so jobs share keys and behavior.
+Measure restore, decompression, save, and miss costs as well as compilation.
+Cache compiler outputs, dependencies, package-manager stores, and expensive
+upstream artifacts when reuse beats those costs; centralize compatible keys and
+setup. Bypass or remove caches whose overhead exceeds their benefit, especially
+for short jobs or high key churn. Fast feedback, not cache presence, is the goal.
 
 - `rdkit-debian/.github/workflows/build.yml:117` promotes its ~30-minute RDKit
   build to S3; downstream jobs download it instead of rebuilding.
@@ -73,7 +79,17 @@ a JWT for the same workflow identity. Therefore:
 - grant it only to a minimal publish job; use only `contents: read` if checkout
   is required;
 - SHA-pin every direct `uses:` and every transitive `uses:` inside composites;
-- build, test, and run `cargo publish --dry-run` in an unprivileged job first;
+- build, test, and verify packages in an unprivileged job first;
+- do not rerun compilation in the privileged job: ordinary `cargo publish`
+  verification can execute build scripts and procedural macros. An earlier
+  dry run does not isolate a later privileged compilation;
+- bind the upload to the exact verified package contents: record package
+  digests in the unprivileged phase, transfer those artifacts through a trusted
+  handoff, and verify their digests before upload. Use an upload path that does
+  not rebuild them. If using `cargo publish --no-verify`, note that it may still
+  repackage: compare the actual upload package to the verified artifact and
+  establish that packaging cannot execute untrusted code for the selected
+  Cargo version. The flag alone is not an artifact-identity guarantee;
 - bind a protected GitHub Environment when reviewer/ref gates are available and
   register the same environment at crates.io; and
 - expose the temporary token only to the publish step; never persist or log it.
@@ -108,13 +124,14 @@ token, register with a `trusted-publishing` token, then revoke both.
 
 ## The Service & API Rules
 
-### 9. Use poem-openapi: the implementation generates the contract.
+### 9. One authoritative API contract; poem-openapi for implementation-first Rust services.
 
-For Rust HTTP APIs, use `poem-openapi` every time. Handler types and annotations
-are the source of truth; the OpenAPI document is generated from them. Do not use
-tooling that makes code and a handwritten spec compete, because they will
-drift. If the generated document is checked in, CI must reject regeneration
-diffs.
+Default to `poem-openapi` for implementation-first Rust HTTP APIs: handler types
+and annotations generate the OpenAPI document. For contract-first APIs, the
+agreed specification can instead generate server interfaces and clients, with
+conformance tests for the implementation. Do not make independently maintained
+code and specifications compete. CI must reject regeneration diffs for checked-in
+generated contracts and enforce conformance to the chosen authority.
 
 - `cheminee/src/rest_api/api/api_v1.rs:24-37` derives the API with `#[OpenApi]`
   and `#[oai(...)]`.
@@ -195,8 +212,10 @@ request-specific mutable state into a global singleton.
 
 ### 39. New public surface needs a real consumer now.
 
-A new public item, dependency, config field, or error variant needs a non-test
-consumer in the same change. Otherwise keep it private or delete it: parsed but
+A new production public item, production dependency, config field, or error
+variant needs a non-test consumer in the same change. Development dependencies
+need an actual test, benchmark, or tooling consumer in that change; they need no
+artificial production use. Otherwise keep it private or delete it: parsed but
 unread configuration and unreachable variants are not useful scaffolding.
 For a library whose consumers ship separately, an explicit supported external
 use case and contract tests are the named exception; speculative extensibility
@@ -245,11 +264,15 @@ not a mandate to copy Dekopon's full lint configuration.
 
 These receipts include the workstation and its disk-full/probe incidents.
 
-### 21. One global rustc-wrapper. Commit it into a repo only paired with CI that installs sccache.
+### 21. Standardize on kache; install a wrapper wherever configuration requires it.
 
-`~/.cargo/config.toml:6-7` can cover every local repo/worktree. A committed
-wrapper makes its binary mandatory in every clone and CI runner, so the repo's
-CI must install it.
+kache is the standard host `rustc-wrapper`; the current machine contract is
+[RUST_AGENT_RULES.md](RUST_AGENT_RULES.md). A global Cargo config covers local
+repos without imposing a workstation dependency on every clone. A committed
+wrapper makes its binary mandatory in every covered environment, so those
+environments must install it explicitly. Do not copy host configuration into
+Linux containers: the current container policy is plain Cargo, not an implicit
+wrapper installation. The following sccache receipts are historical.
 
 - **Receipts:** the global config covers `~/code` with no repo override
   (verified 2026-06-09). Corti deliberately commits one at
@@ -259,8 +282,10 @@ CI must install it.
   (`vagus/.github/actions/rust-setup/action.yml:36`). Both are lawful;
   committed-wrapper-without-install is not.
 
-### 22. sccache caches your dependencies, not your crates. "non-cacheable: incremental" is healthy.
+### 22. Historical sccache measurements are not kache policy.
 
+The following describes the retired sccache setup, not instructions to switch
+wrappers or tune kache. Current kache policy leaves incremental settings alone.
 Local workspace crates are incremental, which sccache cannot cache;
 `non-cacheable: incremental` is healthy. Do not set `CARGO_INCREMENTAL=0`
 locally: inconsistent `CARGO_*` values split cache keys, and path-bound
@@ -284,13 +309,15 @@ stale `.git/worktrees/` administration.
 - **Anti-receipt, 2026-06-09:** four stale hidden Claria/Cousteau worktrees held
   43.6 GiB (22/10/7/3.8), including one with three unpushed commits.
 
-### 30. sccache aggressively on every Rust project. Never share `main`'s `target/`.
+### 30. Use kache as the standard host compiler cache. Never share `main`'s `target/`.
 
 Each worktree needs its own `target/`. A shared `CARGO_TARGET_DIR` or
 `build.build-dir` takes a coarse Cargo lock and serializes agents. Across
-divergent commits, it also serves the other worktree's code. sccache reuses
-compilation without that lock, but each target still stores restored files.
-Physical deduplication is §32.
+divergent commits, it also serves the other worktree's code. kache reuses
+compilation with copy-on-write restores without sharing Cargo lock domains.
+Follow [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md); on a wrapper failure, stop and
+diagnose rather than bypassing it or switching to sccache. Physical sharing is
+§32. The sccache timings and cache caps below are historical, not current settings.
 
 - **Wrong-code receipt, 2026-09-10:** two dekopon worktrees shared one
   build-dir. The divergent one reported 40/40 Fresh, linked main's code, and
@@ -343,7 +370,10 @@ preserve locks/mutation; shared extents avoid N physical copies.
 - **kache 0.19.0 on `dekopon-storage-host`, 2026-09-10:** workspace crates
   hit across worktree paths. Deleted targets rebuilt at 62/63 hits, leaving
   2.7 MiB of APFS private bytes each. Tests and a checksum scrub passed.
-- kache remains a pilot pending these (#760 closed 2026-08-20):
+- kache became the standard machine-wide wrapper by owner decision on
+  2026-09-17, before all rollout gates passed. These recorded concerns remain
+  subject to verification; adoption is not proof they are resolved
+  (#760 closed 2026-08-20):
   - `kunobi-ninja/kache#971`: restored files keep mode 444.
   - #998: cc DWARF archives miss per checkout.
   - Clippy under the wrapper.
@@ -354,9 +384,12 @@ preserve locks/mutation; shared extents avoid N physical copies.
 
 ### 24. Kubernetes core services should use selfHeal.
 
-Without ArgoCD `selfHeal`, live drift persists until a new commit. Set
-`automated: {prune: true, selfHeal: true}` for core controllers, networking,
-certs, and observability. A business app may omit it for deliberate live
+Without ArgoCD `selfHeal`, live drift can persist until another sync. Enable
+`automated.selfHeal: true` for core controllers, networking, certs, and
+observability. Decide `prune` separately: restoration of declared resources
+does not justify automatic deletion of removed resources. Protect namespaces,
+CRDs, and other destructive resource classes with explicit prune exclusions or
+approval gates. A business app may omit self-healing for deliberate live
 debugging, but must document that choice.
 
 - **Receipt, scientist-hq k3, 2026-06-09:** drift-deleted ARC
@@ -382,10 +415,12 @@ Keep real overrides in the generating ApplicationSet's `values: |` block.
 Migrate existing standalone per-app values files there; the file—not charts or
 overrides—is the smell.
 
-### 28. An inline override carries only real overrides. Never restate a default.
+### 28. Remove redundant defaults; retain intentional policy pins.
 
-Restating a default adds no information and silently pins today's value against
-future chart changes. Delete any override equal to `values.yaml`.
+An override equal to `values.yaml` is redundant unless it intentionally pins an
+operational or security invariant across chart upgrades. Retain and briefly
+explain such pins, for example authentication, `allowPrivilegeEscalation: false`,
+or a required replica count. Delete defaults that carry no independent policy.
 
 ### 29. Mirror the chart's `values.yaml` key order in the override.
 
