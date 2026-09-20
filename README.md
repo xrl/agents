@@ -1,13 +1,28 @@
 # agents
 
-Opinionated workflow and environment guides for human-and-agent development.
+Opinionated engineering guides. **Start with the task, not a full-library read.**
 
-- [Laws of Software](LAWS.md) — concise rules with receipts.
-- [Concurrent Rust worktrees without N× disk](RUST_WORKTREES.md) — Cargo lock boundaries, why shared build dirs serve wrong code, historical sccache measurements, APFS reflinks, standard kache adoption, and cleanup policy.
-- [Rust agent rules](RUST_AGENT_RULES.md) — canonical current host policy: kache, private targets, safe cleanup, and outstanding validation gates.
+| Need | Read |
+|---|---|
+| Agent entrypoint and reading triggers | [AGENTS.md](AGENTS.md) |
+| Code/API taste, error handling, testing | [CODE_DESIGN_RULES.md](CODE_DESIGN_RULES.md) |
+| Build/release, GitOps, worktree conventions | [LAWS.md](LAWS.md) |
+| Current host Rust policy | [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md) |
+| Why private targets and copy-on-write | [RUST_WORKTREES.md](RUST_WORKTREES.md) |
+| Cache checks and evidence requirements | [RUST_CACHE_VALIDATION.md](RUST_CACHE_VALIDATION.md) |
+| Dated experiments and superseded plans | [RUST_CACHE_HISTORY.md](RUST_CACHE_HISTORY.md) |
+| Choosing a delegation engine | [orchestration skill](skills/choose-orchestration/SKILL.md) |
 
-## Pi skills
+## Loading and installation
 
-- [Choose an orchestration engine](skills/choose-orchestration/SKILL.md) — decide between direct execution, pi-subagents, and Dynamic Workflows using a reusable decision matrix and launch guardrails.
+These are navigation links, not `@include` directives. The repository `AGENTS.md`
+routes relevant reads; it does not concatenate the guides or apply them globally
+when working in another repository. kache remains the standard host wrapper.
 
-To install, copy `skills/choose-orchestration/` into `~/.pi/agent/skills/` (review any existing copy before replacing it), then run `/reload` in Pi. Invoke `/skill:choose-orchestration` with a task to get a routing recommendation; invoking the skill alone does not launch agents.
+Claude's global file references `RUST_AGENT_RULES.md`; Pi's global file mirrors
+its operational body without expanding Claude-style imports. Keep the canonical
+host file and both adapters synchronized when host policy changes.
+
+To install the skill, copy the complete `skills/choose-orchestration/` directory
+into `~/.pi/agent/skills/`, reviewing any existing copy first, then run `/reload`.
+Invoke `/skill:choose-orchestration` with a task. Selection does not authorize launch.

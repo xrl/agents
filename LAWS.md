@@ -5,6 +5,9 @@ Opinionated rules with receipts from `rdkit-rs/rdkit`,
 `vasovagal/corti`, `dekopon-agents/dekopon`, and this workstation. Named exceptions refine the rule;
 they do not silently waive it.
 
+Read for build/release, GitOps, or worktree conventions. For code review, go
+directly to [CODE_DESIGN_RULES.md](CODE_DESIGN_RULES.md).
+
 ## The Build Rules
 
 ### 1. Build natively per arch. Stitch with a manifest.
@@ -32,11 +35,13 @@ projects below; that is a receipt for those environments, not a universal result
 - `knievel/Dockerfile:67-70` likewise keeps Node compilation outside so pnpm's
   native cache works and the image carries no Node toolchain.
 
-### 3. A tag is a vote of confidence. Don't re-run CI on it.
+<a id="3-a-tag-is-a-vote-of-confidence-dont-re-run-ci-on-it"></a>
+
+### 3. Tags from protected, green main need release work, not duplicate CI.
 
 A tag cut from branch-protected, green `main` needs only tag-specific work:
-build, sign, publish, attest. Re-running the PR matrix adds ~25 minutes, not
-signal.
+build, sign, publish, attest. Do not repeat the already-passed PR matrix solely
+because a tag was created.
 
 - **Receipts:** `knievel/.github/workflows/release.yml:14-23` states this
   contract; `cheminee/.github/workflows/build_docker_images.yml:1-4` and
@@ -120,145 +125,7 @@ token, register with a `trusted-publishing` token, then revoke both.
   revokes it.
 - **Near-miss:** `claria#135` / `a3d2299` derives and registers twelve crates,
   but its OIDC job reaches floating actions directly and through `rust-setup`.
-  Pin or move them before merge.
-
-## The Service & API Rules
-
-### 9. One authoritative API contract; poem-openapi for implementation-first Rust services.
-
-Default to `poem-openapi` for implementation-first Rust HTTP APIs: handler types
-and annotations generate the OpenAPI document. For contract-first APIs, the
-agreed specification can instead generate server interfaces and clients, with
-conformance tests for the implementation. Do not make independently maintained
-code and specifications compete. CI must reject regeneration diffs for checked-in
-generated contracts and enforce conformance to the chosen authority.
-
-- `cheminee/src/rest_api/api/api_v1.rs:24-37` derives the API with `#[OpenApi]`
-  and `#[oai(...)]`.
-- `knievel/.github/workflows/ci.yml:162-169` runs
-  `cargo xtask openapi --check`.
-
-### 10. Generated clients live in their own repo. Upstream commits, downstream publishes. Same tag.
-
-The server owns the spec and, on a tag, commits generated clients with that tag
-to client repos. Each client repo builds and publishes itself. This separates
-API source, generated artifact, and registry credentials while keeping bug
-versions directly searchable.
-
-- `cheminee/.github/workflows/generate_ruby_gem.yaml:65-83` generates and
-  pushes to `cheminee-ruby`; that repo runs `rake release`.
-- `knievel/.github/workflows/release.yml:299-315,362-369` generates from
-  `openapi.yaml` and pushes to its client repo for publication.
-
-## The Code & API Design Rules
-
-These rules generalize Dekopon's contribution and review conventions. The
-[source snapshot](https://github.com/dekopon-agents/dekopon/blob/4c91530f60ddb5113040ce78f29fd137e11b3f87/CONTRIBUTING.md#review-checklist)
-is a policy receipt, not a claim that every implementation already complies.
-
-### 34. Preserve error causes; report each failure once.
-
-Return an error that names the failed operation and preserves its cause, or
-record the cause at the point where the error is deliberately discarded.
-Silent `map_err(|_| …)`, `let _ = fallible()`, and multi-cause checks collapsed
-into a bool lose the evidence needed to debug. Avoid logging the same failure
-at every propagation layer; choose the reporting boundary. Preserve diagnostic
-meaning without exposing credentials or sensitive payloads.
-
-- **Policy receipt:** Dekopon's review checklist requires cause kind or errno
-  at discard sites and one report per refusal or failure cause.
-
-### 35. Classify errors by the decision callers must make.
-
-Model retryable versus permanent failures and executed versus not-executed
-outcomes where callers need those distinctions. Preserve an unknown outcome
-when an external effect may have happened; a timeout is not proof it did not.
-Never label permanent exhaustion transient or exit successfully with essential
-daemon work dead.
-
-- **Policy receipt:** Dekopon's review checklist classifies errors along
-  caller-action axes and rejects completed work being reported as timed out.
-
-### 36. Report all validation conflicts together.
-
-For authored configuration, collect independent conflicts and return them in
-one diagnostic pass. Never silently use last-wins duplicate keys. A malformed
-structure or unsafe dependency can prevent further checks; stop those checks
-rather than inventing secondary errors. Keep diagnostic work and output bounded.
-
-- **Policy receipt:** Dekopon's change guidelines require validation tests with
-  at least two simultaneous conflicts and assertions that both are reported.
-
-### 37. Bound everything that grows or blocks; give it an owner.
-
-Set limits for retained state and peer-controlled allocations. Enforce claimed
-lengths rather than trusting them when preallocating. Give threads, connections,
-and network reads an explicit lifecycle, deadlines where they can stall, and
-an observer for failure or exit. State retained across turns needs eviction or
-deduplication; deduplication alone does not bound unique entries.
-
-- **Policy receipt:** Dekopon's review checklist requires bounded growth,
-  ownership, deadlines, and exit observers.
-
-### 38. Construct expensive reusable resources once, not per request.
-
-Reuse HTTP/model clients, Wasmtime engines, linkers, compiled components, and
-workers at the process or session scope that owns them. Reuse must respect
-credential, tenant, concurrency, and lifecycle boundaries; do not turn
-request-specific mutable state into a global singleton.
-
-- **Policy receipt:** Dekopon's review checklist names these resources and
-  rejects constructing them per request or invocation.
-
-### 39. New public surface needs a real consumer now.
-
-A new production public item, production dependency, config field, or error
-variant needs a non-test consumer in the same change. Development dependencies
-need an actual test, benchmark, or tooling consumer in that change; they need no
-artificial production use. Otherwise keep it private or delete it: parsed but
-unread configuration and unreachable variants are not useful scaffolding.
-For a library whose consumers ship separately, an explicit supported external
-use case and contract tests are the named exception; speculative extensibility
-is not.
-
-- **Policy receipt:** Dekopon's review checklist requires same-PR non-test
-  consumers; the external-library exception generalizes that application rule.
-
-### 40. Keep one definition per fact; test unavoidable mirrors.
-
-Share the authoritative definition rather than maintaining a second validator
-or constant by hand. When a packaging or trust boundary requires a mirror,
-carry an equality-pinning or conformance test. A mirror must not accept what
-the authority rejects. Sharing a definition is not permission to collapse
-otherwise independent security boundaries.
-
-- **Policy receipt:** Dekopon's review checklist requires shared definitions
-  or equality-pinning tests for mirrors of an authority.
-
-### 41. Tests pin behavior and failure causes, not implementation details.
-
-Name tests for the behavior they guarantee and keep them beside the owning
-code. Exercise failure paths and assert that the surfaced error or diagnostic
-retains the cause, rather than merely asserting failure. Pin stable CLI output
-where it is a contract. Use loopback mock peers; never depend on another
-application's real credential store.
-
-- **Policy receipt:** Dekopon's change guidelines specify behavior-named tests,
-  cause assertions, loopback peers, and credential-store isolation.
-
-### Rust-specific applications
-
-- Never hold tracing `Entered`/`EnteredSpan` guards across `.await`; use
-  `.instrument(span)` or a synchronous `in_scope` instead.
-- Avoid panics on user input, unnecessary async dependencies, and public APIs
-  based on `anyhow`; expose errors callers can act on. Avoid `unsafe` unless a
-  justified requirement and documented safety invariants warrant it.
-- Preserve project lint policy. Any justified allowance is site-scoped and
-  explains why it is safe, not widened to a module or crate for convenience.
-
-These applications come from the same source snapshot's **Change guidelines**
-and **Review checklist**; they are Rust-specific expressions of the rules,
-not a mandate to copy Dekopon's full lint configuration.
+  Historical evidence for the pinning requirement above, not a current merge instruction.
 
 ## The Workstation Rules
 
@@ -266,75 +133,30 @@ These receipts include the workstation and its disk-full/probe incidents.
 
 ### 21. Standardize on kache; install a wrapper wherever configuration requires it.
 
-kache is the standard host `rustc-wrapper`; the current machine contract is
-[RUST_AGENT_RULES.md](RUST_AGENT_RULES.md). A global Cargo config covers local
-repos without imposing a workstation dependency on every clone. A committed
-wrapper makes its binary mandatory in every covered environment, so those
-environments must install it explicitly. Do not copy host configuration into
-Linux containers: the current container policy is plain Cargo, not an implicit
-wrapper installation. The following sccache receipts are historical.
-
-- **Receipts:** the global config covers `~/code` with no repo override
-  (verified 2026-06-09). Corti deliberately commits one at
-  `corti/.cargo/config.toml:14` and installs sccache v0.15.0 via a pinned action
-  (`corti/.github/actions/rust-setup/action.yml:43-46`); Vagus commits none and
-  uses `Swatinem/rust-cache` in CI
-  (`vagus/.github/actions/rust-setup/action.yml:36`). Both are lawful;
-  committed-wrapper-without-install is not.
+A committed wrapper must be installed in every environment covered by that
+configuration. Prefer host-global config over imposing it on every clone.
+Current host/container policy: [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md).
 
 ### 22. Historical sccache measurements are not kache policy.
 
-The following describes the retired sccache setup, not instructions to switch
-wrappers or tune kache. Current kache policy leaves incremental settings alone.
-Local workspace crates are incremental, which sccache cannot cache;
-`non-cacheable: incremental` is healthy. Do not set `CARGO_INCREMENTAL=0`
-locally: inconsistent `CARGO_*` values split cache keys, and path-bound
-workspace keys still cannot hit across worktrees. Measure what matters with
-`--zero-stats`: a fresh worktree sharing `Cargo.lock` should approach 100% hits
-on registry dependencies.
-
-- **Probe, 2026-06-09:** same lockfile gave 100% dependency hits;
-  `CARGO_INCREMENTAL=0` added no workspace cross-worktree hits.
-- Proc macros, build-script binaries, linked crate types, and linking itself are
-  never cacheable.
-- **CI exception:** fresh, stable-path CI checkouts should disable incremental;
-  Corti does at `corti/.github/actions/rust-setup/action.yml:58`.
+See [RUST_CACHE_HISTORY.md](RUST_CACHE_HISTORY.md).
 
 ### 23. An abandoned worktree hoards its target/ forever. Remove worktrees when the branch lands.
 
-A worktree's gitignored `target/` has no GC. After pushing anything unpushed,
-run `git worktree remove <path>` and `git worktree prune`; bare `rm -rf` leaves
-stale `.git/worktrees/` administration.
+A worktree's gitignored `target/` has no GC. Before removal, obtain the owner's
+agreement that no new commands will start until cleanup finishes, then verify
+no build is running there. Preserve dirty work and push unpushed commits before
+running `git worktree remove <path>` and `git worktree prune`; bare `rm -rf`
+leaves stale `.git/worktrees/` administration.
 
 - **Anti-receipt, 2026-06-09:** four stale hidden Claria/Cousteau worktrees held
   43.6 GiB (22/10/7/3.8), including one with three unpushed commits.
 
-### 30. Use kache as the standard host compiler cache. Never share `main`'s `target/`.
+<a id="30-use-kache-as-the-standard-host-compiler-cache-never-share-mains-target"></a>
 
-Each worktree needs its own `target/`. A shared `CARGO_TARGET_DIR` or
-`build.build-dir` takes a coarse Cargo lock and serializes agents. Across
-divergent commits, it also serves the other worktree's code. kache reuses
-compilation with copy-on-write restores without sharing Cargo lock domains.
-Follow [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md); on a wrapper failure, stop and
-diagnose rather than bypassing it or switching to sccache. Physical sharing is
-§32. The sccache timings and cache caps below are historical, not current settings.
+### 30. Use kache on the host. Never share targets between worktrees.
 
-- **Wrong-code receipt, 2026-09-10:** two dekopon worktrees shared one
-  build-dir. The divergent one reported 40/40 Fresh, linked main's code, and
-  its tests passed. Cargo hashes path packages relative to the workspace root
-  (`rust-lang/cargo#17312`, a duplicate of #12516). `-Zfine-grain-locking` still
-  reran 49/50 units and hung 2 of 5 pairs.
-
-- **Claria receipt, 2026-07-26:** fresh worktree: 138 s cold, 55 s warm at ~98%
-  hits. Because stats are machine-global, measure with `--zero-stats` and one
-  build on a quiet machine; discard contended deltas.
-- The cache grew from 2.5 GiB after one build/test/clippy matrix to its 32 GiB
-  cap by 2026-08-18. A 16 GiB cap still preceded a 115 MiB-free incident; the
-  emergency cap is 8 GiB. Include the ceiling in disk budgets.
-- `cc-rs` inherited the wrapper automatically (823 Clang hits); do not wrap
-  `cc` separately.
-- Proc macros dominated non-cacheable calls (490/622, `crate-type`), as §22
-  predicts.
+See [RUST_WORKTREES.md](RUST_WORKTREES.md).
 
 ### 31. Worktrees are aggressive, branch-per-agent, and siblings of the main checkout.
 
@@ -355,30 +177,7 @@ git worktree add ../foo-perf-make-faster -b perf/make-faster
 
 ### 32. Share bytes, not Cargo lock domains.
 
-Keep a private `target/` per worktree, but materialize immutable
-content-addressed artifacts through APFS copy-on-write reflinks. Separate inodes
-preserve locks/mutation; shared extents avoid N physical copies.
-
-- **kache 0.14.2 probe, 2026-08-18:** two divergent roots built concurrently
-  without a Cargo lock wait; of 56 cacheable requests, 28 compiled and the peer
-  restored 28. About 210 MiB of two targets shared a 98 MiB store; rebuilding
-  deleted targets took
-  9–10 s with 100% zero-copy restores.
-- **fclones counter-receipt:** only 2.2 GiB of exact duplicates among 23.7 GiB
-  of large files in three Dekopon targets; post-hoc dedupe also requires idle
-  builds and pays the disk peak first.
-- **kache 0.19.0 on `dekopon-storage-host`, 2026-09-10:** workspace crates
-  hit across worktree paths. Deleted targets rebuilt at 62/63 hits, leaving
-  2.7 MiB of APFS private bytes each. Tests and a checksum scrub passed.
-- kache became the standard machine-wide wrapper by owner decision on
-  2026-09-17, before all rollout gates passed. These recorded concerns remain
-  subject to verification; adoption is not proof they are resolved
-  (#760 closed 2026-08-20):
-  - `kunobi-ninja/kache#971`: restored files keep mode 444.
-  - #998: cc DWARF archives miss per checkout.
-  - Clippy under the wrapper.
-  - One full-workspace `KACHE_VERIFY=1` run.
-- The architecture, not the tool, is law; see `RUST_WORKTREES.md`.
+See [RUST_WORKTREES.md](RUST_WORKTREES.md).
 
 ## The GitOps Rules
 
@@ -426,3 +225,22 @@ or a required replica count. Delete defaults that carry no independent policy.
 
 Mirror the chart's key order so comparison is one top-to-bottom scan; order by
 the chart, not insertion history.
+
+<a id="the-service--api-rules"></a>
+<a id="the-code--api-design-rules"></a>
+<a id="9-one-authoritative-api-contract-poem-openapi-for-implementation-first-rust-services"></a>
+<a id="10-generated-clients-live-in-their-own-repo-upstream-commits-downstream-publishes-same-tag"></a>
+<a id="34-preserve-error-causes-report-each-failure-once"></a>
+<a id="35-classify-errors-by-the-decision-callers-must-make"></a>
+<a id="36-report-all-validation-conflicts-together"></a>
+<a id="37-bound-everything-that-grows-or-blocks-give-it-an-owner"></a>
+<a id="38-construct-expensive-reusable-resources-once-not-per-request"></a>
+<a id="39-new-public-surface-needs-a-real-consumer-now"></a>
+<a id="40-keep-one-definition-per-fact-test-unavoidable-mirrors"></a>
+<a id="41-tests-pin-behavior-and-failure-causes-not-implementation-details"></a>
+<a id="rust-specific-applications"></a>
+
+## Relocated code rules
+
+Rules 9–10 and 34–41, plus Rust-specific applications, now live in
+[CODE_DESIGN_RULES.md](CODE_DESIGN_RULES.md). Legacy anchors above retain old links.
