@@ -14,6 +14,7 @@ not automatic imports. If a required guide is unavailable, stop that action.
 | Worktree/cache architecture | [RUST_WORKTREES.md](RUST_WORKTREES.md) |
 | Measurements or past rollout decisions | [RUST_CACHE_HISTORY.md](RUST_CACHE_HISTORY.md) |
 | Choosing delegation | [orchestration skill](skills/choose-orchestration/SKILL.md) |
+| Offloading decided work to pi, driving it from Claude | [pi skills snapshot](skills/PI-SKILLS.md) |
 
 ## Authority and upkeep
 

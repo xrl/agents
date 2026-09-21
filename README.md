@@ -12,6 +12,7 @@ Opinionated engineering guides. **Start with the task, not a full-library read.*
 | Cache checks and evidence requirements | [RUST_CACHE_VALIDATION.md](RUST_CACHE_VALIDATION.md) |
 | Dated experiments and superseded plans | [RUST_CACHE_HISTORY.md](RUST_CACHE_HISTORY.md) |
 | Choosing a delegation engine | [orchestration skill](skills/choose-orchestration/SKILL.md) |
+| Handing work to a cheap pi driver and supervising it | [pi skills snapshot](skills/PI-SKILLS.md): [pi-subagent-plan](skills/pi-subagent-plan/SKILL.md), [pi-drive](skills/pi-drive/SKILL.md) |
 
 ## Loading and installation
 
