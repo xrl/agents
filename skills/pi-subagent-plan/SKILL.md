@@ -268,6 +268,29 @@ conversation. Foreground children do not load the parent's extensions.
 **Provider auth**: an expired login kills the run at the first spawn. One provider for the whole
 run; the kickoff confirms its auth before anything is spawned.
 
+## 3a. Who does which step: pi-gpt, opus, fable
+
+Three tiers, cheapest first, and the default is the cheapest that can do the step. Propose this
+split in the plan before writing the packet, as a table; Xavier approves it once.
+
+| Step | Tier | Why |
+|---|---|---|
+| Recon of the repos and the release path | sonnet or opus `Agent` | lookup and extraction |
+| Writing the briefs, agent files, kickoff from the recon and a decided plan | opus `Agent` | large, well-specified prose |
+| Dry-run rehearsal of a brief (§5) | sonnet | literal walk, and the defects it finds are mechanical |
+| **Reviewing the rehearsal's findings and rewriting the brief** | fable | the fixes are judgment calls about what a literal driver will do |
+| Editing, building, PRs, releases, watching CI | pi driver (`openai-codex/gpt-6-astra`, high) | the volume |
+| Per-stage verifier, whole-PR reviewer | pi (`lane-verifier`, `pr-reviewer`, fresh) | cheap and it finds real contract bugs |
+| The watch loop: liveness, relaunches, read-only checks, stage prompts | opus (or fable if already the session) | mechanical; the rules are in the wakeup prompt |
+| **A stop the decisions file does not answer** | fable | four or five per day decided the outcome on 2026-09-20: the false kache stop, the python timeout cause, the fan-out shape reset |
+| **Adversarial review of the landed PR (§5b)** | fable, fresh | two gpt reviews passed #305 with a 44 GB hole in it |
+| Site or docs copy in Xavier's voice | opus writes, fable reviews once | voice rules are judgment |
+
+If the session is already fable, it still delegates the opus and sonnet rows and keeps itself
+for the three bold rows. If the session is opus, it runs everything but the bold rows and spawns
+a fable `Agent` (`subagent_type: claude`, `model` per the harness) for each of them with the
+decisions file, the brief and the stop's blocker file as the whole context.
+
 ## 3b. Offer to drive it
 
 After the kickoff and rehearsal, **offer to drive the pi session from Claude Code** with the

@@ -21,6 +21,16 @@ Why: nine stops on the asset run each cost a day because the loop ran through Xa
 this skill a non-hard stop costs minutes, and fable's context stays small because it reads
 tails, never transcripts.
 
+## Which model supervises
+
+The supervisor can be opus. The watch loop, relaunches, read-only verifications and stage
+prompts are mechanical and the rules live in the wakeup prompt, not in the model. Reserve fable
+for three things and spawn it as a fresh `Agent` when the session is opus: a stop the decisions
+file does not answer (give it the brief, the decisions file and the blocker file only), the
+rehearsal-review of a new brief, and the adversarial review of the landed PR
+(`pi-subagent-plan` §3a has the full table). Say in the first message which tier is
+supervising.
+
 ## Before the first turn
 
 1. `pi --version` (0.85.x verified), `pi auth check` or `subagent({action:"models"})`-equivalent:
