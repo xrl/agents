@@ -3,10 +3,12 @@
 # Claude Code; the exit is the wake-up. Output: the assistant's final text on stdout, the full
 # event stream in $LOG (JSON lines), so the driver can be read by tail, never by transcript.
 #
-#   pi-turn.sh <workdir> <session-id> <model[:thinking]> <log-file> <prompt-file-or-text>
+#   pi-turn.sh <workdir> <session-id> <model[:thinking]> <log-file> <prompt-file-or-short-text>
 set -euo pipefail
 WORKDIR=$1; SESSION=$2; MODEL=$3; LOG=$4; PROMPT=$5
-if [ -f "$PROMPT" ]; then MSG=$(cat "$PROMPT"); else MSG=$PROMPT; fi
+# A prompt file goes in as a pi @file reference, never inlined into argv: long command lines are
+# fragile under the sandbox, and the expanded <file> block caches (atfile smoke 2026-09-23).
+if [ -f "$PROMPT" ]; then MSG="@$(cd "$(dirname "$PROMPT")" && pwd)/$(basename "$PROMPT")"; else MSG=$PROMPT; fi
 cd "$WORKDIR"
 # --approve trusts project-local .pi/ files (agents, settings) without a TUI prompt.
 # --mode json streams every event; the last assistant text is extracted below.

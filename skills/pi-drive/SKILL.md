@@ -21,6 +21,16 @@ Why: nine stops on the asset run each cost a day because the loop ran through Xa
 this skill a non-hard stop costs minutes, and fable's context stays small because it reads
 tails, never transcripts.
 
+## Which model supervises
+
+The supervisor can be opus. The watch loop, relaunches, read-only verifications and stage
+prompts are mechanical and the rules live in the wakeup prompt, not in the model. Reserve fable
+for three things and spawn it as a fresh `Agent` when the session is opus: a stop the decisions
+file does not answer (give it the brief, the decisions file and the blocker file only), the
+rehearsal-review of a new brief, and the adversarial review of the landed PR
+(`pi-subagent-plan` §3a has the full table). Say in the first message which tier is
+supervising.
+
 ## Before the first turn
 
 1. `pi --version` (0.85.x verified), `pi auth check` or `subagent({action:"models"})`-equivalent:
@@ -61,7 +71,13 @@ form (tool tally + final text up to 6k) for when one message is all there is. Th
 - **Hard stop** → `AskUserQuestion` with the mechanism and one recommended answer; the driver
   waits. If Xavier is absent, the loop parks; say so in your final message.
 - **It claims done** → verify the claim before accepting it: `git -C <worktree> log --oneline`,
-  the gate commands it lists, `gh pr view`. A driver's report is a claim, not a receipt.
+  the gate commands it lists, `gh pr view`, and
+  `scripts/pi-stage-check.sh <worktree> <stage parent> <design>/execution`. That script prints
+  the stage's changed lines against the ~1.2k cap and whether HEAD is the SHA the newest
+  verifier/reviewer file names on its `Reviewed:` line; `verdict=NOT OK` is not accepted (send
+  the "Unreviewed or oversize head" prompt from `templates/STAGE-PROMPTS.md`). A driver's report
+  is a claim, not a receipt. #321 shipped a 412-line commit after its last review and pushed over
+  two `FIX REQUIRED` verdicts; this check would have caught both.
 
 Same `--session-id` every turn keeps its context; the first turn logs `No project session found
 … creating` to stderr, which is expected. Verified 2026-09-19: print smoke turn returned the text
@@ -107,7 +123,7 @@ remember to stop; `pi-rpc-stop.sh` at the end of the session.
   ended mid-stage; continue from the current state (git log, gh pr view, subagent status for
   any verifier you spawned); write the report when done"*. A foreground `subagent()` call does
   keep the process alive; `ps` for `cargo`/`rustc` shows what the child is doing.
-- One stage per prompt. Do not re-explain the brief; point at its section. Each stage prompt
+- One stage per prompt, from `templates/STAGE-PROMPTS.md`. Do not re-explain the brief; point at its section. Each stage prompt
   opens with "rebase onto origin/main first" and closes with "one full gate at commit, no
   packaging or smoke before the last stage, long commands in the background to a log file"
   (`pi-subagent-plan` §0b). If the brief predates §0b, the prompt overrides it and says so.
@@ -120,6 +136,11 @@ remember to stop; `pi-rpc-stop.sh` at the end of the session.
   the next prompt says to do such things itself.
 - Verify claims of green gates yourself with the same commands (`--locked`, scoped `-p`), in the
   driver's worktree, read-only. Never edit there; if something is wrong, the next prompt says so.
+- A defect in the **plan** (a seam it missed, an "as today" that is not, a claim the source
+  contradicts) is two records, not one: the D<n> that resolves it for the driver, and one line in
+  `<plan folder>/PLANNER-FEEDBACK.md` stating the general lesson, so the planner's next plan and
+  the `pi-subagent-plan` gate absorb it. The planner answers with a verdict file beside it; a
+  supervisor overruled there amends the D<n>, never the plan.
 - Every decision you make on the driver's behalf goes into the packet's decisions file before
   the prompt that relies on it, numbered like the rest (D19…). The packet is the source, your
   context is not.
@@ -135,10 +156,50 @@ remember to stop; `pi-rpc-stop.sh` at the end of the session.
 - A turn that writes no `session` event within seconds is blocked on stdin: pi waits on an
   inherited socket. `pi-turn.sh` redirects `< /dev/null` (added 2026-09-20 after a 22-minute
   stall); if you launch pi by hand, do the same. Check with `jq -r .type <log> | head -3`.
+- **Prompts go by file, never inline in argv.** Write every stage prompt to a file and pass its
+  path; `pi-turn.sh` hands pi `@<abs path>` (changed 2026-09-23), which pi expands into a
+  `<file>` block. Long command lines are fragile under the sandbox (the omnibus capture hit it;
+  the 100/300/600-byte ladder did not reproduce a hard limit), and the file block caches:
+  `reveal-capture-atfile-test` read 17,920 tokens from cache for 1,272 fresh ones. By hand:
+  `pi … -- "@/abs/prompt.md"`. Short literal text still works for one-liners.
 - Auth: an expired OpenAI login shows as an immediate exit with an error in `<log>.err`.
   Tell Xavier; do not switch models.
+- **Provider outage signatures (2026-09-25).** A turn whose assistant messages end with
+  `stopReason: error` and `WebSocket closed 1011`, then (on pi's auto-retry) `Incorrect API key
+  provided: sk-svcac…`, is an OpenAI Codex outage, not our credential: pi never sends an `sk-` key
+  on `openai-codex`, and `pi auth check` still says `ready`. Do not tell Xavier to log in again.
+  Read it with `jq -c 'select(.type=="message_end" and .message.role=="assistant") |
+  .message | {stopReason, errorMessage}' <log>`. Relaunch the same prompt once; if the second try
+  shows the same pair, check `https://status.openai.com/api/v2/summary.json` and **pause the run**:
+  launch nothing until the Codex incident is gone from that feed for 5 minutes. Poll it in a
+  background loop, not per turn. No smoke test before ordinary turns.
+- **Say "back" conservatively.** One good reply during an incident means nothing: on 2026-09-25 a
+  low-reasoning call failed while a high-reasoning one answered, and the stage relaunched on a
+  single pong died the same way. "Back" means the incident is closed on the status feed for 5
+  minutes and two consecutive calls at the run's model and level succeed, 5 minutes apart. Never
+  start a stage that changes shared state (stops a container, migrates, writes fixtures) on less.
+- **Fill prompt placeholders with `scripts/pi-fill-prompt.sh`**, never by hand-written `sed`: it
+  takes the template, the output path and the previous stage's report, fills `<sha>`/`<hash>`/
+  `<url>`/`<stage-X head>` from `git rev-parse HEAD`, the report's sha256 and `gh pr view`, and
+  refuses to write a prompt that still contains an unfilled `<…>` placeholder it knows.
 - End of run: the driver's PR URL and head SHA, every stage's verdict, the decisions you made,
-  the hard stops you asked, and `pi-rpc-stop.sh` if on path B.
+  the hard stops you asked, the `scripts/pi-usage.sh` table for every worktree the run used
+  (§Cost accounting), and `pi-rpc-stop.sh` if on path B.
+
+## Cost accounting
+
+`scripts/pi-usage.sh <worktree>...` (or `--prefix <path>` for every worktree of one repo, plus
+`--since YYYY-MM-DD`) prints per-worktree driver sessions, input, cache-read and output tokens,
+driver cost, child count and child cost, and a total. It reads `~/.pi/agent/sessions/<slug>/`:
+the parent `*.jsonl` (assistant `usage.cost.total`) plus every pi-subagents child's
+`subagent-artifacts/*_meta.json` (`usage.cost`). Children are separate processes and never appear in the
+driver's own log, so summing the driver log alone undercounts; on the vm-runner core run the
+verifiers were ~14% of the total. It still works after `git worktree remove`, so reap freely.
+`--prefix` matches on the slug, so `/Users/xavier/code/dekopon/dekopon` would also catch
+`dekopon-provider-*`: name worktrees exactly when repos share a stem. `ccusage pi daily` is
+right for whole-machine daily totals but groups children by filename (`lane-verifier_transcript`,
+`session`) across projects, so it cannot attribute them to one effort. Claude-side spend (fable
+reviews, sonnet rehearsals) is not in these files: that is `ccusage claude session`.
 
 ## Unattended: the watch loop (2026-09-20)
 
@@ -163,7 +224,8 @@ so a wakeup needs no memory of this file; copy this block into it and fill the b
   relaunch the same prompt file, note it. Check `<log>.err` first: an empty log with a live pid is
   the stdin stall above, not a model hang.
 - Disk: free < 8 GiB → launch no more builds, report.
-- Done (PR open, every check pass/skipping at the pushed head): `stop: true`, then the final
+- Done (PR open, every check pass/skipping at the pushed head, and `pi-stage-check.sh` says
+  `verdict=ok` for that head): `stop: true`, then the final
   report (PR URL, head SHA, stage verdicts, decisions made, numbers, what is deferred, dead
   worktrees and targets to reap) and one dated line in the project memory note.
 
@@ -201,9 +263,11 @@ failure), do not write a packet: start a **fresh** pi session (new `--session-id
 `templates/FIX-BRIEF.md` filled in, one turn, then the watch loop. The brief's shape: cwd line;
 role and the PR/worktree/head; read order (guidelines → decisions → the review file in full; the
 stage/verifier files forbidden); "its Fix lines are the spec"; the no-list (WIT, wire, config
-keys, dependencies → blocker file instead; no shims, no ignored tests); scoped tests while
-iterating, one full gate in the background to a log under `execution/`; one conventional commit,
-push, `gh pr checks --watch`, at most two CI rounds; the report fields. First use: PR #305's
+keys, dependencies → blocker file instead; no shims, no ignored tests); the §Don't write this
+patterns and forward-compat default from `pi-subagent-plan/templates/DRIVER.md`; scoped tests
+while iterating, one full gate in the background to a log under `execution/`; one conventional
+commit whose body says why (no D-numbers, no local paths), one fresh verifier, push only on
+`ACCEPT`, `gh pr checks --watch`, at most two CI rounds; the report fields. First use: PR #305's
 `fable-review-2026-09-20.md`, session `fable-fix-2026-09-20`.
 
 ## Offer it
