@@ -10,6 +10,11 @@ Dekopon 0.18.0 release drive.
 Install by copying `skills/pi-subagent-plan/` and `skills/pi-drive/` into `~/.claude/skills/`.
 The scripts under `pi-drive/scripts/` need `pi` 0.85+, `jq`, `lsof` and `python3`.
 
+`pi-drive/` was refreshed from the canonical copy on 2026-09-26. It adds `scripts/pi-usage.sh`
+(per-worktree cost accounting that includes pi-subagents children), `scripts/pi-stage-check.sh`,
+`scripts/pi-fill-prompt.sh`, `templates/STAGE-PROMPTS.md`, prompt-by-file turns and the provider
+outage signatures. `pi-subagent-plan/` is still the 2026-09-20 snapshot.
+
 ## What the 2026-09-20 run proved
 
 One day: v0.18.0 core release with zero stops (1 h 25 m), the site, fifteen provider releases
