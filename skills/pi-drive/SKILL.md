@@ -28,8 +28,10 @@ prompts are mechanical and the rules live in the wakeup prompt, not in the model
 for three things and spawn it as a fresh `Agent` when the session is opus: a stop the decisions
 file does not answer (give it the brief, the decisions file and the blocker file only), the
 rehearsal-review of a new brief, and the adversarial review of the landed PR
-(`pi-subagent-plan` §3a has the full table). Say in the first message which tier is
-supervising.
+(`pi-subagent-plan` §3a has the full table). The split that works: cheap driver and cheap
+verifier per stage, one expensive fresh reviewer per PR before merge; that review is never cut
+for cost (2026-09-27: $97 of pi for −2,250 lines, and every real gap came from the fable
+reviewer). Say in the first message which tier is supervising, and report both bills.
 
 ## Before the first turn
 
@@ -78,6 +80,9 @@ form (tool tally + final text up to 6k) for when one message is all there is. Th
   the "Unreviewed or oversize head" prompt from `templates/STAGE-PROMPTS.md`). A driver's report
   is a claim, not a receipt. #321 shipped a 412-line commit after its last review and pushed over
   two `FIX REQUIRED` verdicts; this check would have caught both.
+- **It met the letter but missed the target** (a 2% cut against a ~30% brief; survivors kept
+  "when unsure") → redo the stage on the same branch with the per-unit expectation spelled out
+  (`pi-subagent-plan` §1.7). A timid PR is never merged as progress.
 
 Same `--session-id` every turn keeps its context; the first turn logs `No project session found
 … creating` to stderr, which is expected. Verified 2026-09-19: print smoke turn returned the text
@@ -135,7 +140,8 @@ remember to stop; `pi-rpc-stop.sh` at the end of the session.
   `contract` findings. If the driver spawns a child for work it could do in one command,
   the next prompt says to do such things itself.
 - Verify claims of green gates yourself with the same commands (`--locked`, scoped `-p`), in the
-  driver's worktree, read-only. Never edit there; if something is wrong, the next prompt says so.
+  driver's worktree, read-only. Never edit or push there: rebases and fixes are the driver's, so
+  the reviewed head stays the head that merges; if something is wrong, the next prompt says so.
 - A defect in the **plan** (a seam it missed, an "as today" that is not, a claim the source
   contradicts) is two records, not one: the D<n> that resolves it for the driver, and one line in
   `<plan folder>/PLANNER-FEEDBACK.md` stating the general lesson, so the planner's next plan and
@@ -201,6 +207,11 @@ right for whole-machine daily totals but groups children by filename (`lane-veri
 `session`) across projects, so it cannot attribute them to one effort. Claude-side spend (fable
 reviews, sonnet rehearsals) is not in these files: that is `ccusage claude session`.
 
+Run it between stages, unasked, and read it beside the diff: spend out of line with diff size,
+or a tool tally that is mostly polling, means the driver is stuck on a chokepoint, not working
+(dekopon `AGENTS.md` §Large multi-agent runs has the between-wave checks). The 2026-09-27
+supervisor did not look until Xavier asked.
+
 ## Unattended: the watch loop (2026-09-20)
 
 When Xavier leaves ("make sure it won't get stuck overnight"), run the loop with `ScheduleWakeup`
@@ -241,7 +252,8 @@ Things a literal driver stops on that are not stops (answer from these, record, 
 kache failure (the 0.18.0 fleet parked on it once); a `Codex error: Unable to verify … access`
 is transient, resume or respawn the child on the same model; `gh attestation verify oci://…`
 returns 404 for every provider because the shared release workflow attests the wasm and SBOM
-files, not the OCI manifest (verify the release assets instead).
+files, not the OCI manifest (verify the release assets instead); a red local test after a fixture
+bump in a fresh worktree is a stale gitignored fixture until CI disagrees: refetch, then compare.
 
 ## Retro: the 0.18.0 release and fleet drive (2026-09-20)
 
@@ -259,8 +271,10 @@ report per stage and no per-step receipts.
 ## One-turn fix session (fresh pi, review-driven)
 
 For a bounded work list that already exists as a file (an adversarial review's F1–Fn, a CI
-failure), do not write a packet: start a **fresh** pi session (new `--session-id`) with
-`templates/FIX-BRIEF.md` filled in, one turn, then the watch loop. The brief's shape: cwd line;
+failure), do not write a packet. First rule on every finding yourself: fix, accepted trade-off
+(named in the PR), or ignore; the brief carries the fix set only, since a driver handed a raw
+review argues with it or does all of it. Then start a **fresh** pi session (new `--session-id`)
+with `templates/FIX-BRIEF.md` filled in, one turn, then the watch loop. The brief's shape: cwd line;
 role and the PR/worktree/head; read order (guidelines → decisions → the review file in full; the
 stage/verifier files forbidden); "its Fix lines are the spec"; the no-list (WIT, wire, config
 keys, dependencies → blocker file instead; no shims, no ignored tests); the §Don't write this

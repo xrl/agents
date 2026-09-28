@@ -20,6 +20,10 @@ Do not read `<packet>/execution/stage-*`, `*verifier*`, `*review*` files or `<pa
 - <surface 5: untrusted input parsed by the change>
 - <surface 6: deletions the change claims>
 - <surface 7: failure paths: trap, ENOSPC, restart, cancel>
+- The shape of live state: existing volumes, data, permissions and versions a fresh fixture never has; a test that passes on an empty volume proves nothing about the deployed one.
+- Cost across the whole stream: follow one long task end to end; any per-chunk, per-event or per-item work that grows with what came before (a linear scan per item, a partial line rescanned or memmoved on every chunk) is quadratic. Name the loop and the input.
+- Forward compatibility and other services' semantics: every external wire parser ignores unknown events/items/fields; any state bound or pinned to a provider's behaviour matches what mainstream clients of the same API do (look at one); an example's offline mode never reaches a real credential.
+- Code that exists to satisfy a rule literally (limit twins, excerpt budgets, all-or-nothing redaction, canonicalized production bytes): name the lines that can go. Size is a finding here, labelled `code`.
 
 **What counts as a finding.** File and line at the head SHA, a concrete input or sequence, and the wrong outcome it produces. No "consider", no "might". If you cannot construct the scenario, it is not a finding; put it in a short "unverified concerns" list at the end, at most five items.
 

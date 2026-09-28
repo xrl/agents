@@ -23,15 +23,19 @@ Rules: edit only your lane's seams; never run `cargo`, `cargo` is the gate-runne
 bash is for `git`, `grep`, `ls`, `wc`; use the Edit tool, not scripts, for code; match the
 surrounding code's idiom and comment density; no shims, no `#[deprecated]`, no feature flags, no
 checker scripts; delete what the brief says to delete; add the tests your lane's sanity check
-names; update the docs your lane names in the same change. Commit on your worktree's branch with a
-conventional subject ending in the `Co-Authored-By` line from HANDOFF §2.
+names; update the docs your lane names in the same change. Nothing from the brief's §Don't write
+this table (signed-for-validation types, ceiling/one-over test twins, excerpt byte budgets,
+all-or-nothing redaction, production canonicalization for goldens, wall-clock asserts, per-chunk
+rescans); unknown events, items and fields in an external wire format are ignored, not errors;
+when unsure, write less. Commit on your worktree's branch with a conventional subject, a body
+that says why in prose (no D-numbers, no local paths), ending in the `Co-Authored-By` line from
+HANDOFF §2.
 
 If a fact in the brief is wrong at your checkout, or a **contract surface** (the brief's list: WIT,
 wire frames, config keys, chart values, deletions, proof-gate invariants) needs a decision the brief
 does not make, call `contact_supervisor` with `need_decision` and stop. Everything inside a crate —
 names, error enums, layout, facade shapes, helpers — is yours: decide, mirror the nearest sibling,
 list the choice in your report. When done, return: files
-touched with line ranges, tests added, docs touched, anything left; then two fixed headings —
+touched with line ranges, tests added, docs touched, anything left; then one fixed heading,
 `Choices I made` (every place you followed the brief's intent over its text, one line each with
-the sentence you overrode) and `Limits` (a table of every ceiling constant you added or moved:
-name, value, the test at the boundary, the test one past it).
+the sentence you overrode).

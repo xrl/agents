@@ -127,6 +127,19 @@ token, register with a `trusted-publishing` token, then revoke both.
   but its OIDC job reaches floating actions directly and through `rust-setup`.
   Historical evidence for the pinning requirement above, not a current merge instruction.
 
+### 42. Contract changes dictate ship order; enumerate consumers at their deployed version.
+
+Before landing a change to a wire format, WIT interface or config key, list
+every consumer at the version that is actually deployed, verify each claim
+against the real artifact (the binary's imports, a decode of real data) rather
+than against what the team believes it uses, and write the ship order into the
+PR. Each repository also has its own release ritual: read its tags and release
+commits before trusting its README or release automation.
+
+- **Receipt, dekopon, 2026-09-27:** a deployed provider imported lock functions
+  everyone "knew" it did not use; a client decoded only because a new field
+  happened to be empty; old and new binaries each refused the other's config key.
+
 ## The Workstation Rules
 
 These receipts include the workstation and its disk-full/probe incidents.
@@ -225,6 +238,47 @@ or a required replica count. Delete defaults that carry no independent policy.
 
 Mirror the chart's key order so comparison is one top-to-bottom scan; order by
 the chart, not insertion history.
+
+### 43. Ordering guarantees hold only within the controller that gives them.
+
+Argo sync waves order one Application's resources; a config-reload controller
+restarts pods outside that order, and a binary that reaches the cluster before
+its config (or after) crash-loops briefly. In an app-of-apps, refresh the parent
+so spec and source move together, expect the brief loop, and fail forward with
+the next commit rather than reverting by push.
+
+- **Receipt, rpi-homelab, 2026-09-27:** sync waves did not hold under the reload
+  controller during a coupled config-key and binary change.
+
+## The Campaign Rules
+
+### 44. A trivial artifact in most agents' diffs is a chokepoint, not work.
+
+When one shared file appears in most open PRs or most agents' tool calls, move
+its edit to release time (a `Changelog:` line in each commit message, grepped
+from `git log` at release prep) instead of coordinating writers. Land the ready
+PRs back to back and rebase the rest once; a head with no CI is a conflicting
+head, so rebase rather than wait. Wait on CI with one blocking command, never
+repeated status calls. Between waves ask which file most open PRs conflict on,
+whose tool calls are mostly polling, and whose spend is out of line with its
+diff; report usage at each milestone without being asked.
+
+- **Receipt, dekopon, 2026-09-27:** `CHANGELOG.md [Unreleased]` edits in every
+  PR put each remaining PR into conflict after every merge; conflicted heads got
+  no CI, one agent polled for 420 tool calls, and about $400 went to churn.
+
+### 45. Merge the head that was reviewed.
+
+A fresh adversarial reviewer reads every PR before merge; cheap agents drive and
+verify, the expensive reviewer finds the gaps. The coordinator rules on each
+finding (fix, accepted trade-off named in the PR, or ignore) before routing it
+back, never pushes onto a reviewed branch, and merges only the reviewed SHA;
+rebases and fixes stay with the author agent. A result that meets the letter
+but misses the target is redone on its branch, not merged as progress.
+
+- **Receipt, dekopon, 2026-09-27:** across a −2,250-line campaign every real
+  gap (a replay orphan, a pre-expansion bug, a dead-end default, a permission
+  failure against live state) came from the fresh expensive reviewer.
 
 <a id="the-service--api-rules"></a>
 <a id="the-code--api-design-rules"></a>
