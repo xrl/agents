@@ -6,13 +6,14 @@ Opinionated engineering guides. **Start with the task, not a full-library read.*
 |---|---|
 | Agent entrypoint and reading triggers | [AGENTS.md](AGENTS.md) |
 | Code/API taste, error handling, testing | [CODE_DESIGN_RULES.md](CODE_DESIGN_RULES.md) |
-| Build/release, GitOps, worktree conventions | [LAWS.md](LAWS.md) |
+| Build/release, GitOps, worktree conventions, multi-PR campaigns | [LAWS.md](LAWS.md) |
 | Current host Rust policy | [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md) |
 | Why private targets and copy-on-write | [RUST_WORKTREES.md](RUST_WORKTREES.md) |
 | Cache checks and evidence requirements | [RUST_CACHE_VALIDATION.md](RUST_CACHE_VALIDATION.md) |
 | Dated experiments and superseded plans | [RUST_CACHE_HISTORY.md](RUST_CACHE_HISTORY.md) |
 | Choosing a delegation engine | [orchestration skill](skills/choose-orchestration/SKILL.md) |
 | Handing work to a cheap pi driver and supervising it | [pi skills snapshot](skills/PI-SKILLS.md): [pi-subagent-plan](skills/pi-subagent-plan/SKILL.md), [pi-drive](skills/pi-drive/SKILL.md) |
+| Landing one coupled multi-lane Rust change with a swarm | [rust-feature-swarm](skills/rust-feature-swarm/SKILL.md) |
 
 ## Loading and installation
 
@@ -27,3 +28,5 @@ host file and both adapters synchronized when host policy changes.
 To install the skill, copy the complete `skills/choose-orchestration/` directory
 into `~/.pi/agent/skills/`, reviewing any existing copy first, then run `/reload`.
 Invoke `/skill:choose-orchestration` with a task. Selection does not authorize launch.
+The Claude Code skills (`skills/pi-*`, `skills/rust-feature-swarm/`) install into
+`~/.claude/skills/` instead; [skills/PI-SKILLS.md](skills/PI-SKILLS.md) has their requirements.

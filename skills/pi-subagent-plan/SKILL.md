@@ -9,6 +9,15 @@ user-invocable: true
 
 # Writing a pi-subagents plan from Claude
 
+The plan, the review and the packet live in a **plan folder sibling to the checkout** that
+receives the implementation (`~/code/<project>/<effort>-design/`), never under the repo's
+`docs/` and never as a PR: repo docs describe what is implemented, a plan says on line one that it
+is not, its locators rot with every merge, and the execution artifacts beside it cannot be
+committed. The multi-LLM plan was opened as a docs PR (#319) and closed unmerged for this reason;
+what lands in git afterwards is the changelog, the upgrading note, the rewritten implementation
+docs and the commit bodies (the repo squash-merges, so the squash message is the record). The PR
+body is a short summary plus test evidence: no D-numbers, no paths on the driver's machine.
+
 The deliverable is a **folder that travels**: a brief an agent with zero conversation context can
 execute, the pi agent definitions it needs, a flat workflow script, and the one prompt Xavier
 pastes into pi. Templates are in `templates/`. Worked example:
@@ -25,10 +34,13 @@ Default to **one sequential driver** per PR: a single high-reasoning agent that 
 cargo, commits per stage, and spawns one fresh verifier per stage with a plain `subagent()` call.
 No workflow script, no lanes, no gate-runner. Its authority
 clause flips the default: *do what makes sense, record it under `Driver decisions` (what you
-found, what you chose, what you rejected), keep going; the PR body carries that section*. The
+found, what you chose, what you rejected), keep going; the stage report carries that section and the commit body says the why in prose*. The
 stop list is four vivid items (forking or patching a dependency, moving a contract away from the
 decisions file, reversing a keep/delete, owner-only actions), never a taxonomy the model has to
-classify against. The literal "stop for any decision the table does not answer" posture cost the
+classify against. **Start from `templates/DRIVER.md`** (distilled from the #321 brief): it
+carries the fixed §Rules and §Don't write this blocks; fill in the placeholders and the stage
+blocks, never delete those two; `pi-drive/templates/STAGE-PROMPTS.md` holds the supervisor's turn
+prompts. The literal "stop for any decision the table does not answer" posture cost the
 asset run nine stops; the same model decided crate internals fine when allowed to. A swarm (`templates/lanes.workflow.js`) earns its
 orchestration only when every lane is independent at compile time *and* the editors are trusted
 to decide crate internals *and* wall-clock matters more than stops. The asset run stopped seven
@@ -65,14 +77,21 @@ and spend nothing else:
    that can time out mid-edit.
 3. **Verifier: one read-only pass; a second only when pass 1 returned `contract` findings.**
    Report capped at one page, findings first, one file per stage and pass
-   (`execution/stage-N-verify-P.md`), never appended to a growing file the driver rereads.
+   (`execution/stage-N-verify-P.md`), never appended to a growing file the driver rereads. A
+   named survivor is a claim: for every deletion the verifier greps the deleted code's
+   distinctive literals (ids, error codes, config keys, secret shapes) into what remains and
+   finds them asserted before accepting. A cheap verifier approved losing the only test of a
+   security property on 2026-09-27.
 4. **Rebase onto `origin/main` at the start of every stage**, not only before the PR. A
    workspace-wide lint that merges mid-run is ten minutes at stage 2 and a fix pass at the end.
 5. **Independent stages run in parallel.** Measurement (compute) and whole-PR review
    (read-only) do not depend on each other; the supervisor runs one in the background while the
    driver does the other. Say so in the stage list.
-6. **Stages of ≤ ~1k changed lines.** A 2.3k-line stage produced five findings and a long gate;
-   two halves verify faster, test with `-p`, and fail smaller.
+6. **Stages of ≤ ~1k changed lines, enforced.** A 2.3k-line stage produced five findings and a
+   long gate; two halves verify faster, test with `-p`, and fail smaller. #321's brief wrote
+   "about three thousand changed lines" into its own stage 2 and the stages landed at 1.5k–5.1k;
+   the planner splits any stage estimated over 1k, the driver splits one that grows past 1.2k,
+   and the supervisor's `pi-stage-check.sh` refuses the rest.
 7. **The packet is the brief, the decisions file and `contracts/`.** Nothing else in the
    driver's read order. Design and review documents are fable-written and fable-reviewed, and were
    the bulk of the token bill; the driver only ever needed the decisions.
@@ -90,6 +109,24 @@ for a one-directory delete costs a round trip and a report nobody needs.
    stage, nothing else under `execution/`.
 10. **Every stage prompt says: do not end the turn while a subagent or background job is still
     running; poll it.** A print-mode turn otherwise ends with the child orphaned (`pi-drive`).
+11. **Nothing reaches the PR unreviewed.** Verifiers and reviewers open with `Reviewed: <sha>`;
+    the driver pushes only on `ACCEPT`/`READY` at that SHA, and a commit made after the last
+    review gets its own pass. #321 pushed over two `FIX REQUIRED` reviews and then landed a
+    412-line commit no reviewer saw.
+12. **A cross-stage review** (`agents/pr-reviewer.md`) after the midpoint stage of a ≥ 4-stage
+    run and again at the end. Its job is what per-stage verifiers cannot see: work that grows
+    with the stream, forward compatibility of every wire parser, pinned assumptions about other
+    services, code that exists to satisfy a rule literally.
+
+**#321 retro (2026-09-22).** Multi-LLM inference, +10.7k/−3.7k over five stages, B- engineering
+and C process. The driver optimized for rule-literalism and reviewer appeasement first, then
+security theatre, then real-provider correctness; performance and scope last. Four of its
+paranoia patterns came from *our* rules: "every limit at the edge and one past it" and the
+`Limits` report table produced ceiling twins, 1-ns timeout caps and byte budgets on error
+excerpts, and the brief asked for `Driver decisions`, `Limits` and the plan path in the PR body.
+Those rules are gone from the templates; the replacements are concrete (§Don't write this),
+because "don't be paranoid" alone does nothing to a literal model. Owner cleanup afterwards was
+~−1.2k lines net with fewer, better tests.
 
 ## 0. Gate: is it ready to hand off?
 
@@ -123,10 +160,39 @@ write one too early.
   output → send → edit the output again) walked through every rule in the design by a cheap
   agent, listing each rule it touches and whether it holds. The asset design's "fresh open by
   path" and "path-less output" were each fine alone and contradicted on the second edit.
+- **A consequence walk has run on the plan** (sonnet is enough). Fact-checkers verify what the
+  plan says; this verifies what the plan's changes do to things it does not mention. The
+  multi-LLM plan (2026-09-22) had zero wrong locators and still yielded ten seam findings at
+  packet time, every one a second-order effect. Before handoff, for every: new dependency edge,
+  run the repo's dependency-boundary gates; changed public type, grep its serialization and
+  `Debug` consumers and the tests that only build under a feature; "keep today's behavior" or
+  "verbatim" claim, read what today does per call (deadlines per send, retries, finish reasons),
+  not per concept; named test, check the crate it lives in can reach the fixtures and mocks it
+  names (`#[cfg(test)]` does not cross crates; a fixed-URL client needs an injection point with
+  a non-test consumer; an example's `#[cfg(test)]` module does not run under `cargo test --lib
+  --bins --tests` unless its `[[example]]` sets `test = true`); new enum arm, grep non-exhaustive `let … else`/`if let` over that enum;
+  replaced type, list every doc that constructs the old one, not only the docs the feature owns;
+  existing record the change makes larger (a journal line, a wire request, a history window),
+  name its size limit, what that limit measures (raw or delivered text, decoded or encoded bytes)
+  and which field grows, then bound that field, never the whole record. Chat steering
+  (2026-09-26) folded messages into three records and found each limit one review round at a
+  time; a supervisor cap on the whole journal line regressed long answers.
+- **Other clients were read before a provider semantic became a failure.** Any decision that binds,
+  pins or refuses on another service's behaviour (bind a continuation to the upstream that served
+  it, fail on an event type the docs don't list) cites what two other integrations of the same API
+  do, from their source. #321's D34 bound OpenRouter continuations to the upstream provider; no
+  other client (Vercel's provider, pydantic-ai, Zed, LiteLLM, Cline) does, and multi-step tool
+  turns failed at random under default load balancing. They forward `reasoning_details` and send
+  `session_id` for sticky routing. The recon agent does this lookup.
+- **Wire formats are forward compatible by default.** The decisions say it once: unknown events,
+  items and fields from an external service are ignored; only a malformed known shape errors. A
+  contract line like "reject unknown required semantic events" is how #321 made Codex's unknown
+  events fatal, with the driver's own test asserting the regression.
+- **Every stage is estimated at ≤ ~1k changed lines** (§0b.6); split the rest before handoff.
 - **The invention audit is empty** (§5).
 - **The repo carries the tone and the rubric, the brief points at them.** `AGENTS.md` §"Rust
   guidelines" (yes/no pairs) and §"Review checklist" (tagged findings, two fix passes, the lane
-  report's `Choices I made` and `Limits` headings) are what let an editor decide crate internals
+  report's `Choices I made` heading) are what let an editor decide crate internals
   itself; the brief's stop rule names only contract surfaces. Mechanical rules are workspace lints,
   not verifier reading.
 - **The baseline is stated**: which PRs are assumed merged, which SHA, which measurements to beat.
@@ -162,14 +228,21 @@ Sections, in this order. Keep it under ~400 lines; link, don't paste, the design
    if two must touch one file, name the hunks. **Any preparatory edit** (rebasing a harness,
    generating fixtures, rewriting config) is a stage with an editor, because the orchestrator
    never edits.
-6. **Landing order** across repositories, with why no other order avoids a broken window.
+6. **Landing order** across repositories, derived from every consumer *at its deployed version*
+   and checked against the real artifact, not against what the team believes it imports; say why
+   no other order avoids a broken window.
 7. **Acceptance** — falsifiable: numbers to beat (re-run the harnesses), fixtures that fail today
    and must pass, and greps that must come back empty **naming retired identifiers, never common
    words** (a grep for `attachments` matched Discord's wire field and the brief's own new
-   `attached` field), with the look-alikes that legitimately survive listed beside them.
+   `attached` field), with the look-alikes that legitimately survive listed beside them. A
+   numeric target names the unit it counts ("a behaviour is a contract a user, operator or peer
+   relies on"), the expected result per unit, and the rule for the shortfall (anything under the
+   bar is justified item by item). "When unsure, keep it" over a fuzzy unit returned a 1.7% cut
+   against a ~30% target; the per-unit version returned 12× more (2026-09-27).
 8. **Stop and report** — the conditions under which the agent stops instead of working around.
    Every noun here must mean the same thing it means in §5 ("bump", "release", "wrapper").
-9. **Not in scope.**
+9. **Not in scope**, and the hold list: everything in flight the run must not touch, the
+   supervisor's own open branches and PRs included, not only planned campaigns.
 10. **Execution plan** — §2 below.
 11. **Running it on pi-subagents** — §3 below.
 
@@ -192,7 +265,7 @@ and the provider segment is not guessable — read `subagent({action:"models"})`
 | Lane editor (one per lane or prep stage) | medium | **never runs cargo**; edits only its seams; `contact_supervisor` → `need_decision` instead of guessing |
 | Gate-runner | low | the **only** agent that runs cargo; merges lane branches; returns JSON with verbatim tails and an attributed lane |
 | Verifier (one per lane) | high, **fresh context**, read-only | adversarial acceptance of one lane's diff; a late lane gets one too |
-| PR reviewer | max, fresh context | whole assembled PR; coherence across lanes; ≤ 2 fact-checkers (needs `subagent` in `tools` and `allowNestedSubagents: true`) |
+| PR reviewer | xhigh, fresh context | cross-stage: cost over the whole stream, forward compatibility, pinned assumptions about other services, size, coherence; no spawning by default (add `subagent` + `allowNestedSubagents: true` to allow ≤ 2 fact-checkers) |
 | Fact-checker | medium, fresh | one pointed question with locators |
 
 **Preflight** (orchestrator, before any lane), executable in the order written: provider auth
@@ -214,7 +287,8 @@ run **once**, at commit (§0b.2); packaging and smoke belong to the last stage o
 
 **Report**: PR URL + head SHA; per lane, changes with `file:line`; before/after table; every gate
 run and result; what in the brief was wrong; what was left out; disagreements; disk before/after
-and which `target/` were removed.
+and which `target/` were removed. The report is for the supervisor; the PR body is a short
+summary plus the checks run at the pushed head, and the why goes in commit bodies.
 
 ## 3. pi-subagents specifics (v0.70.0 installed at `~/.pi/agent/npm/node_modules/pi-subagents`; its `docs/` are the reference, re-check them when in doubt)
 
@@ -268,6 +342,29 @@ conversation. Foreground children do not load the parent's extensions.
 **Provider auth**: an expired login kills the run at the first spawn. One provider for the whole
 run; the kickoff confirms its auth before anything is spawned.
 
+## 3a. Who does which step: pi-gpt, opus, fable
+
+Three tiers, cheapest first, and the default is the cheapest that can do the step. Propose this
+split in the plan before writing the packet, as a table; Xavier approves it once.
+
+| Step | Tier | Why |
+|---|---|---|
+| Recon of the repos and the release path | sonnet or opus `Agent` | lookup and extraction |
+| Writing the briefs, agent files, kickoff from the recon and a decided plan | opus `Agent` | large, well-specified prose |
+| Dry-run rehearsal of a brief (§5) | sonnet | literal walk, and the defects it finds are mechanical |
+| **Reviewing the rehearsal's findings and rewriting the brief** | fable | the fixes are judgment calls about what a literal driver will do |
+| Editing, building, PRs, releases, watching CI | pi driver (`openai-codex/gpt-6-astra`, high) | the volume |
+| Per-stage verifier, whole-PR reviewer | pi (`lane-verifier`, `pr-reviewer`, fresh) | cheap and it finds real contract bugs |
+| The watch loop: liveness, relaunches, read-only checks, stage prompts | opus (or fable if already the session) | mechanical; the rules are in the wakeup prompt |
+| **A stop the decisions file does not answer** | fable | four or five per day decided the outcome on 2026-09-20: the false kache stop, the python timeout cause, the fan-out shape reset |
+| **Adversarial review of the landed PR (§5b)** | fable, fresh | two gpt reviews passed #305 with a 44 GB hole in it |
+| Site or docs copy in Xavier's voice | opus writes, fable reviews once | voice rules are judgment |
+
+If the session is already fable, it still delegates the opus and sonnet rows and keeps itself
+for the three bold rows. If the session is opus, it runs everything but the bold rows and spawns
+a fable `Agent` (`subagent_type: claude`, `model` per the harness) for each of them with the
+decisions file, the brief and the stop's blocker file as the whole context.
+
 ## 3b. Offer to drive it
 
 After the kickoff and rehearsal, **offer to drive the pi session from Claude Code** with the
@@ -275,6 +372,40 @@ After the kickoff and rehearsal, **offer to drive the pi session from Claude Cod
 from the decisions file, gpt-6-astra as the driver. Xavier wants this pairing ("super high level
 fable with super cheap gpt"); the alternative is him pasting prompts and each stop costing a day.
 Say which path (print or RPC) and why in one line.
+
+## 3b2. Runtime windows: boot-check before touching shared state (2026-09-26)
+
+When a stage stops or repoints a shared service (a container, a shared database, a proxy) to run
+the branch's build, its first step is a read-only boot check of **everything the window will
+use**: every host and route it will open answers (login page 200, not 500 or "blocked host"),
+pending migrations are listed, required env/host settings exist. Only then stop the shared
+service. The #41538 capture stopped the shared rx-reveal first and then found, one turn at a
+time, a pending-migration 500 and a refused storefront host: two round trips and a longer outage
+of the shared container. Repo-specific checks (which command lists migrations, which env var
+admits a host) belong in that repo's agent guide, and the brief points at it.
+
+**Screenshot clips.** A capture of an element that opens a popup (listbox, menu, modal) clips to
+the union of the trigger and the popup plus padding, and asserts every item the shot is about
+lies inside the clip. The #41538 W2 clip was computed from the input alone and cut the dropdown
+after two rows while every DOM assertion passed.
+
+## 3c. Vision classification lanes (omnibus screenshots, 2026-09-23)
+
+When a run ends with images to judge (before/after pairs, "is this capture blank"), the
+classifiers are their own lanes, and they are cheap only if you keep them small:
+
+- **Rubric, not skill.** Each child gets a ≤1 KB rubric (the verdict labels, what each means,
+  the one fact the pair must show) plus absolute image paths. All 21 phase-4 pair children
+  read the 15 KB `rx-reveal-browser/SKILL.md` first, about 370 KB of context spent on nothing.
+- **Cheap pass, then Sol.** Luna shortlists and classifies. Sol re-reviews every unclear or
+  disagreeing pair before a verdict reaches a PR. Luna picks images well and calls verdicts
+  generously (`agent-routing` has the numbers).
+- **Schema-capped output.** `outputSchema` with one verdict + a one-line reason per pair. One
+  eval child returned 106 KB of text.
+- **The capture driver never opens a PNG.** It asserts DOM `facts` with `expect` and writes
+  screenshots as evidence only. That held on 2026-09-23: 174 calls, zero image reads.
+- **Model ids come from the registry, not memory.** A hand-written pairs workflow ran Sol on
+  the retired `gpt-5.6-sol`; grep the script for `gpt-5.6` before launch.
 
 ## 4. Kickoff prompt
 
@@ -291,7 +422,11 @@ without merging; report). End with the stop conditions and what is out of this r
 ## 5. Rehearse before handing over
 
 Three cheap passes, each a fresh read-only agent (sonnet or the target model at low effort):
-the **ops rehearsal** below, the **invention audit** and the **scenario walk**.
+the **ops rehearsal** below, the **invention audit** and the **scenario walk**. The rehearsal runs
+**after** any adversarial pass and re-verifies each amendment that pass applied against the
+source: amendments are claims, not facts. On #41538 the adversarial reviewer declared
+`htmx_push_url` nonexistent and rewrote a decision around it; the rehearsal found it at
+`app/modules/htmx.rb:74`.
 
 **Invention audit** — per lane, an agent given only that lane's brief and the design sections it
 cites answers: "list every name, type, value, path, default, error shape, ordering and
@@ -349,8 +484,11 @@ from returning twenty "considers". Output is one file under `execution/`, verdic
 final message is the verdict line plus counts. First run: PR #305, 15 minutes, ~240k tokens,
 one high (a per-request ceiling the design stated and no per-stage verifier had checked) and
 four lows, after a gpt verifier per stage and a gpt whole-PR reviewer had both passed it.
-Cross-stage limits are exactly what per-stage review cannot see. Its findings then go to a fresh
-pi fix session via `pi-drive`'s `templates/FIX-BRIEF.md`.
+Cross-stage limits are exactly what per-stage review cannot see; so is the shape of live state
+(existing volumes, data, permissions) that a fresh fixture never has. This review is the one
+cost never cut: on 2026-09-27 every real gap across a multi-PR campaign came from it. The
+supervisor rules on each finding (fix, accepted trade-off, ignore) before a fresh pi fix session
+gets the fix set via `pi-drive`'s `templates/FIX-BRIEF.md`.
 
 ## 6. Traps, each seen once
 
@@ -398,6 +536,19 @@ pi fix session via `pi-drive`'s `templates/FIX-BRIEF.md`.
 - The measurement stage ran with a lock regenerated broadly and upgraded unrelated crates; the
   accepted baseline had to be redone from the base lock with a minimal update. Say "restore the
   base lock, let cargo add only the harness's entries, diff versions against base" in the brief.
+- (#321) Codex unknown events and items became fatal where `main` ignored them; the contract said
+  "reject unknown required semantic events" and the driver's own test asserted the regression.
+- (#321) The SSE framer rescanned and memmoved the partial line on every chunk; Codex
+  `response.completed` carries the whole output on one growing line, so it was quadratic in task
+  length. Per-item linear scans in the reducers did the same. Three verify/review passes missed
+  both; only a cross-stage read follows one long stream end to end.
+- (#321) The example's loopback mode could fall back to the real credential file.
+- (#321) Redaction that blanked the whole body on any control char or at the read cap, byte
+  budgets on error excerpts, `Option<i64>` token counts "so invalid values join semantic
+  problems", and production JSON keys sorted so a golden survived `serde_json/preserve_order`
+  arriving through cedar-policy-core feature unification. Each is a row in §Don't write this.
+- (#321) Timing assertions in tests flake on CI runners and the Pi; assert structure and order.
+- (#321) CHANGELOG `Fixed` entries for bugs the same PR introduced; `Fixed` is for released code.
 - `$SHA:crates/...` in zsh: `:c` is a modifier and eats the path. Use `${SHA}:path`.
 - The planner's seam sketch said `Result<_, ProtocolError>` where the real client returns
   `ClientError` with execution-uncertainty semantics, and named a type that already existed as a
