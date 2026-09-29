@@ -12,11 +12,12 @@ is the reviewed SHA and the stage is under the cap (or was split).
 > head's PR checks, then DRIVER.md §Stages step by step and the stage N block; §Don't write this
 > applies. One commit (the why in its body), one full gate after it in the background to
 > `<design>/execution/logs/stage-N-gate.log`; no packaging or smoke; the report at
-> `<design>/execution/stage-N-report.md`, the verifier (`async: false`, or async polled to completion when the harness requires final-review children to run async); push only on `ACCEPT`,
+> `<design>/execution/stage-N-report.md`, the verifier (`async: false`, or async and waited on to completion when the harness requires final-review children to run async); push only on `ACCEPT`,
 > never over FIX REQUIRED; refresh the PR body. <Cross-review stages: then the pr-reviewer; last
-> stage: `gh pr ready` only on `READY`, `gh pr checks --watch` in the background and polled.> Do
-> not end your turn while a subagent or background job is still running: poll it with short
-> sleeps until it finishes. End with the verdict, head SHA and report path.
+> stage: `gh pr ready` only on `READY`, then one blocking `gh pr checks --watch`.> Do
+> not end your turn while a subagent or background job is still running: wait on it with one
+> blocking command that returns when it finishes, never repeated status calls. End with the
+> verdict, head SHA and report path.
 
 **Answer to a stop:**
 
@@ -28,8 +29,8 @@ is the reviewed SHA and the stage is under the cap (or was split).
 
 > Your previous turn ended mid-stage. Continue stage N from the current state (`git log`,
 > `git status`, the gate log, any verifier you spawned); write the report when done. Do not end
-> your turn while a subagent or background job is still running: poll it with short sleeps until
-> it finishes.
+> your turn while a subagent or background job is still running: wait on it with one blocking
+> command that returns when it finishes, never repeated status calls.
 
 **Unreviewed or oversize head (from `pi-stage-check.sh`):**
 

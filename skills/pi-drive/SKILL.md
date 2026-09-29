@@ -123,8 +123,9 @@ remember to stop; `pi-rpc-stop.sh` at the end of the session.
   was polling CI simply stops polling), the process exits, and you get a "turn ended" with no
   report and no question. Seen five times on the 0.18.0 fleet (file, gpt-image, asset, python
   twice). Two defences, both mandatory: every stage prompt carries the line *"do not end your
-  turn while a subagent or background job is still running: poll it with short sleeps until it
-  finishes"*, and a turn that ends mid-stage is relaunched at once with *"your previous turn
+  turn while a subagent or background job is still running: wait on it with one blocking command
+  that returns when it finishes, never repeated status calls"* (a blocked call is free; every
+  poll is a full read of the driver's context), and a turn that ends mid-stage is relaunched at once with *"your previous turn
   ended mid-stage; continue from the current state (git log, gh pr view, subagent status for
   any verifier you spawned); write the report when done"*. A foreground `subagent()` call does
   keep the process alive; `ps` for `cargo`/`rustc` shows what the child is doing.
@@ -215,13 +216,18 @@ supervisor did not look until Xavier asked.
 ## Unattended: the watch loop (2026-09-20)
 
 When Xavier leaves ("make sure it won't get stuck overnight"), run the loop with `ScheduleWakeup`
-at 900 s and keep every wakeup to one `scripts/pi-check.sh <log>` call plus at most one
+at 900 s and keep every wakeup to one `scripts/pi-check.sh <log> <worktree>` call plus at most one
 `pi-tail.sh` and one small read-only verification. The wakeup prompt carries the whole rule set
 so a wakeup needs no memory of this file; copy this block into it and fill the brackets:
 
 - Healthy (`alive=yes` and: `log_age_min<20`, or `builds>0`, or a relevant container is up, or a
   PR check is pending): `noop: true`, reschedule 900 s. A `gh pr checks --watch` idles the log for
   a long time; an open PR with pending checks is healthy.
+- Tripwire, checked even when healthy, because a running build is not progress:
+  `commit_age_min>=90`, `calls_since_edit>40`, or `top_cmd` at more than 5x. The thresholds are
+  the effort's `LIMITS.toml` where it has one. First firing: one `pi-tail.sh` look and, if the
+  driver is looping, a correction prompt at its next turn. The same tripwire again after a
+  correction: stop the lane and report.
 - Turn ended (`alive=no`; `pi-check.sh` prints nothing at all when no process holds the log —
   treat an empty line as `alive=no`): `pi-tail.sh <log> 2 1000`; verify claims read-only
   (`git log`, `git status --short`, `gh pr view --json headRefOid,state`, `gh pr checks`); then
@@ -234,7 +240,9 @@ so a wakeup needs no memory of this file; copy this block into it and fill the b
 - Stalled (`alive=yes`, `log_age_min>=20`, `builds=0`, nothing pending): `kill $(lsof -t <log>)`,
   relaunch the same prompt file, note it. Check `<log>.err` first: an empty log with a live pid is
   the stdin stall above, not a model hang.
-- Disk: free < 8 GiB → launch no more builds, report.
+- Disk: read the floor from the effort's `LIMITS.toml` (`min_free_disk_gib`, less
+  `kache_headroom_gib`); 25 GiB where the effort has no such file. Free under the floor → launch
+  no more builds, report.
 - Done (PR open, every check pass/skipping at the pushed head, and `pi-stage-check.sh` says
   `verdict=ok` for that head): `stop: true`, then the final
   report (PR URL, head SHA, stage verdicts, decisions made, numbers, what is deferred, dead
