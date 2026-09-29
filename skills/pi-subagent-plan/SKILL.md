@@ -108,7 +108,9 @@ for a one-directory delete costs a round trip and a report nobody needs.
    evidence JSON/log files for eleven providers. Say: logs for long commands, one report per
    stage, nothing else under `execution/`.
 10. **Every stage prompt says: do not end the turn while a subagent or background job is still
-    running; poll it.** A print-mode turn otherwise ends with the child orphaned (`pi-drive`).
+    running; wait on it with one blocking command, never repeated status calls.** A print-mode
+    turn otherwise ends with the child orphaned (`pi-drive`), and a poll costs a full read of
+    the driver's context where a blocked call costs nothing.
 11. **Nothing reaches the PR unreviewed.** Verifiers and reviewers open with `Reviewed: <sha>`;
     the driver pushes only on `ACCEPT`/`READY` at that SHA, and a commit made after the last
     review gets its own pass. #321 pushed over two `FIX REQUIRED` reviews and then landed a

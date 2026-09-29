@@ -66,7 +66,8 @@ reported.
   `cargo generate-lockfile`; never `cargo update` without `-p`.
 - Scope to packages while iterating (`cargo check|clippy|test -p … --locked`); the full gate once
   per stage. Anything that can run over two minutes runs in the background to a log under
-  `<design>/execution/logs/`, polled with short sleeps.
+  `<design>/execution/logs/`, and you wait on it with one blocking command (§Gate). Write the
+  stage report while it runs, not status calls.
 - **A stage is at most ~1k changed lines.** If `git diff --shortstat <stage parent>` passes ~1.2k,
   split it: commit and verify the first half as stage Na, then the rest as Nb.
 - One commit per stage, conventional subject. **The commit body carries the why**: the choices a
@@ -88,8 +89,9 @@ reported.
   don't either; record the finding as a Driver decision.
 - CHANGELOG: `Fixed` is only for bugs in released code; a bug this PR introduced and fixed is not
   an entry.
-- **Do not end your turn while a subagent or background job is still running: poll it with short
-  sleeps until it finishes.**
+- **Do not end your turn while a subagent or background job is still running: wait on it with one
+  blocking command that returns when it finishes, never repeated status calls.** A blocked call
+  costs nothing; every status call re-reads your whole context.
 
 ## Don't write this
 
@@ -109,12 +111,21 @@ Each of these reads as care and is cost. The verifier flags them as `guideline`.
 ## Gate
 
 While iterating: `cargo check|clippy|test -p <the stage's packages> --locked`. After the stage
-commit, once, in the background, then poll the log:
+commit, once, in the background, then one blocking wait with the tool's longest timeout:
 
 ```
 mkdir -p <design>/execution/logs
 bash <design>/pi/gate.sh > <design>/execution/logs/stage-N-gate.log 2>&1 &
+echo $! > <design>/execution/logs/stage-N-gate.pid
 ```
+
+```
+while kill -0 "$(cat <design>/execution/logs/stage-N-gate.pid)" 2>/dev/null; do sleep 15; done
+tail -5 <design>/execution/logs/stage-N-gate.log
+```
+
+If the tool's timeout cuts the wait, issue the same wait again. Never read the log in a loop of
+separate calls.
 
 Green means the log's last block is `== GATE GREEN`, the commit it gated, and an empty
 `git status --short`. A known-flaky test gets one rerun, then goes in the report; never ignored,
@@ -130,7 +141,7 @@ Every stage, in order:
    previous stage's commit. Pending is not red.
 2. Implement the stage block below. Scoped checks while iterating.
 3. `df -h ~`. Commit (one commit; amend it for every later fix in this stage).
-4. The full gate in the background (§Gate); poll to green.
+4. The full gate in the background (§Gate); one blocking wait to green.
 5. Draft `<design>/execution/stage-N-report.md` (§Report): the verifier reads it.
 6. **Verify** (§Verify). Apply every `contract` and `guideline` finding — a finding that
    contradicts a decision is declined with its D-number — amend, rerun the gate once, update the
@@ -156,8 +167,9 @@ subagent({ agent: "pr-reviewer", context: "fresh", async: false, cwd: "<ABS WORK
 ```
 
 Save it to `<design>/execution/review-P.md`. Same fix rules as step 6. After the last stage: only
-on `READY` does `gh pr ready` run; then `gh pr checks --watch <url>` in the background to
-`<design>/execution/logs/checks.log`, polled. A red check: fix, amend, re-gate, **re-verify the new
+on `READY` does `gh pr ready` run; then one blocking `gh pr checks --watch --fail-fast <url>`,
+its output to `<design>/execution/logs/checks.log`. No checks 60 s after a push means the head
+conflicts: rebase once, do not wait. A red check: fix, amend, re-gate, **re-verify the new
 head**, push, at most two rounds. Otherwise leave the PR a draft and end the turn with what remains.
 
 ## Verify
@@ -169,10 +181,11 @@ subagent({ agent: "lane-verifier", context: "fresh", async: false, cwd: "<ABS WO
   <design>/execution/stage-N-report.md." })
 ```
 
-`async: false` keeps your turn alive until it returns (if the harness refuses a foreground final-review child, launch it async and poll it to completion in the same turn); if it comes back with a run id instead of
-the verdict, poll `subagent status` with short sleeps until it finishes. Pass no `acceptance`
+`async: false` keeps your turn alive until it returns (if the harness refuses a foreground final-review child, launch it async and wait on it to completion in the same turn); if it comes back with a run id instead of
+the verdict, check `subagent status` no more than once a minute, with one `sleep 60` call
+between checks, until it finishes. Pass no `acceptance`
 field: read the verdict from the returned text. Nothing resumes your turn when a child finishes;
-every wait is a poll inside the turn. Save the returned text verbatim to
+every wait happens inside the turn. Save the returned text verbatim to
 `<design>/execution/stage-N-verify-P.md`. `taste` findings are yours to take or decline with a
 sentence in the report.
 
