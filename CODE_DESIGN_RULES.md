@@ -1,7 +1,8 @@
 # Code & API design
 
 Read before implementation or code review. **Keep one authority, preserve causes,
-bound resources, reuse safely, require real consumers, and test behavior.**
+bound resources, reuse safely, require real consumers, test behavior, and keep
+limits and contracts free of special cases.**
 
 ## The Service & API Rules
 
@@ -103,6 +104,50 @@ code. Exercise failure paths and assert that the surfaced error or diagnostic
 retains the cause, rather than merely asserting failure. Pin stable CLI output
 where it is a contract. Use loopback mock peers; never depend on another
 application's real credential store.
+
+### 46. Limits are resources, never call sites.
+
+Anything that can be run can be run from anywhere: a user's script, a plugin, a
+nested plugin, a background job. Bound memory, time, output and a call budget,
+shared by the whole tree of work; never "this works here and not there". Users
+of an agent platform are models, and every call-site rule is one they discover
+by failing. Authority is not a call site: authorize every effect for the
+principal, at any depth. Differences that survive a release are named in its
+notes so that nobody discovers them.
+
+- **Receipt, dekopon, 2026-09-28:** a first design carried seven call-site
+  rules (per-plugin spawn grants, a child counter, a depth limit, jobs as a
+  model-only tool). One mechanism, a plugin handing a script to its caller,
+  removed all seven and the grant lists with them.
+
+### 47. One shape per contract; compatibility is a constraint only when someone set it.
+
+A contract that offers a whole answer beside a stream, or a buffered call
+beside a streaming one, is a permanent second code path, which is worse than a
+shim. Offer the stream; give callers who want a whole value one bounded helper
+over it. Before designing around a break, ask who set compatibility as a
+constraint and what breaking it would delete. Where one owner controls every
+consumer, move them all in one release.
+
+- **Receipt, dekopon, 2026-09-28:** a plan avoided an interface break to spare
+  a fleet re-release and paid with a second code path and a manifest opt-in.
+  The owner's answer was to break it; nobody had asked for compatibility.
+
+### 48. Telemetry is typed, conventionally named and best effort.
+
+Use the OpenTelemetry semantic-convention name where one exists. Numbers are
+numbers. A list is an array under a fixed name, with parallel arrays for pairs;
+redaction replaces a value and keeps its position. Data never becomes an
+attribute name and a map is never sent: every distinct name is a column in the
+store. Nothing long-lived is one span; record a start and an end and link them.
+Delivery is best effort: a full queue drops and counts, and nothing in a
+serving path waits on an exporter. Depth is the owner's dial, per category, and
+the thing being recorded never chooses it.
+
+- **Receipt, rpi OpenObserve, 2026-09-29:** map attributes became one column
+  per key; span scalars were stored as strings while log records kept their
+  types; a span that started over five hours before it was sent was rejected
+  with only a log line.
 
 ### Rust-specific applications
 

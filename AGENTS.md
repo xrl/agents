@@ -8,7 +8,7 @@ not automatic imports. If a required guide is unavailable, stop that action.
 | Task | Guide |
 |---|---|
 | Code or API design/review | [CODE_DESIGN_RULES.md](CODE_DESIGN_RULES.md) |
-| Builds, releases, GitOps, worktree conventions, multi-PR campaigns | [LAWS.md](LAWS.md) |
+| Builds, releases, GitOps, worktree conventions, multi-PR and multi-agent campaigns | [LAWS.md](LAWS.md) |
 | Host Cargo, compiler cache, target cleanup | [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md) |
 | Cache diagnosis, upgrades, verification | Host rules, then [RUST_CACHE_VALIDATION.md](RUST_CACHE_VALIDATION.md) |
 | Worktree/cache architecture | [RUST_WORKTREES.md](RUST_WORKTREES.md) |

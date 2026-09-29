@@ -6,7 +6,7 @@ Opinionated engineering guides. **Start with the task, not a full-library read.*
 |---|---|
 | Agent entrypoint and reading triggers | [AGENTS.md](AGENTS.md) |
 | Code/API taste, error handling, testing | [CODE_DESIGN_RULES.md](CODE_DESIGN_RULES.md) |
-| Build/release, GitOps, worktree conventions, multi-PR campaigns | [LAWS.md](LAWS.md) |
+| Build/release, GitOps, worktree conventions, multi-PR and multi-agent campaigns | [LAWS.md](LAWS.md) |
 | Current host Rust policy | [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md) |
 | Why private targets and copy-on-write | [RUST_WORKTREES.md](RUST_WORKTREES.md) |
 | Cache checks and evidence requirements | [RUST_CACHE_VALIDATION.md](RUST_CACHE_VALIDATION.md) |
