@@ -192,6 +192,18 @@ git worktree add ../foo-perf-make-faster -b perf/make-faster
 
 See [RUST_WORKTREES.md](RUST_WORKTREES.md).
 
+### 55. Label what a run creates in Docker; release it when the result is recorded.
+
+Every container, image, volume and network a run creates carries one label,
+so release is one filter and touches nothing else on the machine. Keep them
+while iterating on a fix or re-measuring a number. Release them, builder cache
+included, in the same turn the result file is written; never keep them "just
+in case". Verify with filtered `docker ps -a`, `images`, `volume ls` and
+`network ls`, and report `df` before and after. A colima disk image does not
+shrink when its contents are deleted; recreating the VM is the owner's call.
+Containers build without the host's compiler cache
+([RUST_AGENT_RULES.md](RUST_AGENT_RULES.md) rule 12).
+
 ## The GitOps Rules
 
 ### 24. Kubernetes core services should use selfHeal.
@@ -280,6 +292,75 @@ but misses the target is redone on its branch, not merged as progress.
   gap (a replay orphan, a pre-expansion bug, a dead-end default, a permission
   failure against live state) came from the fresh expensive reviewer.
 
+### 49. Cost follows how long a context lives, not how much work it does.
+
+Where nearly all tokens are cache reads, a coordinator costs about as much as
+the driver it supervises. Start one fresh supervisor per unit of work, resumed
+from a state file that is written before every wait and at every stage
+boundary, and hand off when the context grows large. Keep campaign state in
+files a person can edit, so the run can pause for a week, slow down, or lose a
+session. Drive nothing from the session that planned it. Sketches, briefs,
+rehearsals and reviews are about one percent of spend: never cut one to save
+money. Feed actual spend back into the estimate before funding the next
+milestone.
+
+- **Receipt, dekopon, 2026-09-29:** on this machine's logs for 15 to 28
+  September, 97 to 98% of tokens were cache reads; a fresh supervisor per unit
+  cut an estimated $3,127 to $2,658; every review and rehearsal together came
+  to about $25.
+
+### 50. A blocked call is free; a poll costs a full read of the context.
+
+Run scoped gates on touched crates at each commit and let CI be the full gate.
+Start the gate, the verifier, the review and CI side by side at the commit.
+Re-run a bench or soak after a rebase only if the tree hash changed. Read a
+gate's log instead of re-running it. A release job does not repeat the checks
+that already passed on the same commit (§3).
+
+- **Receipt, dekopon, 2026-09-29:** one unit walked minute by minute was 14
+  hours, of which 6.5 were waits the plan had added and 46 minutes were CI.
+
+### 51. Guard the inside of a stage, not only its boundary.
+
+A running build is not progress. Give each lane tripwires a machine can read:
+commit age, tool calls since the last edit, repeats of one command, a file
+outside the brief's list, spend against the estimate. One firing is a look; the
+same one twice after a correction stops the lane. Ask for a first commit by
+minute 30. Give every reviewer and recon agent a timebox in minutes, calls and
+tokens. Set the budget at the estimate's p90 and the tripwire at its p50, and
+stop a lane only at a stage boundary.
+
+### 52. Recon finds facts; a scenario walk finds design errors; a second model family finds a different class.
+
+Recon agents answer what they are asked. Before building, have a fresh
+reviewer walk real scripts through the design step by step, and buy one review
+from a different model family for each large design. Rehearse every handoff:
+give a cheap agent only the files and ask it to name the next action.
+
+- **Receipt, dekopon, 2026-09-28:** four recon agents surfaced none of six
+  design errors that one reviewer found by walking a script through the plan. A
+  $6.71 review from a second family then found a process-killing input on
+  main, a circular CI dependency and an omitted deployed consumer; none
+  overlapped the first family's findings.
+
+### 53. Read-only is not harmless, and a default in source is not a production value.
+
+A brief that may query a live store states a time range and a row limit, or
+forbids live queries. Production limits are read from the deployed
+configuration, never from defaults in source.
+
+- **Receipt, rpi, 2026-09-29:** a read-only study agent ran one
+  `GROUP BY trace_id` with a distinct count and OOM-killed the trace store.
+- **Receipt, dekopon, 2026-09-28:** three agents reported 30 s and 1 MiB
+  limits from source; the deployment ran 300 s and 12 MiB.
+
+### 54. Name the version and the authority before the run.
+
+Where release authorization names one version, write each milestone's version
+down when the milestone is funded, with who may decide what: the supervisor,
+the called reviewer, the owner. Otherwise a supervisor that finishes overnight
+cannot tag, or decides something that was not its to decide.
+
 <a id="the-service--api-rules"></a>
 <a id="the-code--api-design-rules"></a>
 <a id="9-one-authoritative-api-contract-poem-openapi-for-implementation-first-rust-services"></a>
@@ -296,5 +377,5 @@ but misses the target is redone on its branch, not merged as progress.
 
 ## Relocated code rules
 
-Rules 9–10 and 34–41, plus Rust-specific applications, now live in
+Rules 9–10, 34–41 and 46–48, plus Rust-specific applications, now live in
 [CODE_DESIGN_RULES.md](CODE_DESIGN_RULES.md). Legacy anchors above retain old links.
