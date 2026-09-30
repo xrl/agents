@@ -45,10 +45,10 @@ record the cause at the point where the error is deliberately discarded.
 Silent `map_err(|_| …)`, `let _ = fallible()`, and multi-cause checks collapsed
 into a bool lose the evidence needed to debug. Avoid logging the same failure
 at every propagation layer; choose the reporting boundary. Preserve diagnostic
-meaning without exposing credentials or sensitive payloads. Add context without
-casting failures to less specific errors or erasing their causes. Use typed
-errors at library and caller-decision boundaries; `anyhow` is appropriate at
-application boundaries where callers no longer need to classify the error.
+meaning without exposing credentials or sensitive payloads.
+
+- Add context; never erase causes or downgrade error specificity.
+- Typed errors at library/caller-decision boundaries; `anyhow` at application boundaries.
 
 ### 35. Classify errors by the decision callers must make.
 
@@ -74,21 +74,13 @@ and network reads an explicit lifecycle, deadlines where they can stall, and
 an observer for failure or exit. State retained across turns needs eviction or
 deduplication; deduplication alone does not bound unique entries.
 
-Keep lifecycle ownership top-down and acyclic, including async work. Each task
-or resource has one accountable lifecycle owner; shared access does not imply
-shared responsibility for shutdown. Observe task failures and exits. Detached
-work is an explicit, justified exception, not a fire-and-forget default; name
-its owner and how completion and failure are observed. Decide cancellation by
-the operation: external effects may need to finish after a caller cancels, or
-report an unknown outcome rather than pretend nothing happened.
-
-Enforce resource budgets at the owner responsible for allocation, admission or
-retention. Identify existing upstream bounds before adding another check;
-reuse guarantees rather than scattering redundant checks through internal
-code. Input validation alone does not bound state retained across requests.
-Keep blocking I/O and substantial CPU work off async executor threads, and
-bound admission before offloading; `spawn_blocking` alone neither bounds queued
-work nor makes running work cancellable.
+- Top-down, acyclic ownership; one lifecycle owner per task or resource.
+- Observe task exits and failures; detached work needs explicit justification and an owner.
+- Cancellation must preserve external-effect outcomes, including uncertainty.
+- Bound allocation, admission and retention at their owners; reuse existing bounds.
+- No scattered defensive checks; input validation does not bound retained state.
+- Keep blocking I/O and heavy CPU work off async executor threads.
+- Bound admission before offloading; `spawn_blocking` is neither a queue bound nor running-work cancellation.
 
 ### 38. Construct expensive reusable resources once, not per request.
 
@@ -116,12 +108,9 @@ carry an equality-pinning or conformance test. A mirror must not accept what
 the authority rejects. Sharing a definition is not permission to collapse
 otherwise independent security boundaries.
 
-Validate at trust boundaries, then transform inputs into validated internal
-types and rely on those invariants internally. Use newtypes where mixing values
-would be dangerous or confusing, not mechanically for every string. Validate
-output when it crosses a meaningful contract or security boundary, not after
-every internal transformation. Use Rust's types to help maintainers and agents
-write correct code, rather than repeating defensive checks.
+- Validate at trust boundaries; carry validated types and trust invariants internally.
+- Newtypes prevent dangerous or confusing mix-ups, not merely wrap strings.
+- Validate output at contract/security boundaries, not after every transformation.
 
 ### 41. Tests pin behavior and failure causes, not implementation details.
 
@@ -179,21 +168,13 @@ the thing being recorded never chooses it.
 
 - Never hold tracing `Entered`/`EnteredSpan` guards across `.await`; use
   `.instrument(span)` or a synchronous `in_scope` instead.
-- Deny `.unwrap()` and `.expect()` in production code. Propagate errors with
-  their causes, handle absence explicitly, or encode the invariant in types.
-  Do not evade the rule with `panic!`, panic-prone indexing, or silent defaults
-  and fabricated fallbacks. Both methods are welcome in tests to keep tests
-  short and failures direct; keep that permission confined to test code.
-- Avoid panics on user input and unnecessary async dependencies. Expose typed
-  errors where callers must act on them, as described in rule 34. Avoid `unsafe`
-  unless a justified requirement and documented safety invariants warrant it.
-- Preserve project lint policy. For rules permitting exceptions, prefer the
-  narrowest possible `#[expect(..., reason = "...")]` over `#[allow]`; explain
-  the safety or design justification rather than widening an exception to a
-  module or crate for convenience. Make `unfulfilled_lint_expectations` a build
-  failure so obsolete exceptions must be removed. The lint attribute
-  `#[expect]` is unrelated to the panicking `.expect()` method and does not
-  authorize exceptions to the production ban above.
+- No production `.unwrap()` or `.expect()`; both are welcome in tests.
+- Propagate causes, handle absence, or encode invariants; no panic or silent-fallback evasions.
+- No panics on user input; avoid unnecessary async dependencies.
+- `unsafe` requires justification and documented safety invariants.
+- Preserve project lints; prefer site-scoped `#[expect(..., reason = "...")]` over `#[allow]` for permitted exceptions.
+- Deny `unfulfilled_lint_expectations`; remove stale exceptions.
+- No lint exceptions to the production `.unwrap()`/`.expect()` ban.
 
 Source: the snapshot above, **Change guidelines** and **Review checklist**;
 subsequent owner clarifications refine these rules.
