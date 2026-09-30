@@ -1,7 +1,7 @@
 # Supervisor turn prompts (not driver reading)
 
 Turn 1 is `KICKOFF.md` verbatim. Each later turn is one of these, filled in. Session id
-`<effort>-driver-<date>`, model `openai-codex/gpt-6-astra:high`, workdir the worktree, one log per
+`<effort>-driver-<date>`, model `openai-codex/gpt-6-sol:medium`, workdir the worktree, one log per
 turn under `<design>/execution/pi/`. Before sending "Next stage", run
 `scripts/pi-stage-check.sh <worktree> <stage parent> <design>/execution`: accept only when HEAD
 is the reviewed SHA and the stage is under the cap (or was split).

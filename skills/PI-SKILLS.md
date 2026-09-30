@@ -1,4 +1,4 @@
-# pi-subagent-plan, pi-drive and rust-feature-swarm: snapshot of 2026-09-29
+# pi-subagent-plan, pi-drive, campaign and rust-feature-swarm: snapshot of 2026-09-30
 
 Three Claude Code skills. `pi-subagent-plan` authors the packet (brief, decisions file, agent
 files, kickoff, rehearsal) that hands decided work to a cheap pi driver
@@ -43,3 +43,14 @@ retro (the `Retro` section in `pi-drive/SKILL.md`, cost rules 8–10 and the new
   driver with a workflow-script fan-out.
 - Stops are owner actions and contract surfaces only; a pattern-matched stop clause ("names
   kache") parks a literal driver on ordinary compile diagnostics.
+
+`campaign` is new on 2026-09-30, and `pi-drive` and `pi-subagent-plan` were refreshed the same
+day, from Dekopon sub-campaign 4 (v0.29.0, ≈ 9,400 lines in 13 steps, ≈ $154, 51% pi). `campaign`
+runs one funded sub-campaign from a folder of state files: a Claude coordinator that rules and
+lands, pi sol supervisors that watch, a gpt-6-sol driver, a fresh verifier per commit, one Astra
+cross-step review and one Fable read, with the owner's standing orders (a tripwire inside budget is
+a report; ask foreseeable decisions early). The refresh: the driver is `gpt-6-sol` at `medium`;
+sol supervisors watch code units too (zero decisions of their own across A2-A13); dry runs are sol
+only and the one-voice rewrite is no longer a Fable job; a spine step goes to one Opus agent (the
+blind A2 judging) and a second review round to an Opus fix agent; a `-ne` driver's verifier runs
+outside it through `pi-dry-run.sh`.

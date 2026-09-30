@@ -3,7 +3,9 @@
 # the driver pushed (or will push) is the head its last verifier/reviewer saw.
 #   pi-stage-check.sh <worktree> <stage-parent-sha> <execution-dir> [cap=1200]
 # Reviewed SHA: the `Reviewed: <sha>` first line of the newest *verify*.md / *review*.md in the
-# execution dir. Verdict line last: ok, or every reason not to accept.
+# execution dir. Review verdict: the last line of that file that is exactly ACCEPT, READY or
+# FIX REQUIRED (pi-subagents appends a `Mission: <id> (completed)` line after it, so it is not
+# always the file's last line). Verdict line last: ok, or every reason not to accept.
 set -euo pipefail
 WT=$1; PARENT=$2; EXEC=$3; CAP=${4:-1200}
 head=$(git -C "$WT" rev-parse HEAD)
@@ -15,10 +17,19 @@ echo "head=${head:0:12} parent=${PARENT:0:12} changed=$changed (+${ins:-0} -${de
 newest=$(ls -t "$EXEC"/*verify*.md "$EXEC"/*review*.md 2>/dev/null | head -1 || true)
 reviewed=""
 [ -n "$newest" ] && reviewed=$(head -1 "$newest" | sed -nE 's/^Reviewed: *([0-9a-f]{7,40}).*/\1/p')
-echo "last_review=${newest:+$(basename "$newest")} reviewed=${reviewed:-unknown}"
+review_verdict=""
+[ -n "$newest" ] && review_verdict=$(grep -xE '(ACCEPT|READY|FIX REQUIRED)[[:space:]]*' "$newest" | tail -1 | sed -E 's/[[:space:]]+$//' || true)
+echo "last_review=${newest:+$(basename "$newest")} reviewed=${reviewed:-unknown} review_verdict=${review_verdict:-none}"
 
 problems=()
 [ "$changed" -gt "$CAP" ] && problems+=("over cap: $changed > $CAP changed lines (split the stage)")
+if [ -n "$newest" ]; then
+  case "$review_verdict" in
+    ACCEPT|READY) ;;
+    "FIX REQUIRED") problems+=("the newest review says FIX REQUIRED") ;;
+    *) problems+=("no ACCEPT, READY or FIX REQUIRED line in the newest review file") ;;
+  esac
+fi
 if [ -z "$reviewed" ]; then
   problems+=("no Reviewed: line in the newest review file")
 elif ! full=$(git -C "$WT" rev-parse --verify -q "$reviewed^{commit}"); then
