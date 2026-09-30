@@ -2,7 +2,7 @@
 
 Canonical text. `~/.claude/CLAUDE.md` imports this file; `~/.pi/agent/AGENTS.md` §"Rust worktrees
 and compiler cache" is a verbatim copy. Change all three together. Rationale and measurements:
-[RUST_WORKTREES.md](RUST_WORKTREES.md). Updated 2026-09-19.
+[RUST_WORKTREES.md](RUST_WORKTREES.md). Updated 2026-09-28.
 
 ## Machine state
 
@@ -10,7 +10,7 @@ and compiler cache" is a verbatim copy. Change all three together. Rationale and
   the switch). It replaced sccache on 2026-09-17 by owner decision, with copy-on-write restores
   as the reason: outputs live once in a content-addressed store and are cloned into each
   worktree's own `target/`.
-- Store `~/Library/Caches/kache`, config `~/.config/kache/config.toml`: local-only, **20 GiB**
+- Store `~/Library/Caches/kache`, config `~/.config/kache/config.toml`: local-only, **40 GiB**
   cap, `cache_executables = false`, adaptive incremental on. Daemon runs on demand; the launchd
   service is deliberately **not** installed.
 - Every worktree keeps its own default `target/`. No global `CARGO_TARGET_DIR`, `build.target-dir`
