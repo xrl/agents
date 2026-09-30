@@ -53,6 +53,23 @@ then end your turn with its path. Nothing else is a stop: lock additions, lint f
 rewrites, naming, a verifier you disagree with and a red CI check are handled in the turn and
 reported.
 
+## Order of work
+
+For a stage that adds or changes a public type, trait or API. A stage that only re-pins, renames
+or deletes skips this.
+
+1. Before writing any code, list the invalid states the API must make unrepresentable: every
+   combination of state, call order or value the stage block rules out.
+2. For each, name the type that removes it: an enum with the legal variants, a newtype with a
+   private constructor, a token consumed by the call that ends it, a `#[must_use]` result.
+3. Write the signatures first: every type, trait and enum with its variants, every `fn` with a
+   `todo!()` body, and the names of the tests, one per invariant. Only then write bodies.
+4. A signature this brief or `decisions.md` fixes stays exactly as written. Improving it is a
+   stop, never a Driver decision.
+
+When this section applies, the stage report lists the invalid states from step 1 and the type
+that removes each.
+
 ## Rules
 
 - Work only in the worktree. Plain `cargo`, always `--locked` except the lock update below. The
@@ -115,7 +132,7 @@ commit, once, in the background, then one blocking wait with the tool's longest 
 
 ```
 mkdir -p <design>/execution/logs
-bash <design>/pi/gate.sh > <design>/execution/logs/stage-N-gate.log 2>&1 &
+nohup bash <design>/pi/gate.sh > <design>/execution/logs/stage-N-gate.log 2>&1 < /dev/null &
 echo $! > <design>/execution/logs/stage-N-gate.pid
 ```
 
@@ -145,7 +162,9 @@ Every stage, in order:
 5. Draft `<design>/execution/stage-N-report.md` (§Report): the verifier reads it.
 6. **Verify** (§Verify). Apply every `contract` and `guideline` finding — a finding that
    contradicts a decision is declined with its D-number — amend, rerun the gate once, update the
-   report. Pass 2 only when pass 1 had a `contract` finding; there is no pass 3.
+   report. Pass 2 whenever you changed the commit after pass 1, because only a reviewed head is
+   pushed (step 7): over the whole stage when pass 1 had a `contract` finding, over the amended
+   delta alone otherwise. There is no pass 3.
 7. **Push only when the last verdict is `ACCEPT`, at the SHA it reviewed.** If pass 2 still says
    `FIX REQUIRED`, do not push: end the turn with both verdicts side by side; the supervisor
    decides. Every commit you push has a verifier or reviewer file whose `Reviewed:` line names it
@@ -174,6 +193,8 @@ head**, push, at most two rounds. Otherwise leave the PR a draft and end the tur
 
 ## Verify
 
+<If the driver runs under `steering-eval/bin/subject-turn.sh` (`-ne`: no `subagent` tool), delete this section and §Cross-stage review's call: the supervisor runs the verifier outside the driver with `pi-drive/scripts/pi-dry-run.sh <worktree> <prompt> <out.md> openai-codex/gpt-6-sol:high bash` and sends the verdict back as the next turn (sub-campaign 4). Keep the stop list in one place, the brief, and point at it; a restated count drifts.>
+
 ```
 subagent({ agent: "lane-verifier", context: "fresh", async: false, cwd: "<ABS WORKTREE>",
   task: "Verify stage N: diff <parent-sha> <head-sha> against <design>/pi/DRIVER.md §Stages
@@ -186,7 +207,8 @@ the verdict, check `subagent status` no more than once a minute, with one `sleep
 between checks, until it finishes. Pass no `acceptance`
 field: read the verdict from the returned text. Nothing resumes your turn when a child finishes;
 every wait happens inside the turn. Save the returned text verbatim to
-`<design>/execution/stage-N-verify-P.md`. `taste` findings are yours to take or decline with a
+`<design>/execution/stage-N-verify-P.md`, where N is the stage and P the pass number
+(`stage-1-verify-1.md`, then `stage-1-verify-2.md`). `taste` findings are yours to take or decline with a
 sentence in the report.
 
 ## Report

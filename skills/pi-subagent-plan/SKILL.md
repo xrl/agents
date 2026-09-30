@@ -1,6 +1,6 @@
 ---
 name: pi-subagent-plan
-description: Turn a big, decided piece of work into a self-contained brief plus pi-subagents agent files, a flat workflow script and a kickoff prompt, so Xavier can hand it from Claude Code to a pi session running one cheap/fast model (gpt-6-astra) with the reasoning level as the only tier — nothing Anthropic in the pi run. Use when Xavier says "hand this off to pi", "write a handoff/brief for pi", "offload this to a cheaper model", "pi subagents plan", or asks whether something is "suitable for handing off to a pi/gpt agent". Claude Code only — this is for AUTHORING the plan from Claude; it is not for running inside pi, not for one-file changes (one agent), and not for review-only work (/code-review).
+description: Turn a big, decided piece of work into a self-contained brief plus pi-subagents agent files, a flat workflow script and a kickoff prompt, so Xavier can hand it from Claude Code to a pi session running the cheap/fast sol models (gpt-6-sol drives) with the reasoning level as the main tier — nothing Anthropic in the pi run. Use when Xavier says "hand this off to pi", "write a handoff/brief for pi", "offload this to a cheaper model", "pi subagents plan", or asks whether something is "suitable for handing off to a pi/gpt agent". Claude Code only — this is for AUTHORING the plan from Claude; it is not for running inside pi, not for one-file changes (one agent), and not for review-only work (/code-review).
 argument-hint: "[design/plan path or PR/issue] [target repo]"
 arguments: [target]
 disable-model-invocation: false
@@ -39,8 +39,10 @@ stop list is four vivid items (forking or patching a dependency, moving a contra
 decisions file, reversing a keep/delete, owner-only actions), never a taxonomy the model has to
 classify against. **Start from `templates/DRIVER.md`** (distilled from the #321 brief): it
 carries the fixed §Rules and §Don't write this blocks; fill in the placeholders and the stage
-blocks, never delete those two; `pi-drive/templates/STAGE-PROMPTS.md` holds the supervisor's turn
-prompts. The literal "stop for any decision the table does not answer" posture cost the
+blocks, never delete those two; `templates/KICKOFF-DRIVER.md` is its turn-1 prompt (`KICKOFF.md`
+is the swarm's); `pi-drive/templates/STAGE-PROMPTS.md` holds the supervisor's turn prompts. A
+brief's "read nothing else first" loses to the repo's own `AGENTS.md` read list, which the
+driver also holds: name the files to skip, or accept the reads. The literal "stop for any decision the table does not answer" posture cost the
 asset run nine stops; the same model decided crate internals fine when allowed to. A swarm (`templates/lanes.workflow.js`) earns its
 orchestration only when every lane is independent at compile time *and* the editors are trusted
 to decide crate internals *and* wall-clock matters more than stops. The asset run stopped seven
@@ -91,7 +93,9 @@ and spend nothing else:
    long gate; two halves verify faster, test with `-p`, and fail smaller. #321's brief wrote
    "about three thousand changed lines" into its own stage 2 and the stages landed at 1.5k–5.1k;
    the planner splits any stage estimated over 1k, the driver splits one that grows past 1.2k,
-   and the supervisor's `pi-stage-check.sh` refuses the rest.
+   and the supervisor's `pi-stage-check.sh` refuses the rest. Line estimates run low: driver
+   stages landed at 2.3x and 2.8x their estimates on 2026-09-29. Multiply the planner's
+   estimate by 2.5 before applying the cap. Dollars ran under, because driver tokens are cheap.
 7. **The packet is the brief, the decisions file and `contracts/`.** Nothing else in the
    driver's read order. Design and review documents are fable-written and fable-reviewed, and were
    the bulk of the token bill; the driver only ever needed the decisions.
@@ -162,7 +166,8 @@ write one too early.
   output → send → edit the output again) walked through every rule in the design by a cheap
   agent, listing each rule it touches and whether it holds. The asset design's "fresh open by
   path" and "path-less output" were each fine alone and contradicted on the second edit.
-- **A consequence walk has run on the plan** (sonnet is enough). Fact-checkers verify what the
+- **A consequence walk has run on the plan** (pi sol is enough; it needs `bash` for the greps
+  and gates, so its prompt says "mutate nothing"). Fact-checkers verify what the
   plan says; this verifies what the plan's changes do to things it does not mention. The
   multi-LLM plan (2026-09-22) had zero wrong locators and still yielded ten seam findings at
   packet time, every one a second-order effect. Before handoff, for every: new dependency edge,
@@ -190,8 +195,17 @@ write one too early.
   items and fields from an external service are ignored; only a malformed known shape errors. A
   contract line like "reject unknown required semantic events" is how #321 made Codex's unknown
   events fatal, with the driver's own test asserting the regression.
+- **Every test a decision asks for fails on the code being fixed.** Say what the test must
+  observe that the old code does not produce. The cwasm fix's decision read "the load fails and
+  the error names the path": the bug already did exactly that, one implementation wrote the test
+  to the letter, and it passed on the old code (2026-09-29). Where a decision turns on a check
+  ("if the object exists"), say what a failed check means; two implementations of one decisions
+  file diverged on `exists()` against `try_exists()`.
 - **Every stage is estimated at ≤ ~1k changed lines** (§0b.6); split the rest before handoff.
 - **The invention audit is empty** (§5).
+- **The verifier's agent file fits the repo.** `templates/agents/lane-verifier.md` assumes Rust
+  and an `AGENTS.md` with §Rust guidelines; for a repo with neither, the brief's verify task
+  says which rubric applies instead.
 - **The repo carries the tone and the rubric, the brief points at them.** `AGENTS.md` §"Rust
   guidelines" (yes/no pairs) and §"Review checklist" (tagged findings, two fix passes, the lane
   report's `Choices I made` heading) are what let an editor decide crate internals
@@ -255,8 +269,10 @@ belongs where.
 
 ## 2. Execution plan (roles, levels, preflight, sanity, gates, report)
 
-**Roles and levels.** The whole pi run uses one cheap/fast model (`openai-codex/gpt-6-astra` as
-of 2026-09-17; nothing Anthropic — Xavier keeps the Anthropic spend in Claude). The lever is the
+**Roles and levels.** The driver and the lane editors run `openai-codex/gpt-6-sol` at
+`medium` (the owner's dial, 2026-09-30, §3a). The stage verifier, fact-checker, gate-runner and
+supervisor run `openai-codex/gpt-6-sol`; the cross-stage `pr-reviewer` runs `gpt-6-astra`. Nothing Anthropic: Xavier keeps the Anthropic spend in Claude. One
+provider, `openai-codex`, for the whole run. The lever is the
 reasoning level (pi: `minimal ~1k`, `low ~2k`, `medium ~8k`, `high ~16k`, `xhigh ~32k`, `max`):
 mostly medium; the command runner low; reviewers high/max. Provider ids are `<provider>/<model>`
 and the provider segment is not guessable — read `subagent({action:"models"})`.
@@ -344,34 +360,110 @@ conversation. Foreground children do not load the parent's extensions.
 **Provider auth**: an expired login kills the run at the first spawn. One provider for the whole
 run; the kickoff confirms its auth before anything is spawned.
 
-## 3a. Who does which step: pi-gpt, opus, fable
+## 3a. Who does which step: Claude decides and reviews, sol does and watches
 
-Three tiers, cheapest first, and the default is the cheapest that can do the step. Propose this
-split in the plan before writing the packet, as a table; Xavier approves it once.
+The default is pi sol for every step that is procedure, and Claude only where the step is a
+judgment about scope, design or what a literal driver will do. Propose this split in the plan
+before writing the packet, as a table; Xavier approves it once. The GPT side runs on his
+subscription, so its dollars are notional and Claude's are not.
 
 | Step | Tier | Why |
 |---|---|---|
-| Recon of the repos and the release path | sonnet or opus `Agent` | lookup and extraction |
-| Writing the briefs, agent files, kickoff from the recon and a decided plan | opus `Agent` | large, well-specified prose |
-| Dry-run rehearsal of a brief (§5) | sonnet | literal walk, and the defects it finds are mechanical |
-| **Reviewing the rehearsal's findings and rewriting the brief** | fable | the fixes are judgment calls about what a literal driver will do |
-| Editing, building, PRs, releases, watching CI | pi driver (`openai-codex/gpt-6-astra`, high) | the volume |
-| Per-stage verifier, whole-PR reviewer | pi (`lane-verifier`, `pr-reviewer`, fresh) | cheap and it finds real contract bugs |
-| The watch loop: liveness, relaunches, read-only checks, stage prompts | opus (or fable if already the session) | mechanical; the rules are in the wakeup prompt |
+| Recon, inventories, release-path lookup | pi sol at medium, fresh, read-only | lookup and extraction. First graded run 2026-09-29: the model-card recon, 235 rows through a headed browser for $1.29, every one of seven spot-checked numbers right. Grade two more; sonnet `Agent` is the measured fallback |
+| First draft of the briefs, agent files and kickoff, from the recon and a decided plan | pi sol | large, well-specified prose |
+| Dry-run rehearsal of a brief (§5), invention audit, scenario walk, consequence walk | pi sol at high (`pi-dry-run.sh`), sol only (owner 2026-09-30: no sonnet second run); sonnet only when pi's login is down | a dry run simulates the executor, so it runs on the executor's model; the defects it finds are mechanical |
+| **Plan check of the brief before launch** | fable, fresh | it found a critical error in each of the three plans it read on 2026-09-29, for about $3 each |
+| Rewriting the brief in one voice after the plan check and dry run | the coordinator session or pi sol, then a sol rehearsal of the rewrite (owner 2026-09-30: no Fable rewrite) | a Fable rewrite cost more than it found; the rehearsal after it catches what the rewrite breaks |
+| **Interfaces on a contract surface** (WIT, wire format, config keys, a public SDK or provider trait) | opus drafts the sketch, naming the states it makes unrepresentable; a fresh fable walks one real scenario through it; Xavier decides | opus's API sketches graded A on 2026-09-28; fable's design reviews found the P1s. The designer never reviews its own sketch |
+| Types and signatures inside a crate, behind a fixed entry point | the pi sol driver, by `DRIVER.md` §Order of work | the eval scored exactly this: the order of work added 1.4 points for 4 cents, a Claude-written sketch plus shape review added 0.25 for 6 to 10 times the run cost. No per-stage sketch |
+| Editing, building, PRs, releases, watching CI | pi driver (`openai-codex/gpt-6-sol`, medium, recipe A) | the volume; the owner's dial of 2026-09-30 |
+| **The step that sets a spine's shape** (the types the later steps extend) | one Opus agent building directly, then the verifier | sub-campaign 4's A2 built both ways: the blind Fable judge landed Opus's spine; pi kept the old plumbing with pipes bolted on |
+| A step's second review round | an Opus fix agent | third pi rounds cost ≈ $40-50 of pi and 2-3 h in sub-campaign 4; Opus fixes a scoped finding in minutes (owner-approved routing for sub-campaign 6) |
+| Per-stage verifier | pi sol (`lane-verifier`, fresh) | cheap and it finds real contract bugs |
+| Cross-stage and whole-design review | pi astra (`pr-reviewer`, xhigh or max) | about $6 a review; nine majors on 2026-09-28, none overlapping fable's |
+| Re-check of a fix against the finding it answers | pi sol verifier, fresh | "did this commit do what the Fix line says" is mechanical. A second fable pass only when the fix moved a contract surface or answered a P1 |
+| The watch loop: liveness, relaunches, read-only checks, stage prompts, routing findings | pi sol supervisor for mechanical and code units (`pi-drive` §A sol supervisor: piloted 2026-09-29, passed on sub-campaign 4's A2-A13 with zero decisions of its own); opus at medium only for a ship unit | mechanical; it was the largest Claude line on 2026-09-29 |
+| **Ruling on each review finding** (fix, accepted trade-off, ignore) | fable or the session | this is where scope stays proportionate |
 | **A stop the decisions file does not answer** | fable | four or five per day decided the outcome on 2026-09-20: the false kache stop, the python timeout cause, the fan-out shape reset |
 | **Adversarial review of the landed PR (§5b)** | fable, fresh | two gpt reviews passed #305 with a 44 GB hole in it |
 | Site or docs copy in Xavier's voice | opus writes, fable reviews once | voice rules are judgment |
 
-If the session is already fable, it still delegates the opus and sonnet rows and keeps itself
-for the three bold rows. If the session is opus, it runs everything but the bold rows and spawns
-a fable `Agent` (`subagent_type: claude`, `model` per the harness) for each of them with the
-decisions file, the brief and the stop's blocker file as the whole context.
+The bold rows are Claude's. If the session is fable it keeps the bold rows and delegates the
+rest to pi. If the session is opus, it spawns a fable `Agent` (`subagent_type: claude`, `model`
+per the harness) for each fable row with the decisions file, the brief and the stop's blocker
+file as the whole context.
+
+**Why, in numbers (campaign of 2026-09-29, $356).** Claude was $240 and pi $116 at list price.
+The pi drivers that wrote the production code cost about $60. Claude by role, allocated from the
+day's transcripts and scaled to ccusage:
+
+| Claude role | $ | Sessions |
+|---|---|---|
+| Supervisors (opus) | 70 | 24 |
+| Steering eval: owners, scorers, adversaries, shape reviews | 58 | 80 |
+| Reviews and plan checks (fable) | 50 | 19 |
+| Coordinator and main sessions | 42 | 2 |
+| Inventories, brief writers, recon, rehearsals | 20 | 16 |
+
+Watching the drivers cost more than the drivers. The reviews and plan checks found every real
+defect and stay. Two checks returned nothing and are not run again: a sonnet adversary hunting
+counterexamples (0 confirmed in 126 attempts) and a Claude shape review after every stage
+(recipe B: +0.25 points for 6 to 10 times the cost of a run).
+
+### Effort: the start of the flat part
+
+Set each role at the lowest effort after which the next step gains under about 1 point on the
+benchmarks nearest its work. The curves are in
+`~/code/dekopon/effort-tuning-design/execution/CARDS.md` (vendor launch pages and Artificial
+Analysis, read 2026-09-29; score at cost per task). Public benchmarks are the prior; the
+steering eval picks between the two candidate levels.
+
+| Model | Agentic coding, by effort | Knee | Above it |
+|---|---|---|---|
+| `gpt-6-sol` | DeepSWE 37.2 low, 56.6 medium, 65.3 high, 66.6 xhigh, 68.8 max | high | +3.5 points for 4 times the cost |
+| `gpt-6.1-sol` | DeepSWE 64.4 low, 73.0 medium, 75.2 high, 71.9 xhigh, 71.9 max | medium to high | xhigh and max score lower than high |
+| `gpt-6-astra` | DeepSWE 67.0 low, 72.8 medium, 73.2 high, 74.1 xhigh, 73.2 max | medium to high | under 1 point; long terminal tasks still gain at max |
+| Opus 5.5 | Terminal-Bench 38.5 low, 57.6 medium, 64.2 high, 66.4 xhigh, 64.8 max | high; medium is the value point | flat or lower for 2 to 3 times the cost |
+| Fable 5.1 | CursorBench 66.2 low, 68.0 medium, 69.4 high, 72.8 xhigh, 73.4 max | xhigh | +0.6 for 39% more, except long terminal tasks (+4.5) |
+| Sonnet 5.5 | Terminal-Bench 20.0 low, 28.8 medium, 43.0 high, 61.5 xhigh, 70.6 max | none: it climbs to max | at xhigh it costs more than Opus at high and scores lower |
+
+| Role | Effort | Why |
+|---|---|---|
+| Driver, lane editor | `gpt-6-sol` at `medium` (since 2026-09-30; `gpt-6.1-sol` at `medium` before) | same hidden pass rate and cost as 6.1-sol medium, 1.85x faster, blind 1.5 lower on pipe-type shape (so a spine step goes to Opus, §3a). Earlier eval: 13.38 blind against 11.50 for `gpt-6-sol` at `high`, at two thirds of its cost. `gpt-6-sol` at `medium` also held `high`'s quality (11.88) and is the faster fallback at 136 s a run against 251 s |
+| Stage verifier, fact-checker, dry runs | `gpt-6-sol` at `high`; dry runs too | sol's factual error rate: 11.4% low, 6.9% medium, 5.1% high, flat after |
+| Gate-runner | sol `low` | it runs commands |
+| Recon, inventories | sol `medium` | extraction; graded A at medium |
+| Supervisor | sol `high`, or opus `medium` | a supervisor writes no code; never `max` |
+| Brief writing, interface sketch | opus `high` | opus's knee |
+| Cross-stage reviewer | astra `xhigh` | unchanged until one review is compared at `high` |
+| Plan check, adversarial review | fable `max` | unchanged until one review is compared at `xhigh`; it is the step that finds the P1s and most of its cost is reading, which effort does not shrink |
+
+The cards said `high` was the knee for `gpt-6-sol` on coding; our own eval found `medium` held,
+so the eval overruled the card for the driver. Dry runs went **up**, from low to high. Effort
+is the smaller lever on the Claude side: about 94% of Claude cost on 2026-09-29 was context
+read and written, so fewer turns and smaller briefs save more than a lower setting.
+
+**The driver, from the steering eval** (`~/code/dekopon/steering-eval/REPORT.md`, two holdout
+tasks, n = 2 per cell). `gpt-6-sol:high` on recipe A passed every hidden test, scored 13.25 of
+15 blind and never stopped to ask, at $0.28 a run. Recipe A is the repo's rules plus the shape
+rules, and the order of work now in `templates/DRIVER.md` §Order of work; it added 1.4 points
+for 4 cents. `gpt-6-astra` on the same recipe ended two of four runs with a question and no
+code. Opus 5.5 as a driver scored highest blind, cost twice sol, and failed one run by
+improving a fixed entry point instead of keeping it. `gpt-6.1-sol` (released 2026-09-29, $2 /
+$0.10 cached / $10) tied `gpt-6-sol` on quality at 0.76 times the cost and passes the swap
+rule; it ran 1.5 times slower on its launch day and scored lower on one task. Swap to it after
+four recipe A runs off-peak confirm both. They did not confirm the jobs gap (a scoring-batch
+artifact) and did confirm the speed (1.65 times slower at `high`, no retries). The effort block
+then ran both models at `medium`: `gpt-6-sol` held its quality at 0.67 times the cost and 0.63
+times the wall time, and `gpt-6.1-sol` passed the swap rule at 1.17 times the wall time.
+`gpt-5.6-sol` at `high` cost 2.2 times `gpt-6-sol` for no gain. **The owner chose `gpt-6.1-sol`
+at `medium` on 2026-09-29, then `gpt-6-sol` at `medium` on 2026-09-30.**
 
 ## 3b. Offer to drive it
 
 After the kickoff and rehearsal, **offer to drive the pi session from Claude Code** with the
-`pi-drive` skill: fable as supervisor issuing one stage per turn and answering non-hard stops
-from the decisions file, gpt-6-astra as the driver. Xavier wants this pairing ("super high level
+`pi-drive` skill: a supervisor issuing one stage per turn and answering non-hard stops
+from the decisions file (which tier supervises is §3a's watch-loop row), gpt-6-sol at medium as the driver. Xavier wants this pairing ("super high level
 fable with super cheap gpt"); the alternative is him pasting prompts and each stop costing a day.
 Say which path (print or RPC) and why in one line.
 
@@ -423,8 +515,24 @@ without merging; report). End with the stop conditions and what is out of this r
 
 ## 5. Rehearse before handing over
 
-Three cheap passes, each a fresh read-only agent (sonnet or the target model at low effort):
-the **ops rehearsal** below, the **invention audit** and the **scenario walk**. The rehearsal runs
+Three cheap passes, each a fresh read-only run of **the driver's own model at high effort**
+(`openai-codex/gpt-6-sol:high`): a dry run simulates the executor, so it runs on the
+executor's model. Not at low: sol's factual error rate is about twice as high there (§3a Effort).
+`pi-drive/scripts/pi-dry-run.sh <workdir> <prompt-file> <out.md>` does it with no write, edit
+or bash tool, so read-only is enforced; pass `bash` as the fifth argument only when the walk
+must check git refs or installed tools. A packet rehearsal cost $0.10 at low on 2026-09-29. Sonnet
+(`Agent`, `model: sonnet`) is the fallback when pi's login is down. **Sol against sonnet, one frozen brief, same prompt (2026-09-29).** Sol at high: 119 s, 39 tool
+calls, $0.40. Sonnet: 144 s, 12 tool calls. Of 27 real findings, 13 were found by both, 7 by
+sol only and 7 by sonnet only, so each alone caught about three quarters. Neither was the
+better one: sol alone found that a failed cell and a model mismatch pass silently; sonnet alone
+found that the batch script ran two at a time, which would have broken the pairing the decision
+rule rested on, and that nothing checked the effort actually applied. They miss different
+things. Sol only, since the owner's cut of 2026-09-30, for every brief. **Rehearse again after
+the one-voice rewrite** (sub-campaign 4: a $0.30 sol rehearsal caught a rewrite telling a `-ne`
+driver to spawn its own verifier). The sequence that worked: draft, rulings, plan check and dry
+run in parallel, rulings on findings, one-voice rewrite, rehearsal. The files are in
+`~/code/dekopon/effort-tuning-design/execution/rehearsal/`.
+The passes are the **ops rehearsal** below, the **invention audit** and the **scenario walk**. The rehearsal runs
 **after** any adversarial pass and re-verifies each amendment that pass applied against the
 source: amendments are claims, not facts. On #41538 the adversarial reviewer declared
 `htmx_push_url` nonexistent and rewrote a decision around it; the rehearsal found it at
@@ -448,7 +556,7 @@ whether the rules compose, with `file:line`.
 
 **Ops rehearsal** —
 
-Spawn a cheap, fresh, **read-only** agent (sonnet is enough) with the kickoff prompt plus: "DRY
+Run `pi-dry-run.sh` (sol at high, fresh, read-only) with the kickoff prompt plus: "DRY
 RUN: mutate nothing; walk every step exactly as a literal executor would, with nothing but the
 files it has; per step list the exact commands, the directory, every file/worktree/branch/tool/
 credential it needs and whether it exists now, and every point where you would stop, guess, or
@@ -494,6 +602,13 @@ gets the fix set via `pi-drive`'s `templates/FIX-BRIEF.md`.
 
 ## 6. Traps, each seen once
 
+- (2026-09-29) Plan-check findings appended to the brief as "Amendments from the plan check". A
+  reader going top down acts on the superseded text first; a rehearsal caught a would-be merge
+  to main. After a plan check, rewrite the brief in one voice and delete what it replaced.
+- (2026-09-29) An eval's judges cost more than its subjects: $58 of Claude scoring and review
+  against about $29 of pi runs, and $52 went to protocol design before any run. Fix the judging
+  budget first, and give the scoring to a second family so a Claude subject is not judged only
+  by Claude.
 - Handing off a *design* instead of a brief: the implementer invents the protocol fields, the WIT,
   the release order — differently from what was decided.
 - "Additive" claims that aren't: changing an existing WIT function's types re-pins every provider.
@@ -518,7 +633,7 @@ gets the fix set via `pi-drive`'s `templates/FIX-BRIEF.md`.
   patch carried a hunk from another repo.
 - The acceptance grep for a common word matched the brief's own new field and a third party's API.
 - The reviewer's prompt allowed spawning; its frontmatter didn't.
-- Provider ids: `openai-codex/gpt-6-astra`, not `openai/…`. Read them, don't guess.
+- Provider ids: `openai-codex/gpt-6-sol`, not `openai/…`. Read them, don't guess.
 - An expired Anthropic login killed a gpt run because two agent files still said Anthropic.
 - Editors forbidden cargo cannot update `Cargo.lock`; the first `--locked` check on the merged
   branch refuses. The assembler owns the minimal lock update (`cargo check -p` without

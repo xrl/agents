@@ -3,8 +3,8 @@ name: fact-checker
 description: Answers one pointed factual question about the code with file:line evidence
 advertise: false
 tools: read, grep, find, ls, bash
-model: openai-codex/gpt-6-astra
-thinking: medium
+model: openai-codex/gpt-6-sol
+thinking: high
 systemPromptMode: replace
 inheritProjectContext: false
 defaultContext: fresh

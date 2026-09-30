@@ -3,7 +3,7 @@ name: gate-runner
 description: Merges lane branches into the PR branch and runs the tiered cargo gates; routes verbatim failures
 advertise: false
 tools: read, grep, find, ls, bash
-model: openai-codex/gpt-6-astra
+model: openai-codex/gpt-6-sol
 thinking: low
 systemPromptMode: replace
 inheritProjectContext: true
