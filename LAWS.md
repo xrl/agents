@@ -361,6 +361,28 @@ down when the milestone is funded, with who may decide what: the supervisor,
 the called reviewer, the owner. Otherwise a supervisor that finishes overnight
 cannot tag, or decides something that was not its to decide.
 
+### 56. A pushed commit is never amended; a CI fix is a new commit on top.
+
+Amending what a remote already holds diverges every clone of it, and the only
+ways back are a force push or a recovery someone must review. Fix a red check
+with a new commit, verify it alone, and push it fast-forward. 2026-09-30: a
+supervisor's push prompt said "amend"; the driver's push was rejected and the
+step waited on a ruling.
+
+### 57. Authority travels with the prompt.
+
+A relayed instruction that overrides a written stop must quote the ruling that
+allows it. An agent that has only its brief and an unexplained order will
+follow the brief and refuse, which is the right call. 2026-09-30: a driver
+refused an authorized fix because the prompt did not say who authorized it.
+
+### 58. `gh` outside a repository fails silently: pass `-R <owner/repo>`.
+
+`gh run view` and `gh pr checks` resolve the repository from the working
+directory and report nothing when there is none, so a watcher looks idle while
+the job it watches finishes. 2026-09-30: the v0.29.0 image watcher ran from a
+plain folder and never saw the run.
+
 <a id="the-service--api-rules"></a>
 <a id="the-code--api-design-rules"></a>
 <a id="9-one-authoritative-api-contract-poem-openapi-for-implementation-first-rust-services"></a>
