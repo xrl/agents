@@ -13,13 +13,18 @@ description: Run one funded sub-campaign of a large multi-step code effort econo
 
 | Role | Model | Lives | Does | Never |
 |---|---|---|---|---|
-| Coordinator | Claude Opus, one session | across units until ~240k tokens, then a fresh session from `RESUME.md` | rules on hand-backs by quoting or adding a decision, lands, journals, reads spend | supervises a step; rereads a gate; polls |
-| Supervisor | pi `gpt-6-sol:high`, one session per step (or per run of steps) | `pi-turn.sh` in the background from its own folder | launches driver turns, runs the verifier, sends fix/push prompts, hands back | decides scope; edits the worktree; answers a stop without quoting a row |
-| Driver | pi `gpt-6-sol:medium`, recipe A, `-nc -ne` | one session per unit | edits, builds, commits, gates, pushes on ACCEPT | spawns agents; pushes before ACCEPT |
-| Verifier | pi `gpt-6-sol:high` via `pi-dry-run.sh … bash` | fresh per pass | reviews exactly one commit range | cargo, writes |
-| Fable | fresh `campaign-reviewer` | one read | plan check, the both-ways judging, unit head, whole PR | stays resident |
+| Coordinator | Claude Opus, one session | across units until ~240k tokens, then a fresh session from `RESUME.md` | rules on hand-backs by quoting or adding a decision, launches Opus for `hard` findings, lands, journals, reads spend | supervises a step; rereads a gate; polls; writes a brief, packet or re-check prompt pi can write |
+| Brief drafter | pi `gpt-6-sol:medium`, one run | once per sub-campaign | RECON, BRIEF and DECISIONS drafts from DESIGN and the source; the coordinator rules, then the plan check and dry run | decides an owner question |
+| Packet writer | pi `gpt-6-sol:medium`, one run | once per sub-campaign | DRIVER, SUPERVISOR, step prompts and verify templates from `templates/`; a sol rehearsal checks it | |
+| Supervisor | pi `gpt-6-sol:high`, one session per step (or per run of steps) | `pi-turn.sh` in the background from its own folder | launches driver turns, runs the verifier, sends fix/integrate/push prompts, runs the scoped re-checks, hands back hard findings | decides scope; edits the worktree; answers a stop without quoting a row |
+| Driver | pi `gpt-6-sol:medium`, recipe A, `-nc -ne` | one session per step | edits, builds, commits, gates, easy fixes, witnesses for Opus fixes, pushes on ACCEPT | spawns agents; pushes before ACCEPT; edits Opus fix lines |
+| Verifier | pi `gpt-6-sol:high` via `pi-dry-run.sh … bash` | fresh per pass | reviews exactly one commit range, tags findings `hard`/`easy` | cargo, writes |
+| Opus | fresh `general-purpose` agent, `model: opus` | one step or one fix | the spine step; `hard` findings as code only | writes tests for its own fix; shares a worktree with a live writer |
+| Fable | fresh `campaign-reviewer` | one read | plan check; whole-PR read (trial: Astra on the PR instead, once) | stays resident |
 | Astra | pi `gpt-6-astra:xhigh` | once | cross-step review of the assembled unit | |
-| Ship | `campaign-supervisor-medium` | once | merge, tag, verify release | |
+| Ship | pi sol supervisor + pi driver | once | prep, checks, PR, merge, tag, verify, the rpi-homelab rollout end to end (owner, 2026-10-01: "I trust the pi agent to ship to rpi homelab"); the funding line quoted as authority | |
+
+Routing owner-approved 2026-10-01 after sub-campaign 5 (Claude ≤ $69 of ≤ $82): the brief, the packet, the ship phase and all-easy fix rounds were Opus there and move to pi; expected Claude ≈ $35-40 on a unit that size. Claude keeps the spine, `hard` fixes, the plan check, rulings and landing.
 
 Design-shaping steps (the one where the spine's types are set) may go to one Opus agent instead of the driver: on A2 of sub-campaign 4 the blind judge preferred Opus's spine; pi had the better tests and the better numbers, cost $5.26 of pi and no Claude. Mechanical steps go to pi.
 
@@ -85,7 +90,9 @@ pi: `pi-usage.sh <worktree> <supervisor folder>` plus each verifier's printed `c
 
 ## Routing decided for sub-campaign 6 (owner, 2026-09-30)
 
-Opus builds the seam step where shape decides; pi fans out the mechanical steps with one verifier pass per commit; a second review round goes to an Opus fix agent; Astra once on the assembled unit; Fable once on the PR. From sub-campaign 4: third pi rounds cost ≈ $40-50 of pi and 2-3 h, and the coordinator's wakes ≈ $15-20 of Claude. Confirmed at the 04 close.
+Opus builds the seam step where shape decides; pi fans out the mechanical steps with one verifier pass per commit; Astra once on the assembled unit; Fable once on the PR. From sub-campaign 4: third pi rounds cost ≈ $40-50 of pi and 2-3 h, and the coordinator's wakes ≈ $15-20 of Claude. Confirmed at the 04 close.
+
+**Fix rounds (owner, 2026-10-01, replaces "second round to Opus"):** split by the verifier's `hard`/`easy` tags. Opus fixes only hard findings (code, no tests); the pi driver then witnesses the Opus fix, does the easy list and gates; an all-easy round never wakes Opus; a failed re-check goes to Opus. One writer per worktree at a time. The rule and the prompts: `pi-drive` §Fix rounds split by difficulty and `templates/SUPERVISOR.example.md`. Sub-campaign 5 (≤ $82, five Opus fix rounds, two with no hard finding) is why.
 
 ## Standing orders (owner, 2026-09-30)
 

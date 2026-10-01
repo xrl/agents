@@ -32,7 +32,8 @@ bash is for `git`, `grep`, `sed` and reading logs only; never cargo.
 Output. First line exactly `Reviewed: <head-sha>`. Then a ranked list of findings, each tagged
 `contract` (a decision, config key, wire field, deletion or proof gate), `guideline` (quote the
 rule's heading or the §Don't write this row) or `taste`, each with `file:line`, the concrete
-failure and the exact fix. `contract` and `guideline` make the verdict `FIX REQUIRED`; `taste` is
+failure and the exact fix. Tag each `contract` and `guideline` finding also `hard` or `easy`, as
+in `verify.example.md`. `contract` and `guideline` make the verdict `FIX REQUIRED`; `taste` is
 advisory, listed last, never blocks. End with `ACCEPT` or `FIX REQUIRED` on its own line. At most
 one page. A suspicion without a line is not a finding; an unearned ACCEPT is worse than a wrong
 finding.
