@@ -121,6 +121,25 @@ The packet is `~/code/dekopon/sol-supervisor-pilot/`.
   repeated third-FIX cases (fix and one scoped re-check when every finding is in the step's own
   hunks) removed a coordinator wake per step. The packets are
   `~/code/dekopon/campaign/04-shell-bytes/S1a/A4-12/` and the `campaign` skill.
+- **Fix rounds split by difficulty (owner, 2026-10-01).** The verifier tags every blocking
+  finding `hard` or `easy`. **hard:** a type or trait change across crates, concurrency or
+  ordering, cancellation or shutdown, a credential path. **easy:** a missing or weak test, an
+  exhaustive match, a record field, wording, a deletion. On `FIX REQUIRED`:
+  1. All easy → the **Fix** prompt to the driver (a new commit on top), then one re-check
+     scoped to the findings.
+  2. Any hard → hand back with the hard list. The coordinator launches one Opus fix agent for
+     the hard findings only: code, no tests, one commit, then it ends. Only after that commit
+     exists and the agent has exited, the supervisor sends the driver the **Integrate** prompt:
+     the Opus SHA, the hard list and the easy list. The driver writes a witness for each Opus
+     fix and proves it (revert that fix locally, the test fails, restore), does the easy list,
+     gates and commits. It never edits the Opus lines; a witness that shows an Opus fix is
+     wrong is a stop and a hand-back. Then one re-check scoped to both commits.
+  3. That re-check `FIX REQUIRED` → hand back; the coordinator routes it to an Opus fix agent.
+  One writer at a time in a worktree, always: the next writer starts only after the previous
+  writer's commit exists and its process has exited. Why: in sub-campaign 5 every pi step failed
+  its first verify, and sending every second round to Opus put five Opus fix agents on what were
+  mostly missing tests; two of the five rounds had no hard finding at all. A mis-tag costs one pi
+  turn, because the re-check catches it and step 3 routes it to Opus.
 - **Keep scope out of the packet's machinery.** A gate or acceptance check that names which
   files a PR may touch answers scope questions for the supervisor. Put scope in the decisions
   file, where an answer has to be quoted.
