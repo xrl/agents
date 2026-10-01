@@ -22,7 +22,7 @@ description: Run one funded sub-campaign of a large multi-step code effort econo
 | Opus | fresh `general-purpose` agent, `model: opus` | one step or one fix | the spine step; `hard` findings as code only | writes tests for its own fix; shares a worktree with a live writer |
 | Fable | fresh `campaign-reviewer` | one read | plan check; whole-PR read (trial: Astra on the PR instead, once) | stays resident |
 | Astra | pi `gpt-6-astra:xhigh` | once | cross-step review of the assembled unit | |
-| Ship | pi sol supervisor + pi driver | once | prep, checks, PR, merge, tag, verify, rollout; the funding line quoted as authority | (first sol-run release is a pilot: the coordinator reads SHIP-STATE before the config PR) |
+| Ship | pi sol supervisor + pi driver | once | prep, checks, PR, merge, tag, verify, the rpi-homelab rollout end to end (owner, 2026-10-01: "I trust the pi agent to ship to rpi homelab"); the funding line quoted as authority | |
 
 Routing owner-approved 2026-10-01 after sub-campaign 5 (Claude ≤ $69 of ≤ $82): the brief, the packet, the ship phase and all-easy fix rounds were Opus there and move to pi; expected Claude ≈ $35-40 on a unit that size. Claude keeps the spine, `hard` fixes, the plan check, rulings and landing.
 
