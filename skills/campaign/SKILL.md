@@ -84,7 +84,8 @@ pi: `pi-usage.sh <worktree> <supervisor folder>` plus each verifier's printed `c
 - No heartbeat means a hung turn stalls the run until someone looks; none hung in sub-campaign 4.
 - A subagent's completion notice can arrive before its hand-back message for the same turn; check the PR, not the notice.
 - `gh run view`/`gh pr checks` from a non-repo cwd fail silently: always pass `-R <owner/repo>`.
-- A prompt that says "amend" after a push diverges the branch: CI fixes are new commits on top.
+- Every correction is a new commit on top, before or after a push and within a PR; merge
+  base updates rather than rebasing existing history (LAWS §56).
 - A driver that runs under DRIVER.md's third-FIX stop refuses a fix unless the prompt quotes the coordinator ruling that authorizes it.
 - Grepping task output files can pull whole subagent transcripts into the coordinator's context; read only the named output of a Bash task.
 

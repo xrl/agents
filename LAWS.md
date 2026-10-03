@@ -269,8 +269,9 @@ the next commit rather than reverting by push.
 When one shared file appears in most open PRs or most agents' tool calls, move
 its edit to release time (a `Changelog:` line in each commit message, grepped
 from `git log` at release prep) instead of coordinating writers. Land the ready
-PRs back to back and rebase the rest once; a head with no CI is a conflicting
-head, so rebase rather than wait. Wait on CI with one blocking command, never
+PRs back to back and merge the updated base into the rest once; a head with no CI
+is a conflicting head, so resolve it with a base-update merge rather than wait.
+Wait on CI with one blocking command, never
 repeated status calls. Between waves ask which file most open PRs conflict on,
 whose tool calls are mostly polling, and whose spend is out of line with its
 diff; report usage at each milestone without being asked.
@@ -285,8 +286,8 @@ A fresh adversarial reviewer reads every PR before merge; cheap agents drive and
 verify, the expensive reviewer finds the gaps. The coordinator rules on each
 finding (fix, accepted trade-off named in the PR, or ignore) before routing it
 back, never pushes onto a reviewed branch, and merges only the reviewed SHA;
-rebases and fixes stay with the author agent. A result that meets the letter
-but misses the target is redone on its branch, not merged as progress.
+base-update merges and fixes stay with the author agent. A result that meets
+the letter but misses the target is redone on its branch, not merged as progress.
 
 - **Receipt, dekopon, 2026-09-27:** across a −2,250-line campaign every real
   gap (a replay orphan, a pre-expansion bug, a dead-end default, a permission
@@ -313,8 +314,8 @@ milestone.
 
 Run scoped gates on touched crates at each commit and let CI be the full gate.
 Start the gate, the verifier, the review and CI side by side at the commit.
-Re-run a bench or soak after a rebase only if the tree hash changed. Read a
-gate's log instead of re-running it. A release job does not repeat the checks
+Re-run a bench or soak after a base-update merge only if the tree hash changed.
+Read a gate's log instead of re-running it. A release job does not repeat the checks
 that already passed on the same commit (§3).
 
 - **Receipt, dekopon, 2026-09-29:** one unit walked minute by minute was 14
@@ -361,13 +362,19 @@ down when the milestone is funded, with who may decide what: the supervisor,
 the called reviewer, the owner. Otherwise a supervisor that finishes overnight
 cannot tag, or decides something that was not its to decide.
 
-### 56. A pushed commit is never amended; a CI fix is a new commit on top.
+<a id="56-a-pushed-commit-is-never-amended-a-ci-fix-is-a-new-commit-on-top"></a>
+### 56. Always fail forward: corrections are new commits, including in a PR.
 
-Amending what a remote already holds diverges every clone of it, and the only
-ways back are a force push or a recovery someone must review. Fix a red check
-with a new commit, verify it alone, and push it fast-forward. 2026-09-30: a
-supervisor's push prompt said "amend"; the driver's push was rejected and the
-step waited on a ruling.
+Edit uncommitted work freely. Once a commit exists, fix bugs, failed checks and
+review findings with new commits on top, even before the first push or in a
+draft PR. Never amend or rewrite existing commits to fold in a correction.
+Bring an updated base into the working branch with a merge, not a rebase.
+Run the affected gates and review the new HEAD before an authorized push;
+push fast-forward. A base-update merge is not permission to merge the PR or
+land on an integration or main branch.
+
+- **Receipt, 2026-09-30:** a supervisor's push prompt said "amend"; the
+  driver's push was rejected and the step waited on a ruling.
 
 ### 57. Authority travels with the prompt.
 

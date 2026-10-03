@@ -48,7 +48,7 @@ anything against it, except what `gate.sh` itself runs there.
   no `git commit`, `git rebase`, `git push`, `git checkout`, `git stash`, `git add`, no editor, no
   `gh pr create/edit/ready/merge`. Read-only there means `git log`, `git status`, `git diff`,
   `git show`, `git rev-parse`, `git fetch` (updates remote refs only), `gh pr view`, and the gate (its own writes excepted).
-  Fixes and rebases are the driver's; if something is wrong, your next prompt says so.
+  Fixes and base-update merges are the driver's; if something is wrong, your next prompt says so.
 - Never push, merge, mark ready, tag or release anything.
 - Never launch a driver turn while another driver turn is alive (§Launch checks this).
 - Never answer a stop that `decisions.md` and `DRIVER.md` do not answer (§Hand back).
@@ -63,7 +63,8 @@ anything against it, except what `gate.sh` itself runs there.
 ## State file
 
 Before every wait and at every stage boundary, overwrite `$E/supervisor-state.md` with: current
-stage, the driver turn number and its log path, the last accepted stage and its head SHA, the
+stage and its base SHA from the stage report (unchanged by follow-up fixes), the driver turn
+number and its log path, the last accepted stage and its head SHA, the
 D-numbers you added, and the next action. If your own turn is ever relaunched, read this file
 first and continue from it; do not start over.
 
@@ -122,13 +123,15 @@ A driver's report is a claim, not a receipt. Accept only when all of these hold,
 1. `cd <ABS WORKTREE> && bash <ABS PLAN FOLDER>/pi/gate.sh 2>&1 | tail -8`
    ends with `== GATE GREEN at <HEAD>` (your own run, not the driver's log).
 2. `git -C $W status --short` is empty.
-3. `bash /Users/xavier/.claude/skills/pi-drive/scripts/pi-stage-check.sh <ABS WORKTREE> $(git -C $W rev-parse HEAD~1) <ABS PLAN FOLDER>/execution <cap>`
-   prints `verdict=ok` (each stage is one commit, so its parent is `HEAD~1`; the cap is the one
-   in Fixed values). A stage verifier's accepting verdict is `ACCEPT`; `READY` is the
+3. `bash /Users/xavier/.claude/skills/pi-drive/scripts/pi-stage-check.sh <ABS WORKTREE> <stage-base-sha> <ABS PLAN FOLDER>/execution <cap>`
+   prints `verdict=ok`. Use the base SHA recorded before this stage's implementation, not
+   `HEAD~1`: the range must include every follow-up fix. The cap is the one in Fixed values.
+   A stage verifier's accepting verdict is `ACCEPT`; `READY` is the
    pr-reviewer's, on the stages that have one. `verdict=NOT OK` is not accepted.
 4. `cd $W && gh pr view --json state,isDraft,headRefOid,url` shows `OPEN`, `isDraft: true` and
    `headRefOid` equal to local HEAD (the pushed head is the reviewed head).
-5. The commits since the merge base are exactly one per accepted stage, and
+5. The first-parent commits are accounted for by the accepted stages, their follow-up fixes and
+   reviewed base-update merges; there is no one-commit-only requirement. Also,
    `git -C $W diff --stat $(git -C $W merge-base origin/main HEAD) HEAD` touches only
    <the paths each stage may touch, per stage, from the brief>.
 
@@ -161,7 +164,8 @@ inline. Keep them to the text below.
   > turn while a subagent or background job is still running.
 - **Correction after a failed read-only check:**
   > Your report says <claim>; at <sha> <command> shows <verbatim line>. Fix it within stage N,
-  > amend, rerun the gate once, re-verify, update the report. Do not end your turn while a
+  > commit the fix on top, rerun the gate once, re-verify the new HEAD, update the report.
+  > Do not end your turn while a
   > subagent or background job is still running.
 
 ## Answering a stop

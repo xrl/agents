@@ -106,7 +106,7 @@ The packet is `~/code/dekopon/sol-supervisor-pilot/`.
   failure was a scope question with an obvious conservative answer, and that case has not been
   re-tested under the new rule.
 - **What that means for routing.** A sol supervisor runs the watch loop well and costs a tenth
-  of opus. Use it for mechanical units, rebases and re-pins included. Code units stay on opus at
+  of opus. Use it for mechanical units, base updates and re-pins included. Code units stay on opus at
   medium until a sol supervisor has handed back a real scope question on real work: try it on
   the first small code unit of the next campaign and read its decisions file afterwards, in
   place of a fourth synthetic pilot.
@@ -260,7 +260,8 @@ remember to stop; `pi-rpc-stop.sh` at the end of the session.
   any verifier you spawned); write the report when done"*. A foreground `subagent()` call does
   keep the process alive; `ps` for `cargo`/`rustc` shows what the child is doing.
 - One stage per prompt, from `templates/STAGE-PROMPTS.md`. Do not re-explain the brief; point at its section. Each stage prompt
-  opens with "rebase onto origin/main first" and closes with "one full gate at commit, no
+  opens by pointing at the driver's base-update merge and stage-base recording step, and closes
+  with "one full gate at commit, no
   packaging or smoke before the last stage, long commands in the background to a log file"
   (`pi-subagent-plan` §0b). If the brief predates §0b, the prompt overrides it and says so.
 - Run independent stages in parallel: when the driver reaches the measurement stage, the
@@ -271,7 +272,7 @@ remember to stop; `pi-rpc-stop.sh` at the end of the session.
   `contract` findings. If the driver spawns a child for work it could do in one command,
   the next prompt says to do such things itself.
 - Verify claims of green gates yourself with the same commands (`--locked`, scoped `-p`), in the
-  driver's worktree, read-only. Never edit or push there: rebases and fixes are the driver's, so
+  driver's worktree, read-only. Never edit or push there: base-update merges and fixes are the driver's, so
   the reviewed head stays the head that merges; if something is wrong, the next prompt says so.
 - A defect in the **plan** (a seam it missed, an "as today" that is not, a claim the source
   contradicts) is two records, not one: the D<n> that resolves it for the driver, and one line in
