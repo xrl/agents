@@ -84,7 +84,8 @@ and spend nothing else:
    distinctive literals (ids, error codes, config keys, secret shapes) into what remains and
    finds them asserted before accepting. A cheap verifier approved losing the only test of a
    security property on 2026-09-27.
-4. **Rebase onto `origin/main` at the start of every stage**, not only before the PR. A
+4. **Merge the updated `origin/main` into the working branch at the start of every stage**,
+   not only before the PR; do not rebase existing commits. A
    workspace-wide lint that merges mid-run is ten minutes at stage 2 and a fix pass at the end.
 5. **Independent stages run in parallel.** Measurement (compute) and whole-PR review
    (read-only) do not depend on each other; the supervisor runs one in the background while the
@@ -218,7 +219,8 @@ write one too early.
   names what changed. SDK 0.18.0 dropping Wasmtime's `cache` feature was visible there and cost
   python 3.5 hours of release-job timeouts because nobody looked.
 - **What stays with the owner is explicit**: releases, tags, published packages, private-repo
-  commits, paid or real external calls, merges. Agents open PRs; they never merge or approve. Say
+  commits, paid or real external calls, landing on integration/main branches. Agents open PRs; they never
+  merge PRs or approve. Updating their own working branch from its base is ordinary work. Say
   the other half too: version fields edited inside a PR are ordinary work — "chart bump" read
   literally is a stop condition.
 - **The rehearsal (§5) passed** with no stops.
@@ -241,7 +243,7 @@ Sections, in this order. Keep it under ~400 lines; link, don't paste, the design
 4. **Decisions (settled)** — the table. Cite where each was recorded.
 5. **Work packages** — one lettered lane per seam with exact paths, what changes, what is deleted,
    which docs move in the same change, and the tests it must add. Lanes must not overlap files;
-   if two must touch one file, name the hunks. **Any preparatory edit** (rebasing a harness,
+   if two must touch one file, name the hunks. **Any preparatory edit** (merging base updates into a harness,
    generating fixtures, rewriting config) is a stage with an editor, because the orchestrator
    never edits.
 6. **Landing order** across repositories, derived from every consumer *at its deployed version*
@@ -681,8 +683,8 @@ gets the fix set via `pi-drive`'s `templates/FIX-BRIEF.md`.
   the old rlib. Delete `target/debug/.fingerprint/<crate>-<hash>` (the tmp-registry unit's hash)
   and `target/package/`; not a kache fault though the diagnostics print `/kache/...`. Better:
   don't run packaging locally before the last stage (D19 in the asset packet).
-- `#303` (workspace-wide `deny(unwrap_used)`) merged mid-run under ~9k unrebased lines. Rebase
-  per stage.
+- `#303` (workspace-wide `deny(unwrap_used)`) merged mid-run under ~9k unrebased lines. Keep
+  stages current by merging the updated base, without rewriting existing commits.
 - A 1200 s foreground tool deadline killed the driver mid-stage-2; the recovery cost a turn and a
   tarball of partial state. Background + log file for anything over a few minutes.
 - (2026-09-20 fleet) A bare `curl` to crates.io returns 403 from the edge; a verification step

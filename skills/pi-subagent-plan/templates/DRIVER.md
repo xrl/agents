@@ -1,8 +1,8 @@
 # <CHANGE NAME> — driver brief
 
 You are the single driver of the <repo> PR that <one sentence of what the PR does>. No workflow
-script, no lanes: you edit, run cargo, commit once per stage, and spawn one fresh verifier per
-stage. Your supervisor issues one stage per turn and answers your stops; the turn-1 prompt is
+script, no lanes: you edit, run cargo, commit each stage and its follow-up fixes, and spawn one
+fresh verifier per stage. Your supervisor issues one stage per turn and answers your stops; the turn-1 prompt is
 `KICKOFF.md`.
 
 `<design>` below means `<ABS PLAN FOLDER>`; always write it out as that absolute path. The worktree
@@ -46,7 +46,8 @@ one is blocked, finish the others, then report the blocked one.
 
 The four stops: forking, patching or bumping a dependency to make something pass; moving a config
 key/value, wire field or decision away from `decisions.md`; deleting something this brief keeps or
-keeping what it deletes; owner-only actions (releases, tags, publishing, merging, <any real call to
+keeping what it deletes; owner-only actions (releases, tags, publishing, merging PRs or landing on an integration/main
+branch, <any real call to
 the paid/external services>). To stop: write every open question into one
 `<design>/execution/<topic>-blockers.md` with the mechanism facts and one proposed answer each,
 then end your turn with its path. Nothing else is a stop: lock additions, lint fixes, test
@@ -86,8 +87,12 @@ that removes each.
   `<design>/execution/logs/`, and you wait on it with one blocking command (§Gate). Write the
   stage report while it runs, not status calls.
 - **A stage is at most ~1k changed lines.** If `git diff --shortstat <stage parent>` passes ~1.2k,
-  split it: commit and verify the first half as stage Na, then the rest as Nb.
-- One commit per stage, conventional subject. **The commit body carries the why**: the choices a
+  split pending work: commit and verify the first half as stage Na, then the rest as Nb.
+  If the oversized work is already committed, ask the supervisor to rescope the stage; do not
+  rewrite commits to split it. Keep the original stage base for every follow-up fix.
+- One implementation commit per stage; later fixes are new commits on top, even before the
+  first push. Never amend or rewrite commits; merge base updates instead of rebasing. Use
+  conventional subjects. **The commit body carries the why**: the choices a
   reviewer would question and your Driver decisions for that stage, in prose, without D-numbers
   or local paths (the repo squash-merges; the squash message is what survives). Stage files by
   path; never `git add .` or `-A`; never commit `.pi/`, fixtures, targets or anything under
@@ -153,17 +158,20 @@ not run an example's `#[cfg(test)]` module unless its `[[example]]` entry sets `
 
 Every stage, in order:
 
-1. `git fetch origin && git rebase origin/main`; record conflicts in the report. From stage 2:
-   `gh pr checks <url>` for the pushed head; a red **required** check is fixed first, amending the
-   previous stage's commit. Pending is not red.
+1. From stage 2, check the previous pushed head with `gh pr checks <url>` first. Fix a red
+   **required** check in a new commit on top, re-gate and re-verify the new HEAD before a
+   fast-forward push. Pending is not red. Then `git fetch origin && git merge --no-edit origin/main`;
+   record conflicts in the report. Gate and review any base-update merge before pushing it.
+   Record the resulting HEAD as the stage base SHA before implementation; keep that base for
+   every follow-up fix and size check in this stage.
 2. Implement the stage block below. Scoped checks while iterating.
-3. `df -h ~`. Commit (one commit; amend it for every later fix in this stage).
+3. `df -h ~`. Commit the implementation. Every later fix is a new commit on top.
 4. The full gate in the background (§Gate); one blocking wait to green.
 5. Draft `<design>/execution/stage-N-report.md` (§Report): the verifier reads it.
 6. **Verify** (§Verify). Apply every `contract` and `guideline` finding — a finding that
-   contradicts a decision is declined with its D-number — amend, rerun the gate once, update the
-   report. Pass 2 whenever you changed the commit after pass 1, because only a reviewed head is
-   pushed (step 7): over the whole stage when pass 1 had a `contract` finding, over the amended
+   contradicts a decision is declined with its D-number — commit fixes on top, rerun the gate once,
+   update the report. Pass 2 whenever HEAD changed after pass 1, because only a reviewed head is
+   pushed (step 7): over the whole stage when pass 1 had a `contract` finding, over the fix
    delta alone otherwise. There is no pass 3.
 7. **Push only when the last verdict is `ACCEPT`, at the SHA it reviewed.** If pass 2 still says
    `FIX REQUIRED`, do not push: end the turn with both verdicts side by side; the supervisor
@@ -188,8 +196,9 @@ subagent({ agent: "pr-reviewer", context: "fresh", async: false, cwd: "<ABS WORK
 Save it to `<design>/execution/review-P.md`. Same fix rules as step 6. After the last stage: only
 on `READY` does `gh pr ready` run; then one blocking `gh pr checks --watch --fail-fast <url>`,
 its output to `<design>/execution/logs/checks.log`. No checks 60 s after a push means the head
-conflicts: rebase once, do not wait. A red check: fix, amend, re-gate, **re-verify the new
-head**, push, at most two rounds. Otherwise leave the PR a draft and end the turn with what remains.
+conflicts: merge the updated base once, re-gate and re-verify the resulting HEAD; do not wait.
+A red check: fix in a new commit on top, re-gate, **re-verify the new head**, push fast-forward,
+at most two rounds. Otherwise leave the PR a draft and end the turn with what remains.
 
 ## Verify
 
@@ -213,7 +222,8 @@ sentence in the report.
 
 ## Report
 
-`stage-N-report.md`, one page: head SHA; what changed with `file:line`; the gate log path and its
+`stage-N-report.md`, one page: stage base SHA (recorded before implementation, unchanged by fixes);
+head SHA; what changed with `file:line`; the gate log path and its
 last block; verifier verdicts and what you did with each finding; `Driver decisions` (cumulative,
 numbered). Stage 1's report opens with the preflight results. The final stage's report adds every
 CI check and result, what in this brief was wrong, what you left out, and free disk before and

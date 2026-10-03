@@ -17,8 +17,9 @@ discrepancy under Driver decisions, and keep going. Stop only for the stops in t
 with its path.
 
 Do stage 1 now: DRIVER.md §Stages step by step and the stage 1 block; §Rules and §Don't write
-this apply. Rebase onto origin/main first. One commit (the why in its body<, one `Changelog:`
-line>), one full gate per head in the background (the first to
+this apply. Follow step 1 for the base-update merge and record the stage base SHA. One
+implementation commit (the why in its body<, one `Changelog:` line>); later fixes are new commits
+on top. One full gate per head in the background (the first to
 `<ABS PLAN FOLDER>/execution/logs/stage-1-gate.log`); no packaging or smoke. The report at
 `<ABS PLAN FOLDER>/execution/stage-1-report.md`, the verifier (`async: false`, or async and
 waited on to completion if the harness requires it); push only on `ACCEPT`, never over FIX
