@@ -11,6 +11,8 @@
 const lanes = args.lanes;
 const maxRounds = args.maxRounds || 3;
 const stageOf = l => l.stage || 1;
+// A verdict counts only when its last line is the expected word; a missing or unparseable one is FIX REQUIRED.
+const verdictIs = (r, word) => !!r && typeof r.output === "string" && r.output.trim().split("\n").pop().trim() === word;
 const stages = [];
 for (const l of lanes) if (stages.indexOf(stageOf(l)) === -1) stages.push(stageOf(l));
 stages.sort();
@@ -70,7 +72,7 @@ for (let s = 0; s < stages.length; s++) {
   for (let k = 0; k < idx.length; k++) verdicts[idx[k]] = stageVerdicts[k];
   // Two fix passes per lane (editor resumed, verifier resumed); a third FIX REQUIRED blocks the lane.
   for (const i of idx) {
-    for (let pass = 1; pass <= 2 && verdicts[i].output.indexOf("FIX REQUIRED") !== -1; pass++) {
+    for (let pass = 1; pass <= 2 && !verdictIs(verdicts[i], "ACCEPT"); pass++) {
       edits[i] = await runs.run("fix-" + lanes[i].key + "-" + pass, {
         resume: edits[i].runId,
         task: "The verifier requires fixes (pass " + pass + " of 2). Apply exactly the contract and guideline findings and commit; taste is optional:\n" + verdicts[i].output,
@@ -80,8 +82,8 @@ for (let s = 0; s < stages.length; s++) {
         task: "Re-verify the same lane after the editor's fix pass " + pass + ". Editor's report:\n" + edits[i].output,
       });
     }
-    if (verdicts[i].output.indexOf("FIX REQUIRED") !== -1) {
-      throw new Error("Lane " + lanes[i].key + " still FIX REQUIRED after two fix passes; blocked for the owner. Last verdict:\n" + verdicts[i].output);
+    if (!verdictIs(verdicts[i], "ACCEPT")) {
+      throw new Error("Lane " + lanes[i].key + " has no ACCEPT after two fix passes; blocked for the owner. Last verdict:\n" + (verdicts[i] && verdicts[i].output));
     }
   }
   if (s < stages.length - 1) {
@@ -154,7 +156,10 @@ const review = await runs.run("review", {
   cwd: args.prRoot,
   task: "Review the assembled PR on branch " + args.prBranch + " against <BRIEF>.",
 });
-if (review.output.indexOf("FIX REQUIRED") !== -1) {
+if (!verdictIs(review, "READY")) {
+  if (!lanes.some(l => review && String(review.output).indexOf("Lane " + l.key) !== -1)) {
+    throw new Error("PR review has no READY and names no lane to fix; stop and report:\n" + (review && review.output));
+  }
   for (let i = 0; i < lanes.length; i++) {
     if (review.output.indexOf("Lane " + lanes[i].key) !== -1) {
       edits[i] = await runs.run("reviewfix-" + lanes[i].key, {
