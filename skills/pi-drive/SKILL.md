@@ -61,66 +61,34 @@ fresh pi sol verifier against the finding's Fix line; it gets a second fable pas
 moved a contract surface or answered a P1. Say in the first message which tier is supervising,
 and report both bills.
 
-## A sol supervisor (three pilots, 2026-09-29)
+## A sol supervisor
 
-**Result.** One sol supervisor took a sol driver through two stages to a green draft PR
-(`dekopon-agents/steering-eval#1`) in 15.7 minutes. The supervisor cost $0.40 of pi, against $3
-to $8 for an opus supervisor per unit; the whole unit cost $1.54 of pi. It made no edit in the
-driver's worktree and no push, reran the gate and `pi-stage-check.sh` itself after every turn,
-and made 0 status calls while a driver turn was alive. The driver never stopped in that pilot, so its stop and hand-back paths ran first in pilot 2,
-below.
-The packet is `~/code/dekopon/sol-supervisor-pilot/`.
+A pi sol supervisor runs the watch loop for mechanical and code units alike, at about a tenth of
+an opus supervisor's cost.
 
-- **Shape.** The supervisor is its own pi session (`openai-codex/gpt-6-sol:high`, session id
-  `<effort>-supervisor-<date>`), launched by Claude with `pi-turn.sh` in the background, with
-  the plan folder as its cwd so `pi-usage.sh` shows it apart from the driver. Its whole prompt
-  is `templates/SUPERVISOR.md`, filled in.
-- **Launch and wait, inside pi.** One bash call per driver turn, with the bash tool's
-  `timeout` at `3600`: a pid-file check refuses a second live turn, `nohup bash pi-turn.sh … &`
-  starts it, its pid goes to a file, and a `while kill -0` loop in the same call waits for it. The rule against `nohup` is about Claude Code's
-  runner and does not apply inside pi, but pi has a trap of its own: its `pi-processes` skill
-  offers a `process` tool, sol reaches for it, and a process started that way dies when the
-  supervisor's print-mode turn ends. In pilot 2 the supervisor did that and ended its turn with
-  "Awaiting driver turn 1"; the driver died after two messages. The template forbids it.
+- **Shape.** Its own pi session (`openai-codex/gpt-6-sol:high`, session id
+  `<effort>-supervisor-<date>`), one per step, launched by Claude with `pi-turn.sh` in the
+  background with the plan folder as cwd, so `pi-usage.sh` shows it apart from the driver. Its
+  whole prompt is `templates/SUPERVISOR.md`, filled in.
+- **Launch and wait, inside pi.** One bash call per driver turn, bash `timeout` `3600`: a pid-file
+  check refuses a second live turn, `nohup bash pi-turn.sh … &` starts it, its pid goes to a
+  file, and a `while kill -0` loop in the same call waits. Never the `pi-processes` `process`
+  tool: a process started that way dies when the supervisor's print-mode turn ends.
 - **What it hands back.** A stop the decisions file does not answer, a hard stop, the same
-  tripwire firing twice, FIX REQUIRED after verifier pass 2, an auth error or outage, and every
-  merge, mark-ready, tag, release, deploy or deployment-repo push. It writes
-  `<design>/execution/supervisor-blockers.md` with the mechanism facts and one proposed answer
-  each, and ends its turn. The exit wakes Claude, which answers in the decisions file and
-  relaunches. Claude reads the blocker file and the final report, nothing else.
-- **Pilot 2, planted stops (2026-09-29): failed.** Draft PR `dekopon-agents/dekopon#414`, a
-  one-sentence docs fix, $1.08 of pi. The stop the decisions file answered was answered and
-  recorded, correctly. The scope question ("should this PR correct two other files too?") was
-  not handed back: the supervisor wrote its own decision, "applies D3 and DRIVER.md", and
-  relaunched the driver. Its answer was the conservative one and matched what Claude would have
-  said, which is how this failure hides. Two causes. The packet leaked: the gate and the
-  acceptance check both said "touches only `docs/upgrading.md`". And the model stretched: it
-  wrote a first D-number broader than the decision it cited, then cited that. Its first turn
-  also launched the driver with the `process` tool and ended.
-- **Pilot 3, the rewritten template (2026-09-29): passed.** The unit was the rebase of
-  `dekopon-agents/steering-eval#1` onto a main that had moved five commits, two conflicts, $0.39
-  for the supervisor. The covered stop was answered by quoting the decision verbatim. The
-  uncovered one (a tracking id the packet did not contain) was handed back with nothing decided,
-  and resumed from the state file after Claude's answer. No `process` tool, no status calls
-  during a live turn. **Its limit:** the uncovered stop had no tempting answer. Pilot 2's
-  failure was a scope question with an obvious conservative answer, and that case has not been
-  re-tested under the new rule.
-- **What that means for routing.** A sol supervisor runs the watch loop well and costs a tenth
-  of opus. Use it for mechanical units, rebases and re-pins included. Code units stay on opus at
-  medium until a sol supervisor has handed back a real scope question on real work: try it on
-  the first small code unit of the next campaign and read its decisions file afterwards, in
-  place of a fourth synthetic pilot.
-- **Sub-campaign 4, real code (2026-09-30): passed.** Sol supervisors watched A2 (pi side) and
-  A3-A13 of a 9,400-line shell rewrite: zero decisions of their own, every third FIX REQUIRED
-  handed back with one proposed answer, and a strict reading of a standing ruling handed back
-  rather than stretched. Sol supervisors now watch code units too. What went wrong was the
-  packet, not the model: a Push prompt that said "amend" after a push (fix: a CI repair is a new
-  commit on top), a driver refusing a fix because the prompt did not carry the coordinator's
-  authority (fix: quote the ruling file), and one supervisor session carried across five
-  resumes that grew to $7 (fix: a fresh session per step). A standing ruling for
-  repeated third-FIX cases (fix and one scoped re-check when every finding is in the step's own
-  hunks) removed a coordinator wake per step. The packets are
-  `~/code/dekopon/campaign/04-shell-bytes/S1a/A4-12/` and the `campaign` skill.
+  tripwire twice, the cases in `templates/SUPERVISOR.md` §Hand back to Claude, an auth error or
+  outage, and every merge, mark-ready, tag, release, deploy or deployment-repo push. It writes
+  `<design>/execution/supervisor-blockers.md` (mechanism facts, one proposed answer each) and
+  ends its turn. Claude answers in the decisions file, reads only the blocker file and the final
+  report, and relaunches.
+- **Covered stops are answered by quoting the decision verbatim.** A D-number it writes never
+  reaches past the decision it cites. Prompts that carry a coordinator ruling quote the ruling
+  file, or the driver refuses the fix for lack of authority.
+
+Receipts: 2026-09-29 pilot 1 passed (two stages, $0.40 supervisor); pilot 2 failed (a scope
+question answered instead of handed back, because the gate leaked scope, and a driver launched
+with the `process` tool died); pilot 3 passed on the rewritten template. 2026-09-30 sub-campaign
+4 (A2-A13, 9,400 lines) passed with zero decisions of the supervisors' own; a session carried
+across five resumes grew to $7.
 - **Fix rounds split by difficulty (owner, 2026-10-01).** The verifier tags every blocking
   finding `hard` or `easy`. **hard:** a type or trait change across crates, concurrency or
   ordering, cancellation or shutdown, a credential path. **easy:** a missing or weak test, an
@@ -417,18 +385,10 @@ kache failure (the 0.18.0 fleet parked on it once); a `Codex error: Unable to ve
 is transient, resume or respawn the child on the same model; an attestation 404 is a stop only after the repo's release docs say which artifact is attested; a red local test after a fixture
 bump in a fresh worktree is a stale gitignored fixture until CI disagrees: refetch, then compare.
 
-## Retro: the 0.18.0 release and fleet drive (2026-09-20)
+## Receipt: the 0.18.0 release and fleet drive (2026-09-20)
 
-One day, ~9 hours wall clock, of which the code was under three: core release with zero stops
-(1 h 25 m), site push (10 m), eleven fleet re-pins (~2 h, batched three at a time), four
-code-change repos in parallel sessions (~1 h), one repo alone 3 h 25 m (a real regression: a
-dependency dropped a compile-cache feature, every test recompiled the component, the shared
-release job's 30-minute timeout fired twice; fixed inside that repo's tests). The process losses
-were the orphaned-child turn boundary above (~1.5 h across five relaunches), the batching (~1 h),
-one false hard stop and one transient (15 m each). The briefs were not over-specified: the two
-sonnet dry runs found nineteen defects, at least six of them guaranteed stops or wrong actions.
-What was too much: drivers wrote 100+ per-step evidence files under `execution/`; ask for one
-report per stage and no per-step receipts.
+Core, site and fifteen providers in one ~9 h day, under three of it code; drivers wrote 100+
+per-step evidence files. Ask for one report per stage and no per-step receipts.
 
 ## One-turn fix session (fresh pi, review-driven)
 

@@ -166,26 +166,10 @@ prefixes from `files_touched`), fix the routing or brief flaw that stopped the r
 changing prompts: any prompt edit is a cache miss that re-runs implementers on an edited tree.
 Never restart completed implementation to recover conversation context.
 
-## 6. Lessons, with the evidence (dekopon PR #197, 2026-09-10)
+## 6. Lessons not stated above (dekopon PR #197, 2026-09-10)
 
-- **Agents must not name owners.** `blocked_on_group` was the one field an agent filled by
-  guessing; both guesses were wrong and each cost three opus runs (~22 min, ~56k output tokens,
-  zero diff). 8 of 12 fix agents across both runs were routing artifacts. Hence
-  `blocked_on_path`, the router in code, and blast prefixes so repair ownership follows the
-  causing change.
-- **Ownership violations were cleanup, not protection.** All three firings were undoing a
-  misroute; the same 14-site fixture fix landed regardless. Keep the check, but it is why
-  bookkeeping rounds no longer count against the repair cap.
-- **Untyped verdict ids trip caps.** A verifier returned an id (`OWNERSHIP`) outside the
-  acceptance set with `met=false`, its own gap saying no code change was needed, and that hit
-  the fix cap. Verdict ids are now the acceptance enum and gaps are graded.
-- **Concurrent editors see each other mid-flight.** Only the gate judges the tree.
-- **Hangs are the expensive failure.** 1,052 s for two hung tests; 66 s of it overlapped
-  useful work. Name them from the log and rerun without them.
-- **Tier the gate.** Run 1's single gate round was 27 minutes, 84% in the test stage, for
-  failures a check tier would have named in one.
-- **Include reverse dependents in the scoped set.** The 14 gate failures were in scope, but
-  the consumer crate whose fixtures the same change broke was not, and its fix was done blind.
+- **Verdict ids are the acceptance enum.** A verifier once returned `OWNERSHIP`, outside the
+  acceptance set, with `met=false` and a gap saying no change was needed; it hit the fix cap.
 - **`Date.now()`/`Math.random()` are unavailable in scripts**; stamp results after return.
 
 ## 7. Launch recipe

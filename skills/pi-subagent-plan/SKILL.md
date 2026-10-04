@@ -124,15 +124,9 @@ for a one-directory delete costs a round trip and a report nobody needs.
     with the stream, forward compatibility of every wire parser, pinned assumptions about other
     services, code that exists to satisfy a rule literally.
 
-**#321 retro (2026-09-22).** Multi-LLM inference, +10.7k/−3.7k over five stages, B- engineering
-and C process. The driver optimized for rule-literalism and reviewer appeasement first, then
-security theatre, then real-provider correctness; performance and scope last. Four of its
-paranoia patterns came from *our* rules: "every limit at the edge and one past it" and the
-`Limits` report table produced ceiling twins, 1-ns timeout caps and byte budgets on error
-excerpts, and the brief asked for `Driver decisions`, `Limits` and the plan path in the PR body.
-Those rules are gone from the templates; the replacements are concrete (§Don't write this),
-because "don't be paranoid" alone does nothing to a literal model. Owner cleanup afterwards was
-~−1.2k lines net with fewer, better tests.
+Receipt: #321 (2026-09-22), whose paranoia patterns came from our own rules, is why
+`DRIVER.md` §Don't write this names concrete bans; "don't be paranoid" alone does nothing to a
+literal model.
 
 ## 0. Gate: is it ready to hand off?
 
@@ -395,7 +389,7 @@ subscription, so its dollars are notional and Claude's are not.
 | Per-stage verifier | pi sol (`lane-verifier`, fresh) | cheap and it finds real contract bugs |
 | Cross-stage and whole-design review | pi astra (`pr-reviewer`, xhigh or max) | about $6 a review; nine majors on 2026-09-28, none overlapping fable's |
 | Re-check of a fix against the finding it answers | pi sol verifier, fresh | "did this commit do what the Fix line says" is mechanical. A second fable pass only when the fix moved a contract surface or answered a P1 |
-| The watch loop: liveness, relaunches, read-only checks, stage prompts, routing findings | pi sol supervisor for mechanical and code units (`pi-drive` §A sol supervisor: piloted 2026-09-29, passed on sub-campaign 4's A2-A13 with zero decisions of its own); opus at medium only for a ship unit | mechanical; it was the largest Claude line on 2026-09-29 |
+| The watch loop: liveness, relaunches, read-only checks, stage prompts, routing findings | pi sol supervisor for mechanical and code units (`pi-drive` §A sol supervisor: piloted 2026-09-29, passed on sub-campaign 4's A2-A13 with zero decisions of its own); releases and rollouts too (campaign §Who does what: Ship) | mechanical; it was the largest Claude line on 2026-09-29 |
 | **Ruling on each review finding** (fix, accepted trade-off, ignore) | fable or the session | this is where scope stays proportionate |
 | **A stop the decisions file does not answer** | fable | four or five per day decided the outcome on 2026-09-20: the false kache stop, the python timeout cause, the fan-out shape reset |
 | **Adversarial review of the landed PR (§5b)** | fable, fresh | two gpt reviews passed #305 with a 44 GB hole in it |
@@ -406,71 +400,35 @@ rest to pi. If the session is opus, it spawns a fable `Agent` (`subagent_type: c
 per the harness) for each fable row with the decisions file, the brief and the stop's blocker
 file as the whole context.
 
-**Why, in numbers (campaign of 2026-09-29, $356).** Claude was $240 and pi $116 at list price.
-The pi drivers that wrote the production code cost about $60. Claude by role, allocated from the
-day's transcripts and scaled to ccusage:
-
-| Claude role | $ | Sessions |
-|---|---|---|
-| Supervisors (opus) | 70 | 24 |
-| Steering eval: owners, scorers, adversaries, shape reviews | 58 | 80 |
-| Reviews and plan checks (fable) | 50 | 19 |
-| Coordinator and main sessions | 42 | 2 |
-| Inventories, brief writers, recon, rehearsals | 20 | 16 |
-
-Watching the drivers cost more than the drivers. The reviews and plan checks found every real
-defect and stay. Two checks returned nothing and are not run again: a sonnet adversary hunting
-counterexamples (0 confirmed in 126 attempts) and a Claude shape review after every stage
-(recipe B: +0.25 points for 6 to 10 times the cost of a run).
+Two checks are not run again: a sonnet adversary hunting counterexamples (0 confirmed in 126
+attempts) and a Claude shape review after every stage (+0.25 points for 6 to 10 times a run).
+Receipt, 2026-09-29: Claude $240 against pi $116; Opus supervisors ($70) cost more than the
+drivers that wrote the code ($60); the reviews and plan checks found every real defect.
 
 ### Effort: the start of the flat part
 
 Set each role at the lowest effort after which the next step gains under about 1 point on the
-benchmarks nearest its work. The curves are in
-`~/code/dekopon/effort-tuning-design/execution/CARDS.md` (vendor launch pages and Artificial
-Analysis, read 2026-09-29; score at cost per task). Public benchmarks are the prior; the
-steering eval picks between the two candidate levels.
+benchmarks nearest its work (curves: `~/code/dekopon/effort-tuning-design/execution/CARDS.md`).
+Benchmarks are the prior; a task-matched eval overrides them. On the Claude side effort is the
+smaller lever: fewer turns and smaller briefs save more than a lower setting.
 
-| Model | Agentic coding, by effort | Knee | Above it |
-|---|---|---|---|
-| `gpt-6-sol` | DeepSWE 37.2 low, 56.6 medium, 65.3 high, 66.6 xhigh, 68.8 max | high | +3.5 points for 4 times the cost |
-| `gpt-6.1-sol` | DeepSWE 64.4 low, 73.0 medium, 75.2 high, 71.9 xhigh, 71.9 max | medium to high | xhigh and max score lower than high |
-| `gpt-6-astra` | DeepSWE 67.0 low, 72.8 medium, 73.2 high, 74.1 xhigh, 73.2 max | medium to high | under 1 point; long terminal tasks still gain at max |
-| Opus 5.5 | Terminal-Bench 38.5 low, 57.6 medium, 64.2 high, 66.4 xhigh, 64.8 max | high; medium is the value point | flat or lower for 2 to 3 times the cost |
-| Fable 5.1 | CursorBench 66.2 low, 68.0 medium, 69.4 high, 72.8 xhigh, 73.4 max | xhigh | +0.6 for 39% more, except long terminal tasks (+4.5) |
-| Sonnet 5.5 | Terminal-Bench 20.0 low, 28.8 medium, 43.0 high, 61.5 xhigh, 70.6 max | none: it climbs to max | at xhigh it costs more than Opus at high and scores lower |
+| Role | Effort |
+|---|---|
+| Driver, lane editor | `gpt-6-sol` at `medium` |
+| Stage verifier, fact-checker, dry runs | `gpt-6-sol` at `high` |
+| Gate-runner | sol `low` |
+| Recon, inventories, brief and packet drafts | sol `medium` |
+| Supervisor | sol `high`; never `max` |
+| Interface sketch, spine step | opus `high` |
+| Cross-stage reviewer | astra `xhigh` |
+| Plan check, adversarial review | fable `max` |
 
-| Role | Effort | Why |
-|---|---|---|
-| Driver, lane editor | `gpt-6-sol` at `medium` (since 2026-09-30; `gpt-6.1-sol` at `medium` before) | same hidden pass rate and cost as 6.1-sol medium, 1.85x faster, blind 1.5 lower on pipe-type shape (so a spine step goes to Opus, §3a). Earlier eval: 13.38 blind against 11.50 for `gpt-6-sol` at `high`, at two thirds of its cost. `gpt-6-sol` at `medium` also held `high`'s quality (11.88) and is the faster fallback at 136 s a run against 251 s |
-| Stage verifier, fact-checker, dry runs | `gpt-6-sol` at `high`; dry runs too | sol's factual error rate: 11.4% low, 6.9% medium, 5.1% high, flat after |
-| Gate-runner | sol `low` | it runs commands |
-| Recon, inventories | sol `medium` | extraction; graded A at medium |
-| Supervisor | sol `high`, or opus `medium` | a supervisor writes no code; never `max` |
-| Brief writing, interface sketch | opus `high` | opus's knee |
-| Cross-stage reviewer | astra `xhigh` | unchanged until one review is compared at `high` |
-| Plan check, adversarial review | fable `max` | unchanged until one review is compared at `xhigh`; it is the step that finds the P1s and most of its cost is reading, which effort does not shrink |
-
-The cards said `high` was the knee for `gpt-6-sol` on coding; our own eval found `medium` held,
-so the eval overruled the card for the driver. Dry runs went **up**, from low to high. Effort
-is the smaller lever on the Claude side: about 94% of Claude cost on 2026-09-29 was context
-read and written, so fewer turns and smaller briefs save more than a lower setting.
-
-**The driver, from the steering eval** (`~/code/dekopon/steering-eval/REPORT.md`, two holdout
-tasks, n = 2 per cell). `gpt-6-sol:high` on recipe A passed every hidden test, scored 13.25 of
-15 blind and never stopped to ask, at $0.28 a run. Recipe A is the repo's rules plus the shape
-rules, and the order of work now in `templates/DRIVER.md` §Order of work; it added 1.4 points
-for 4 cents. `gpt-6-astra` on the same recipe ended two of four runs with a question and no
-code. Opus 5.5 as a driver scored highest blind, cost twice sol, and failed one run by
-improving a fixed entry point instead of keeping it. `gpt-6.1-sol` (released 2026-09-29, $2 /
-$0.10 cached / $10) tied `gpt-6-sol` on quality at 0.76 times the cost and passes the swap
-rule; it ran 1.5 times slower on its launch day and scored lower on one task. Swap to it after
-four recipe A runs off-peak confirm both. They did not confirm the jobs gap (a scoring-batch
-artifact) and did confirm the speed (1.65 times slower at `high`, no retries). The effort block
-then ran both models at `medium`: `gpt-6-sol` held its quality at 0.67 times the cost and 0.63
-times the wall time, and `gpt-6.1-sol` passed the swap rule at 1.17 times the wall time.
-`gpt-5.6-sol` at `high` cost 2.2 times `gpt-6-sol` for no gain. **The owner chose `gpt-6.1-sol`
-at `medium` on 2026-09-29, then `gpt-6-sol` at `medium` on 2026-09-30.**
+Receipts: 2026-09-29, the cards put `gpt-6-sol`'s knee at `high`, the steering eval
+(`~/code/dekopon/steering-eval/REPORT.md`) found `medium` held; dry runs went up from low to high
+(sol's factual error rate 11.4% low, 5.1% high). 2026-09-30, the owner moved the driver from
+`gpt-6.1-sol` to `gpt-6-sol` at `medium`: same hidden pass rate and cost, 1.85x faster, 1.5 lower
+blind on pipe-type shape (so a spine step goes to Opus). As drivers, `gpt-6-astra` ended two of
+four runs with a question and no code; Opus scored highest blind at twice the cost.
 
 ## 3b. Offer to drive it
 
