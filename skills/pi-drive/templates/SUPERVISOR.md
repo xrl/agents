@@ -119,8 +119,9 @@ verdicts that both say FIX REQUIRED is a hand-back, never an answer. The PR URL 
 
 A driver's report is a claim, not a receipt. Accept only when all of these hold, checked by you:
 
-1. `cd <ABS WORKTREE> && bash <ABS PLAN FOLDER>/pi/gate.sh 2>&1 | tail -8`
-   ends with `== GATE GREEN at <HEAD>` (your own run, not the driver's log).
+1. The driver's gate log `$E/logs/stage-N-gate.log` (from `pi/gate.sh`, no longer running)
+   ends with `== GATE GREEN at <HEAD>`. Rerun `cd <ABS WORKTREE> && bash <ABS PLAN FOLDER>/pi/gate.sh 2>&1 | tail -8`
+   only when that log is missing, red, or names a SHA other than HEAD.
 2. `git -C $W status --short` is empty.
 3. `bash /Users/xavier/.claude/skills/pi-drive/scripts/pi-stage-check.sh <ABS WORKTREE> $(git -C $W rev-parse HEAD~1) <ABS PLAN FOLDER>/execution <cap>`
    prints `verdict=ok` (each stage is one commit, so its parent is `HEAD~1`; the cap is the one
@@ -135,9 +136,9 @@ A driver's report is a claim, not a receipt. Accept only when all of these hold,
    <the paths each stage may touch, per stage, from the brief>.
 
 If 3 fails, send the **Unreviewed or oversize head** prompt. If 1, 2, 4 or 5 fails, send the
-**Correction** prompt with the verbatim failing line. After the verifier's second pass on a
-stage there is no third: a check that fails then is a hand-back. Record the verdict and head SHA in the state
-file.
+**Correction** prompt with the verbatim failing line. After the verifier's second pass, a `hard`
+finding hands back; all-`easy` findings get one scoped fix and re-check (§Not hand-backs); a failed
+re-check hands back. Record the verdict and head SHA in the state file.
 
 ## Prompts to the driver
 
@@ -193,7 +194,7 @@ answered: hand back.
 - A turn that ended mid-stage with no report and no question. First firing: send the continue
   prompt at once (this is the normal response, not a judgement call). Second firing in the unit:
   hand back.
-- `pi-stage-check.sh` `verdict=NOT OK`, or your own gate run red, for a stage the driver said was done.
+- `pi-stage-check.sh` `verdict=NOT OK`, or the gate log (or your rerun) red, for a stage the driver said was done.
 - The driver's last message shows it spawned a subagent for work one command does.
 
 First firing: the matching prompt above, and a line in the state file. **The same tripwire firing

@@ -270,8 +270,9 @@ remember to stop; `pi-rpc-stop.sh` at the end of the session.
 - Verifier discipline: accept one read-only pass; ask for a second only when pass 1 had
   `contract` findings. If the driver spawns a child for work it could do in one command,
   the next prompt says to do such things itself.
-- Verify claims of green gates yourself with the same commands (`--locked`, scoped `-p`), in the
-  driver's worktree, read-only. Never edit or push there: rebases and fixes are the driver's, so
+- Verify claims of green gates from the gate log: the command, its exit (`== GATE GREEN`), the
+  SHA it gated and a clean tree. Rerun the gate, read-only in the driver's worktree, only when
+  that evidence is missing or stale. Never edit or push there: rebases and fixes are the driver's, so
   the reviewed head stays the head that merges; if something is wrong, the next prompt says so.
 - A defect in the **plan** (a seam it missed, an "as today" that is not, a claim the source
   contradicts) is two records, not one: the D<n> that resolves it for the driver, and one line in

@@ -193,9 +193,10 @@ subagent({ agent: "pr-reviewer", context: "fresh", async: false, cwd: "<ABS WORK
 
 Save it to `<design>/execution/review-P.md`. Same fix rules as step 6. After the last stage: only
 on `READY` does `gh pr ready` run; then one blocking `gh pr checks --watch --fail-fast <url>`,
-its output to `<design>/execution/logs/checks.log`. No checks 60 s after a push means the head
-conflicts: rebase once, do not wait. A red check: fix, amend, re-gate, **re-verify the new
-head**, push, at most two rounds. Otherwise leave the PR a draft and end the turn with what remains.
+its output to `<design>/execution/logs/checks.log`. No checks 60 s after a push: run
+`gh pr view --json mergeable`; `CONFLICTING` means rebase once, anything else is reported. A red
+check: fix in a new commit on top (the head is pushed), re-gate, **re-verify the new head**, push,
+at most two rounds. Otherwise leave the PR a draft and end the turn with what remains.
 
 ## Verify
 
