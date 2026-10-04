@@ -11,8 +11,10 @@
 const lanes = args.lanes;
 const maxRounds = args.maxRounds || 3;
 const stageOf = l => l.stage || 1;
-// A verdict counts only when its last line is the expected word; a missing or unparseable one is FIX REQUIRED.
-const verdictIs = (r, word) => !!r && typeof r.output === "string" && r.output.trim().split("\n").pop().trim() === word;
+// The verdict is the last line that is exactly ACCEPT, READY or FIX REQUIRED (pi-subagents may append a
+// "Mission: …" line after it); a missing or unparseable one counts as FIX REQUIRED.
+const verdictIs = (r, word) => !!r && typeof r.output === "string" &&
+  r.output.split("\n").map(l => l.trim()).filter(l => /^(ACCEPT|READY|FIX REQUIRED)$/.test(l)).pop() === word;
 const stages = [];
 for (const l of lanes) if (stages.indexOf(stageOf(l)) === -1) stages.push(stageOf(l));
 stages.sort();
@@ -55,7 +57,7 @@ for (let s = 0; s < stages.length; s++) {
     key: "edit-" + lanes[i].key,
     agent: "lane-editor",
     cwd: lanes[i].worktree,
-    task: "Lane " + lanes[i].key + " of <BRIEF> §4. Worktree: " + lanes[i].worktree +
+    task: "Lane " + lanes[i].key + " of <BRIEF> §Work packages. Worktree: " + lanes[i].worktree +
           " on branch " + lanes[i].branch + "." +
           (merged.length ? "\nFirst: `git merge " + merged.join(" ") + "` into this worktree (they are committed and verified); read their committed code before editing." : "") +
           "\n\n" + lanes[i].brief,
