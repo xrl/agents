@@ -71,9 +71,9 @@ first and continue from it; do not start over.
 
 One bash call per driver turn. It refuses to launch if a driver turn is alive (a pid file with
 a live pid and no `.exit` receipt; your own pi process never counts), then runs the turn in
-the foreground, bounded by `timeout` at your minute 90, and writes an exit receipt. Set the
-bash tool's own `timeout` above BOUND. No `nohup`, no `&`, no `process` tool. Fill in N, BOUND
-(seconds left to minute 90) and PROMPT (`<ABS PLAN FOLDER>/pi/KICKOFF.md` for turn 1, else
+the foreground, bounded by `timeout`, and writes an exit receipt. Set the bash tool's own
+`timeout` to 3600, pi's cap. No `nohup`, no `&`, no `process` tool. Fill in N, BOUND
+(min(seconds left to minute 90, 3300)) and PROMPT (`<ABS PLAN FOLDER>/pi/KICKOFF.md` for turn 1, else
 `<ABS PLAN FOLDER>/execution/prompts/driver-turn-N.md`). The worktree must exist first.
 
 ```
@@ -85,8 +85,8 @@ printf '%s\n' "$rc" > $E/pi/driver-turn-$N.exit
 echo "driver turn $N exited rc=$rc at $(date -u +%H:%M:%S)"; tail -3 $E/pi/driver-turn-$N.jsonl.err 2>/dev/null
 ```
 
-- `rc=124` means minute 90 came first: save the state file and end your turn; the next turn
-  continues the same driver session. Never relaunch a turn that has no receipt.
+- `rc=124` means the bound came first: with time left before minute 90, launch turn N+1 in
+  the same driver session with a "continue" prompt; otherwise save state and end your turn. Never relaunch a turn that has no receipt.
 - The pid file is the only way to find a turn. A running pi shows in the process list as `pi`
   with no arguments, so a search for its session id finds nothing.
 - An exit within seconds with an error in the `.err` tail (auth, `Incorrect API key`,
