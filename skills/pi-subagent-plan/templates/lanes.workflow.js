@@ -1,5 +1,5 @@
 // pi-subagents workflow for the brief §Work packages lanes A–E (the core + SDK PR).
-// Run from the PR worktree: subagent({ workflowScriptPath: "<BRIEF-DIR>/pi/lanes.workflow.js", args })
+// Run from the PR worktree: subagent({ workflow: "<BRIEF-DIR>/pi/lanes.workflow.js", args }) (a value containing "/" is a path)
 // args = { prRoot: "/abs/path/to/.worktrees/<PR WORKTREE>", prBranch: "<PR BRANCH>",
 //          lanes: [{ key: "A", stage: 1, packages: ["<CRATE>"], worktree: "/abs/.worktrees/<LANE WORKTREE>", branch: "<LANE BRANCH>", brief: "…" }, …],
 //          maxRounds: 3, measure: { sha, worktree, branch } /* optional baseline stage; omit when done */ }

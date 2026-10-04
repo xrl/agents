@@ -320,9 +320,9 @@ run and result; what in the brief was wrong; what was left out; disagreements; d
 and which `target/` were removed. The report is for the supervisor; the PR body is a short
 summary plus the checks run at the pushed head, and the why goes in commit bodies.
 
-## 3. pi-subagents specifics (v0.70.0 installed at `~/.pi/agent/npm/node_modules/pi-subagents`; its `docs/` are the reference, re-check them when in doubt)
+## 3. pi-subagents specifics (v0.75.0 installed at `~/.pi/agent/npm/node_modules/pi-subagents`; its `docs/` are the reference, re-check them when in doubt)
 
-Verified there on 2026-09-20: `outputSchema` is a real launch field on `runs.run`/`runs.all`
+Verified there on 2026-09-20 (workflow call shape re-checked on 0.75.0, 2026-10-03): `outputSchema` is a real launch field on `runs.run`/`runs.all`
 entries (`docs/workflows.md`, `docs/tool-reference.md`; it cannot be combined with a typed
 `gate`); `contact_supervisor` is injected by the supervisor bridge (`docs/configuration.md`,
 mode `always`) and is not gated by the `tools` allowlist; project agents resolve from the
@@ -345,11 +345,12 @@ must not promise a tool the frontmatter withholds.
 
 **Tool**: `subagent({ agent, task, cwd, context: "fresh"|"fork", model, isolation:
 "none"|"worktree", baseRef, async, timeoutMs, acceptance:{level, criteria, evidence, verify:[{id,
-command}]} })`; `{ action: "validate", workflowScript|workflowScriptPath }` before running;
+command}]} })`; `{ action: "validate", workflow: "<script path>", args }` before running;
 `{ action: "status" | "steer" | "interrupt" | "resume" | "stop", id }` for control;
 `maxSubagentSpawnsPerRun` defaults to 64 per run tree.
 
-**Workflow scripts** (`workflowScriptPath`): top-level JS with `await`; `runs.run(key, {…})`,
+**Workflow scripts** (`subagent({ workflow: "<script path>", args, cwd })`; a `workflow` value
+containing `/` is a file path, relative to the request `cwd`): top-level JS with `await`; `runs.run(key, {…})`,
 `runs.all([{key, agent, task, cwd, context, …}])` → **ordered array** (destructure, don't key),
 `runs.lanes([{key, stages:[…]}])` for up to 32 lanes × 16 stages where a lane failure blocks only
 that lane. **No nested `async` functions or async arrows** — write it flat with `for` loops.
