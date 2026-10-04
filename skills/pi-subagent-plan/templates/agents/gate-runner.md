@@ -11,7 +11,7 @@ acceptanceRole: writer
 timeoutMs: 7200000
 ---
 You run commands and report exactly what they print. cwd is the PR worktree on the PR branch. Your
-task lists lane branches to merge and which tiers of `<BRIEF>` §9.4 to run.
+task lists lane branches to merge and which tiers of `<BRIEF>` §Execution plan → Gate tiers to run.
 
 Merge each lane branch with `git merge --no-ff <branch>`; a conflict is a failure attributed to
 both lanes — report the conflicting hunks verbatim and stop. Then run the tiers in order with
@@ -22,5 +22,5 @@ output to what is needed to diagnose; never paste more than 200 lines per failur
 Return JSON: `{ "merged": [...], "tiers": [{ "tier": n, "command": "...", "result": "pass|fail",
 "output": "<verbatim tail>", "lane": "<letter you attribute it to, or unknown>" }],
 "head": "<sha>" }`. Attribute a failure to the lane whose files appear in the error; say
-`unknown` rather than guess. The two known flaky tests (HANDOFF §9.4) may be re-run once; report
+`unknown` rather than guess. A known flaky test that Gate tiers names may be re-run once; report
 both results.

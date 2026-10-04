@@ -106,6 +106,10 @@ that removes each.
   don't either; record the finding as a Driver decision.
 - CHANGELOG: `Fixed` is only for bugs in released code; a bug this PR introduced and fixed is not
   an entry.
+- **Never edit a test outside this PR's scope to get a gate green.** A test that fails only under
+  load (a deadline, a timeout) and passes on a scoped rerun is a flake: if `decisions.md` lists it,
+  rerun it once and report both lines; if not, report it and stop the stage. On 2026-10-03 a
+  driver widened a deadline in an unrelated crate; the commit was dropped and became an issue.
 - **Do not end your turn while a subagent or background job is still running: wait on it with one
   blocking command that returns when it finishes, never repeated status calls.** A blocked call
   costs nothing; every status call re-reads your whole context.
@@ -154,17 +158,19 @@ not run an example's `#[cfg(test)]` module unless its `[[example]]` entry sets `
 Every stage, in order:
 
 1. `git fetch origin && git rebase origin/main`; record conflicts in the report. From stage 2:
-   `gh pr checks <url>` for the pushed head; a red **required** check is fixed first, amending the
-   previous stage's commit. Pending is not red.
+   `gh pr checks <url>` for the pushed head; a red **required** check is fixed first, with a new commit on
+   top; a pushed commit is never amended. Pending is not red.
 2. Implement the stage block below. Scoped checks while iterating.
-3. `df -h ~`. Commit (one commit; amend it for every later fix in this stage).
+3. `df -h ~`. Commit (one commit; amend it for every later fix in this stage until it is pushed).
 4. The full gate in the background (§Gate); one blocking wait to green.
 5. Draft `<design>/execution/stage-N-report.md` (§Report): the verifier reads it.
 6. **Verify** (§Verify). Apply every `contract` and `guideline` finding — a finding that
    contradicts a decision is declined with its D-number — amend, rerun the gate once, update the
    report. Pass 2 whenever you changed the commit after pass 1, because only a reviewed head is
    pushed (step 7): over the whole stage when pass 1 had a `contract` finding, over the amended
-   delta alone otherwise. There is no pass 3.
+   delta alone otherwise. There is no pass 3, except one: when pass 2's blocking findings are all
+   tagged `easy`, fix them, re-gate once, and run one verifier scoped to those findings over the
+   fix delta; push on its `ACCEPT`. Any `hard` finding after pass 2 ends the turn.
 7. **Push only when the last verdict is `ACCEPT`, at the SHA it reviewed.** If pass 2 still says
    `FIX REQUIRED`, do not push: end the turn with both verdicts side by side; the supervisor
    decides. Every commit you push has a verifier or reviewer file whose `Reviewed:` line names it
@@ -187,9 +193,10 @@ subagent({ agent: "pr-reviewer", context: "fresh", async: false, cwd: "<ABS WORK
 
 Save it to `<design>/execution/review-P.md`. Same fix rules as step 6. After the last stage: only
 on `READY` does `gh pr ready` run; then one blocking `gh pr checks --watch --fail-fast <url>`,
-its output to `<design>/execution/logs/checks.log`. No checks 60 s after a push means the head
-conflicts: rebase once, do not wait. A red check: fix, amend, re-gate, **re-verify the new
-head**, push, at most two rounds. Otherwise leave the PR a draft and end the turn with what remains.
+its output to `<design>/execution/logs/checks.log`. No checks 60 s after a push: run
+`gh pr view --json mergeable`; `CONFLICTING` means rebase once, anything else is reported. A red
+check: fix in a new commit on top (the head is pushed), re-gate, **re-verify the new head**, push,
+at most two rounds. Otherwise leave the PR a draft and end the turn with what remains.
 
 ## Verify
 

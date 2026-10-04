@@ -3,8 +3,6 @@ name: campaign
 description: Run one funded sub-campaign of a large multi-step code effort economically — a Claude coordinator that rules and lands, pi sol supervisors that watch, a pi GPT driver that builds, a fresh gpt-6-sol verifier per commit, and a few fresh Fable reads — from a folder of state files. Use when Xavier funds a sub-campaign, says "run the campaign", "continue sub-campaign N", or asks how to drive a big change cheaply across many steps. Not for a one-file change (one Opus agent), and not for writing the brief (pi-subagent-plan) or for the mechanics of one pi session (pi-drive).
 ---
 
-<!-- STAGED, 2026-09-30: drafted at A3, filled from sub-campaign 4 actuals at its close. Installing it into ~/.claude/skills is the owner's call. -->
-
 # Running a campaign
 
 **Claude decides; pi does.** Claude quota is the scarce resource, and a coordinator's own wakes are its largest line once supervision moves to pi. Every rule below either keeps Claude out of a loop or makes a Claude call count.
@@ -13,16 +11,16 @@ description: Run one funded sub-campaign of a large multi-step code effort econo
 
 | Role | Model | Lives | Does | Never |
 |---|---|---|---|---|
-| Coordinator | Claude Opus, one session | across units until ~240k tokens, then a fresh session from `RESUME.md` | rules on hand-backs by quoting or adding a decision, launches Opus for `hard` findings, lands, journals, reads spend | supervises a step; rereads a gate; polls; writes a brief, packet or re-check prompt pi can write |
+| Coordinator | Claude Opus, one session | until the next landing or 120k tokens, whichever comes first, then a fresh session from `RESUME.md` | rules on hand-backs by quoting or adding a decision, launches Opus for `hard` findings, lands, journals, reads spend | supervises a step; rereads a gate; polls; writes a brief, packet or re-check prompt pi can write |
 | Brief drafter | pi `gpt-6-sol:medium`, one run | once per sub-campaign | RECON, BRIEF and DECISIONS drafts from DESIGN and the source; the coordinator rules, then the plan check and dry run | decides an owner question |
 | Packet writer | pi `gpt-6-sol:medium`, one run | once per sub-campaign | DRIVER, SUPERVISOR, step prompts and verify templates from `templates/`; a sol rehearsal checks it | |
-| Supervisor | pi `gpt-6-sol:high`, one session per step (or per run of steps) | `pi-turn.sh` in the background from its own folder | launches driver turns, runs the verifier, sends fix/integrate/push prompts, runs the scoped re-checks, hands back hard findings | decides scope; edits the worktree; answers a stop without quoting a row |
+| Supervisor | pi `gpt-6-sol:high`, one session per step; a step that outgrows 120k tokens hands off from its state file | `pi-turn.sh` in the background from its own folder | launches driver turns, runs the verifier, sends fix/integrate/push prompts, runs the scoped re-checks, hands back hard findings | decides scope; edits the worktree; answers a stop without quoting a row |
 | Driver | pi `gpt-6-sol:medium`, recipe A, `-nc -ne` | one session per step | edits, builds, commits, gates, easy fixes, witnesses for Opus fixes, pushes on ACCEPT | spawns agents; pushes before ACCEPT; edits Opus fix lines |
 | Verifier | pi `gpt-6-sol:high` via `pi-dry-run.sh … bash` | fresh per pass | reviews exactly one commit range, tags findings `hard`/`easy` | cargo, writes |
 | Opus | fresh `general-purpose` agent, `model: opus` | one step or one fix | the spine step; `hard` findings as code only | writes tests for its own fix; shares a worktree with a live writer |
 | Fable | fresh `campaign-reviewer` | one read | plan check; whole-PR read (trial: Astra on the PR instead, once) | stays resident |
 | Astra | pi `gpt-6-astra:xhigh` | once | cross-step review of the assembled unit | |
-| Ship | pi sol supervisor + pi driver | once | prep, checks, PR, merge, tag, verify, the rpi-homelab rollout end to end (owner, 2026-10-01: "I trust the pi agent to ship to rpi homelab"); the funding line quoted as authority | |
+| Ship | pi sol supervisor + pi driver | once | prep, checks, PR, merge, tag, verify, the deployment rollout end to end once the owner has authorized pi to ship; the funding line quoted as authority | |
 
 Routing owner-approved 2026-10-01 after sub-campaign 5 (Claude ≤ $69 of ≤ $82): the brief, the packet, the ship phase and all-easy fix rounds were Opus there and move to pi; expected Claude ≈ $35-40 on a unit that size. Claude keeps the spine, `hard` fixes, the plan check, rulings and landing.
 
@@ -44,7 +42,7 @@ Design-shaping steps (the one where the spine's types are set) may go to one Opu
 
 ## Before a step launches
 
-1. `LIMITS.toml`: not paused, spend under the tripwire, free disk minus kache headroom over the floor, heavy builds under the cap.
+1. `LIMITS.toml`: not paused, spend within the funded budget, free disk minus kache headroom over the floor, heavy builds under the cap.
 2. A worktree cut from the integration head, upstream unset, fixtures fetched.
 3. The step prompt: the row verbatim, the packages, the witnesses, what the previous step landed in one paragraph, "decide under ambiguity and record it; never end a turn with a question".
 4. The verify template: `verifier-role.md` + the range + the row + the step's specific checks + **every coordinator ruling so far**, stated as "not findings". A ruling missing from the template is re-raised by the next verifier.
@@ -72,9 +70,29 @@ Same row, same decisions, same verifier; separate worktrees; neither may read th
 
 Coordinator only, on the integration branch: `git merge --squash origin/<branch>`, one commit whose body keeps every `Changelog:` line one per physical line, `git diff --quiet HEAD origin/<branch>` must hold (tree identical), push, close the PRs with the landing SHA, reap worktrees with `df` before and after. The author pushes its own branch; the coordinator never pushes onto a reviewed branch.
 
+## Closing
+
+Every coordinator session ends, at a close or a clean stop, with a fenced `/loop …` command that runs in a fresh context: the next unit's, filled in (folder, scope, end state, version), or this unit's resume if it stopped early. Write the same command into the `RESUME.md` banner. Shape (owner, 2026-10-01):
+
+```
+/loop You are the campaign coordinator for <unit> (<scope>), funded per JOURNAL.md. Read campaign/RESUME.md, <NN-name>/STATE.md and LIMITS.toml, and follow the campaign skill. <what to draft and check>, then drive <unit> to <end state: merged on main / vX.Y.Z released and live on the Pi>. No check-ins: decide under ambiguity and journal it. Wake only on completion notices. Write state before every wait.
+```
+
 ## Spend
 
-pi: `pi-usage.sh <worktree> <supervisor folder>` plus each verifier's printed `cost_usd` (dry runs have no session). Claude: by role, not model (pi-drive §Cost accounting). Project at every landing; stop at the tripwire. Sub-campaign 4 actuals: ≈ $154 for 13 steps and ≈ 9,400 lines; pi ≈ $78 (≈ $4.60 per step of driver + supervisor, ≈ $1.20 of verifiers per step), Claude ≈ $76 (two coordinator sessions with ≈ 20 wakes, the A2 Opus build, two Fable reads, the ship supervisor). A sol supervisor session carried across resumes grew to $7: start a fresh one every few steps.
+pi: `pi-usage.sh <worktree> <supervisor folder>` plus each verifier's printed `cost_usd` (dry runs have no session). Claude: by role, not model (pi-drive §Cost accounting). Project at every landing; journal a tripwire crossing; stop past the funded budget. Sub-campaign 4 actuals: ≈ $154 for 13 steps and ≈ 9,400 lines; pi ≈ $78 (≈ $4.60 per step of driver + supervisor, ≈ $1.20 of verifiers per step), Claude ≈ $76 (two coordinator sessions with ≈ 20 wakes, the A2 Opus build, two Fable reads, the ship supervisor). A sol supervisor session carried across resumes grew to $7: start a fresh one every few steps.
+
+Claude's number is the coordinator session's `/cost`, which includes its subagents. ccusage 5-hour blocks count Claude only: never subtract pi from them (2026-10-02: reported $15, real $62).
+
+### Where Claude money goes (rest of 6, 2026-10-02: $62 Claude, $47 pi)
+
+Opus was $47, almost all of it 134M cache-read tokens: every tool call re-reads the whole context, so cost ≈ context size × calls. Three things drove it, and each has a rule:
+
+1. **Size Opus steps at ≤ 800 changed production lines.** At a contract break the tests move with the code: S1b-1 was estimated at 1,400 and came to ≈ 4,000 gross. It took four Opus agents, three of them ending at the 300k cap, where every call re-reads the largest context.
+2. **An Opus agent stops when production code compiles and its witnesses are green.** It commits and writes NOTES. The test fix-up, the full gate and the verifier go to a pi driver as the next step. The S1b-1c finish was exactly that work, and pi did it.
+3. **The coordinator hands off after each landing, or past 120k tokens.** It writes STATE and prints its `/loop`, and a fresh session continues. One coordinator session ran six hours, with a context of several hundred k re-read on about 150 turns.
+
+The Fable reads ($15) were worth it: they found the design break before the build, and the final read cleared the merge. Keep them.
 
 ## Things that bite
 
@@ -87,6 +105,16 @@ pi: `pi-usage.sh <worktree> <supervisor folder>` plus each verifier's printed `c
 - A prompt that says "amend" after a push diverges the branch: CI fixes are new commits on top.
 - A driver that runs under DRIVER.md's third-FIX stop refuses a fix unless the prompt quotes the coordinator ruling that authorizes it.
 - Grepping task output files can pull whole subagent transcripts into the coordinator's context; read only the named output of a Bash task.
+- A Bash background task dies at 2 h. A pi supervisor turn that runs several steps outlives that, and its driver dies with it (the RG supervisor died mid-RG-b, 2026-10-02). Launch one supervisor turn per step.
+- Launch a pi turn with `run_in_background`. A foreground `&` is killed as soon as the call returns.
+- Deleting a live unit's `target/` forces a cold rebuild. Overlapped with another build, it dipped free disk from 69 to 13 GiB for a minute. Check disk when a build launches, never in the middle of one.
+- When a pilot needs a core fix while a driver owns the core worktree, commit the fix on a side branch cut from the pushed head. The pilot pins to it, and the core step cherry-picks it. That keeps one writer per worktree.
+- Start the PR's Fable read at the pushed head beside the unit's last CI wait, never after it: it needs the local head, not CI. A CI fix commit gets a scoped re-read of its delta, so the merged head is still the reviewed one.
+- The classifier refuses `gh pr merge` into a shared workflow repo whose `@main` other repos call. Ask the owner for that merge up front.
+- Start a step when its own dependency lands, not when the whole unit does. 2026-10-03: curl's typed-SDK migration needed only S1b on main but waited for S2, so the testkit defect it found surfaced hours late.
+- Before a push, the driver runs CI's own steps for what it touched: every generated artifact CI byte-compares, every docs check its change triggers, `cargo doc` with `-D warnings`, `cargo deny`. The repo's own list lives in its agent guide. 2026-10-03: four CI reds (a rustdoc link, an advisory, generated bytes, an undocumented event) each cost a fix turn plus a CI cycle.
+- A pi turn that dies on `fetch failed` twice is a network problem, not a model one. Hand the half-done easy fix to one Claude agent working from the uncommitted diff rather than retrying a third time.
+- `gh pr merge --rebase` rewrites SHAs. A pilot that must pin to the merged commit waits for the merge, then pins to `mergeCommit.oid`.
 
 ## Routing decided for sub-campaign 6 (owner, 2026-09-30)
 
@@ -99,3 +127,4 @@ Opus builds the seam step where shape decides; pi fans out the mechanical steps 
 1. A tripwire inside the funded budget is a journal line, not a stop; only spend past the budget and owner-only items block.
 2. Ask a foreseeable owner decision the moment a projection shows it, batched, with a recommendation.
 3. A blocking question left unanswered: journal it, write every state file, stop cleanly, so the owner answers in a fresh short session.
+4. **Ship without the straggler (owner, 2026-10-03).** A non-essential repo does not hold up a fleet rollout. When one is stuck (a release snag, a failing review, an owner-only step), ship without it and journal why it blocked.

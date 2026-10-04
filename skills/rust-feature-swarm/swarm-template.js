@@ -133,6 +133,7 @@ const nits = []
 function push(k, kind, text) { pending[k].push({ kind, text }) }
 const inserted = Object.fromEntries(KEYS.map(k => [k, []]))
 let lastVerdicts = null, lastGate = null
+const blockers = []   // repo-root paths no lane owns: the coordinator rules, the script never widens to ''
 
 function afterReturn(k, r) {
   const v = violations(k, r)
@@ -147,6 +148,7 @@ function afterReturn(k, r) {
       else {
         // Nobody else may edit it: repair ownership follows the causing change. Widen this lane.
         const dir = norm(it.blocked_on_path).replace(/[^/]*$/, '')
+        if (!dir) { blockers.push({ lane: k, id: it.id, path: norm(it.blocked_on_path), summary: it.summary }); log(`lane ${k} needs repo-root file ${norm(it.blocked_on_path)} for ${it.id}; the root is never an edit prefix, so the coordinator rules`); continue }
         if (!EDIT[k].some(pre => dir.startsWith(pre))) EDIT[k].push(dir)
         push(k, 'bookkeeping', `No other lane may edit ${norm(it.blocked_on_path)}; it is now in your editable prefixes (${dir}). Make the change yourself for ${it.id}: ${it.summary}`)
         log(`lane ${k} widened to ${dir}`)
@@ -220,13 +222,14 @@ if (A.mode === 'fix') {
   for (const [k, msgs] of Object.entries(A.messagesByLane || {})) for (const m of msgs) push(k, 'gate', m)
   const due = KEYS.filter(k => pending[k].length)
   if (due.length) await fixRound(due)
-  return { mode: 'fix', fixCount, bookCount, summaries, pending }
+  return { mode: 'fix', fixCount, bookCount, summaries, pending, blockers }
 }
 if (A.mode === 'verify') return { mode: 'verify', verdicts: await runVerify(), summaries }
-if (A.mode === 'implement' && A.loop === false) return { mode: 'implement', summaries, pending }
+if (A.mode === 'implement' && A.loop === false) return { mode: 'implement', summaries, pending, blockers }
 
 let tier = 0, round = 0, verified = false
 while (round < MAX_GATE) {
+  if (blockers.length) { log(`${blockers.length} repo-root path(s) need a coordinator ruling; stopping`); break }
   const due = KEYS.filter(k => pending[k].length)
   if (due.length) {
     const over = due.filter(k => (pending[k].some(e => e.kind !== 'bookkeeping') && fixCount[k] >= MAX_FIX) || (!pending[k].some(e => e.kind !== 'bookkeeping') && bookCount[k] >= MAX_BOOK))
@@ -239,9 +242,10 @@ while (round < MAX_GATE) {
   if (name === 'verify') {
     lastVerdicts = await runVerify()
     let gaps = 0
+    const unverified = KEYS.filter(k => !lastVerdicts[k] || LANE[k].items.some(id => !lastVerdicts[k].items.some(it => it.id === id)))
+    if (unverified.length) { log(`no complete verdict for lane(s) ${unverified.join(', ')}; acceptance not verified, stopping for the coordinator`); break }
     for (const k of KEYS) {
       const v = lastVerdicts[k]
-      if (!v) continue
       for (const it of v.items) {
         if (!it.met && it.blocking) { gaps += 1; push(k, 'verify', `Verifier refuted ${it.id}.\nGap: ${it.gap}\nEvidence: ${it.evidence}`) }
         else if (!it.met) nits.push({ lane: k, id: it.id, gap: it.gap, evidence: it.evidence })
@@ -268,4 +272,4 @@ while (round < MAX_GATE) {
   if (name === 'full') return { green: true, gateRounds: round, fixCount, bookCount, summaries, verdicts: lastVerdicts, nits, gate }
   tier += 1
 }
-return { green: false, gateRounds: round, fixCount, bookCount, summaries, pending, verdicts: lastVerdicts, nits, lastGate }
+return { green: false, gateRounds: round, fixCount, bookCount, summaries, pending, verdicts: lastVerdicts, nits, lastGate, blockers }

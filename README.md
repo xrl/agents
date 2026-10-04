@@ -28,5 +28,6 @@ host file and both adapters synchronized when host policy changes.
 To install the skill, copy the complete `skills/choose-orchestration/` directory
 into `~/.pi/agent/skills/`, reviewing any existing copy first, then run `/reload`.
 Invoke `/skill:choose-orchestration` with a task. Selection does not authorize launch.
-The Claude Code skills (`skills/pi-*`, `skills/rust-feature-swarm/`) install into
-`~/.claude/skills/` instead; [skills/PI-SKILLS.md](skills/PI-SKILLS.md) has their requirements.
+The Claude Code skills (`skills/campaign/`, `skills/pi-*`, `skills/rust-feature-swarm/`) install
+as symlinks, `ln -s ~/code/xrl/agents/skills/<name> ~/.claude/skills/<name>`, and update with
+`git pull --ff-only` on `main`; [skills/PI-SKILLS.md](skills/PI-SKILLS.md) has their requirements.

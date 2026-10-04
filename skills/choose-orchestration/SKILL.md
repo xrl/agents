@@ -51,7 +51,7 @@ These are **independent engines**, not a workflow layer backed by the pi-subagen
 
 ### pi-subagents: specialist- and supervision-oriented
 
-- Uses `{ agent, task }` for one child; `workflowScript` with `runs.run()`, `runs.all()`, or staged `runs.lanes()` for orchestration.
+- Uses `{ agent, task }` for one child; `workflow` (a script path, or `true` for a reply-block script) with `runs.run()`, `runs.all()`, or staged `runs.lanes()` for orchestration.
 - Provides configurable agent profiles, fresh/forked context, individual child inspection and continuation, steering, supervisor questions, and implementation acceptance checks.
 - Async native children run in a detached runner process. Foreground native children run inside the parent process.
 - Supported external CLI agents have their own runner contracts; native Pi model/context/tool/schema options are not automatically supported by them.
@@ -71,7 +71,7 @@ Neither engine is inherently cheaper. Agent count, duplicated context, model cho
 Do not reproduce a full orchestration runtime here. Once execution is requested and the route is selected:
 
 - **Direct:** do the work with ordinary tools. Do not launch a scout merely to justify staying direct.
-- **pi-subagents:** load the installed `pi-subagents` skill and its relevant references. Before execution, call `subagent({ action: "list", capabilities: true })`; select only executable, non-disabled agents. External CLI agents also require `runner.available === true`, which is a passive executable check, not proof of authentication or successful launch. Use one direct child call for a bounded handoff. For multi-step/parallel work, make one top-level `workflowScript` call with `async: true` and launch children inside it.
+- **pi-subagents:** load the installed `pi-subagents` skill and its relevant references. Before execution, call `subagent({ action: "list", capabilities: true })`; select only executable, non-disabled agents. External CLI agents also require `runner.available === true`, which is a passive executable check, not proof of authentication or successful launch. Use one direct child call for a bounded handoff. For multi-step/parallel work, make one top-level `workflow` call (a script path, or `true` with the script in a ```` ```js workflow ```` reply block) with `async: true` and launch children inside it.
 - **Dynamic Workflows:** confirm opt-in. Load `workflow-patterns` for a built-in pattern; for a custom script, load `workflow-authoring` and `workflow-spawn-guardrails` when available. Use `workflow` for execution and `workflow_control` for lifecycle management. Do not invent agent types or model identifiers.
 
 For either engine, establish the final deliverable, independent assignments, required tools, edit boundaries, and stopping evidence. Keep one writer per cwd/worktree and preserve existing dirty work. Use the smallest useful fan-out; do not invent token/spend caps that the user did not request. Follow the selected engine's current async completion and recovery rules.

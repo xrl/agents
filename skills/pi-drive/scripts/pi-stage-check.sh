@@ -5,7 +5,7 @@
 # Reviewed SHA: the `Reviewed: <sha>` first line of the newest *verify*.md / *review*.md in the
 # execution dir. Review verdict: the last line of that file that is exactly ACCEPT, READY or
 # FIX REQUIRED (pi-subagents appends a `Mission: <id> (completed)` line after it, so it is not
-# always the file's last line). Verdict line last: ok, or every reason not to accept.
+# always the file's last line). Verdict line last: ok, or every reason not to accept (exit 1).
 set -euo pipefail
 WT=$1; PARENT=$2; EXEC=$3; CAP=${4:-1200}
 head=$(git -C "$WT" rev-parse HEAD)
@@ -42,4 +42,4 @@ elif [ "$full" != "$head" ]; then
     problems+=("head was rewritten after review (${full:0:12} is not an ancestor of HEAD)")
   fi
 fi
-if [ ${#problems[@]} -eq 0 ]; then echo "verdict=ok"; else printf 'verdict=NOT OK\n'; printf '  %s\n' "${problems[@]}"; fi
+if [ ${#problems[@]} -eq 0 ]; then echo "verdict=ok"; else printf 'verdict=NOT OK\n'; printf '  %s\n' "${problems[@]}"; exit 1; fi

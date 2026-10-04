@@ -119,8 +119,9 @@ verdicts that both say FIX REQUIRED is a hand-back, never an answer. The PR URL 
 
 A driver's report is a claim, not a receipt. Accept only when all of these hold, checked by you:
 
-1. `cd <ABS WORKTREE> && bash <ABS PLAN FOLDER>/pi/gate.sh 2>&1 | tail -8`
-   ends with `== GATE GREEN at <HEAD>` (your own run, not the driver's log).
+1. The driver's gate log `$E/logs/stage-N-gate.log` (from `pi/gate.sh`, no longer running)
+   ends with `== GATE GREEN at <HEAD>`. Rerun `cd <ABS WORKTREE> && bash <ABS PLAN FOLDER>/pi/gate.sh 2>&1 | tail -8`
+   only when that log is missing, red, or names a SHA other than HEAD.
 2. `git -C $W status --short` is empty.
 3. `bash /Users/xavier/.claude/skills/pi-drive/scripts/pi-stage-check.sh <ABS WORKTREE> $(git -C $W rev-parse HEAD~1) <ABS PLAN FOLDER>/execution <cap>`
    prints `verdict=ok` (each stage is one commit, so its parent is `HEAD~1`; the cap is the one
@@ -128,14 +129,16 @@ A driver's report is a claim, not a receipt. Accept only when all of these hold,
    pr-reviewer's, on the stages that have one. `verdict=NOT OK` is not accepted.
 4. `cd $W && gh pr view --json state,isDraft,headRefOid,url` shows `OPEN`, `isDraft: true` and
    `headRefOid` equal to local HEAD (the pushed head is the reviewed head).
-5. The commits since the merge base are exactly one per accepted stage, and
+5. The commits since the merge base are one per accepted stage (two for a split stage), plus any
+   commit made after a push that a verify or review file names on its `Reviewed:` line (or
+   contains), and
    `git -C $W diff --stat $(git -C $W merge-base origin/main HEAD) HEAD` touches only
    <the paths each stage may touch, per stage, from the brief>.
 
 If 3 fails, send the **Unreviewed or oversize head** prompt. If 1, 2, 4 or 5 fails, send the
-**Correction** prompt with the verbatim failing line. After the verifier's second pass on a
-stage there is no third: a check that fails then is a hand-back. Record the verdict and head SHA in the state
-file.
+**Correction** prompt with the verbatim failing line. After the verifier's second pass, a `hard`
+finding hands back; all-`easy` findings get one scoped fix and re-check (§Not hand-backs); a failed
+re-check hands back. Record the verdict and head SHA in the state file.
 
 ## Prompts to the driver
 
@@ -161,7 +164,8 @@ inline. Keep them to the text below.
   > turn while a subagent or background job is still running.
 - **Correction after a failed read-only check:**
   > Your report says <claim>; at <sha> <command> shows <verbatim line>. Fix it within stage N,
-  > amend, rerun the gate once, re-verify, update the report. Do not end your turn while a
+  > amend if stage N is unpushed, otherwise commit the fix on top; rerun the gate once,
+  > re-verify, update the report. Do not end your turn while a
   > subagent or background job is still running.
 
 ## Answering a stop
@@ -190,7 +194,7 @@ answered: hand back.
 - A turn that ended mid-stage with no report and no question. First firing: send the continue
   prompt at once (this is the normal response, not a judgement call). Second firing in the unit:
   hand back.
-- `pi-stage-check.sh` `verdict=NOT OK`, or your own gate run red, for a stage the driver said was done.
+- `pi-stage-check.sh` `verdict=NOT OK`, or the gate log (or your rerun) red, for a stage the driver said was done.
 - The driver's last message shows it spawned a subagent for work one command does.
 
 First firing: the matching prompt above, and a line in the state file. **The same tripwire firing
@@ -200,8 +204,17 @@ a second time in this unit: hand back.**
 
 Hand back, instead of deciding, for: a stop `decisions.md`/`DRIVER.md` does not answer; a hard
 stop (the driver's four stops in DRIVER.md §Authority); the same tripwire twice; a verifier verdict
-of FIX REQUIRED after pass 2; an auth error or a provider outage; anything that would merge, mark
-ready, tag, release, deploy or push to `main`.
+of FIX REQUIRED after pass 2 with any `hard` finding, or a scoped re-check that says FIX REQUIRED;
+an auth error or a provider outage; anything that would merge, mark ready, tag, release, deploy or
+push to `main`.
+
+Not hand-backs (2026-10-03, three of four hand-backs in one run were these):
+- **Pass 2 FIX REQUIRED with every blocking finding tagged `easy`:** send the driver a Correction
+  to fix them, re-gate once, and run one fresh verifier scoped to those findings over the fix delta;
+  accept on its `ACCEPT`.
+- **A gate red only on a known flake** the decisions file lists: run that one test once yourself at
+  the unchanged head; green counts the gate green. A flake not on the list is a hand-back, never a
+  driver edit to that test.
 
 To hand back: write `<ABS PLAN FOLDER>/execution/supervisor-blockers.md`
 with, per item: what happened (the mechanism facts: file, line, command, verbatim output), the

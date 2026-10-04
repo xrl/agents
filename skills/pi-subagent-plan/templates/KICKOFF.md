@@ -22,10 +22,10 @@ question with the mechanism facts and one proposed answer each, so I answer them
 
 Do this, in order:
 
-1. Clean slate. If a previous attempt left `<PR WORKTREE>` or any `<LANE WORKTREE PATTERN>`
-   worktree, `git worktree remove --force` it and `git worktree prune`; delete branches
-   `<PR BRANCH>` and `<LANE BRANCH PATTERN>` if present. Preserve untracked fixtures in the primary
-   checkout; never edit or switch branches there.
+1. Leftovers. If a previous attempt left `<PR WORKTREE>`, a `<LANE WORKTREE PATTERN>`
+   worktree, or branches `<PR BRANCH>` / `<LANE BRANCH PATTERN>`, stop and report what is there
+   (dirty state, unpushed commits). Removal is the coordinator's call. Preserve untracked
+   fixtures in the primary checkout; never edit or switch branches there.
 2. Preflight, the brief's §Preflight, steps 1–N (the baseline-measurement step runs inside the
    workflow in step 5): confirm <BASELINE PRs> are merged; fetch and record the `origin/main` SHA
    and create the PR worktree `<PR WORKTREE>` on branch `<PR BRANCH>` from it; check disk and
@@ -37,8 +37,8 @@ Do this, in order:
 4. Build the lane briefs: for each lane, the §Work packages block verbatim plus its sanity-check
    line plus the worktree path and branch, and its `stage` (1 for lanes nothing consumes, 2 for
    lanes that merge stage-1 branches first, per the brief's §Decisions lane order). Validate the script:
-   `subagent({ action: "validate", workflowScriptPath: "<BRIEF-DIR>/pi/lanes.workflow.js" })`.
-5. Run it: `subagent({ workflowScriptPath: "<BRIEF-DIR>/pi/lanes.workflow.js", args: { prRoot,
+   `subagent({ action: "validate", workflow: "<BRIEF-DIR>/pi/lanes.workflow.js", args })`.
+5. Run it: `subagent({ workflow: "<BRIEF-DIR>/pi/lanes.workflow.js", args: { prRoot,
    prBranch: "<PR BRANCH>", lanes: [{ key, stage, worktree, branch, brief } …], maxRounds: 3, measure: { sha, worktree: "<MEASURE WORKTREE>",
    branch: "<MEASURE BRANCH>" } } })`. Create the measure worktree from the SHA first, like the
    lane worktrees. Answer every `contact_supervisor` with `need_decision` from the brief's

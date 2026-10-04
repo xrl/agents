@@ -6,12 +6,12 @@
 #
 #   pi-dry-run.sh <workdir> <prompt-file> <out.md> [model[:thinking]] [extra-tools]
 #
-# Default model is the driver's model (gpt-6.1-sol since 2026-09-29) at high effort: the rehearsal simulates the executor, and
+# Default model is the driver's model (gpt-6-sol since 2026-09-30) at high effort: the rehearsal simulates the executor, and
 # sol's factual error rate roughly halves from low to high (model cards, 2026-09-29).
 # extra-tools: "bash" when the walk must check git refs or installed tools. With bash the
 # run can mutate, so the prompt must then say "mutate nothing".
 set -euo pipefail
-WORKDIR=$1; PROMPT=$2; OUT=$3; MODEL=${4:-openai-codex/gpt-6.1-sol:high}; EXTRA=${5:-}
+WORKDIR=$1; PROMPT=$2; OUT=$3; MODEL=${4:-openai-codex/gpt-6-sol:high}; EXTRA=${5:-}
 [ -f "$PROMPT" ] || { echo "prompt file not found: $PROMPT" >&2; exit 2; }
 PROMPT_ABS="$(cd "$(dirname "$PROMPT")" && pwd)/$(basename "$PROMPT")"
 mkdir -p "$(dirname "$OUT")"
