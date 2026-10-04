@@ -84,7 +84,7 @@ The packet is `~/code/dekopon/sol-supervisor-pilot/`.
   "Awaiting driver turn 1"; the driver died after two messages. The template forbids it.
 - **What it hands back.** A stop the decisions file does not answer, a hard stop, the same
   tripwire firing twice, FIX REQUIRED after verifier pass 2, an auth error or outage, and every
-  merge, mark-ready, tag, release, deploy or homelab push. It writes
+  merge, mark-ready, tag, release, deploy or deployment-repo push. It writes
   `<design>/execution/supervisor-blockers.md` with the mechanism facts and one proposed answer
   each, and ends its turn. The exit wakes Claude, which answers in the decisions file and
   relaunches. Claude reads the blocker file and the final report, nothing else.
@@ -281,10 +281,10 @@ remember to stop; `pi-rpc-stop.sh` at the end of the session.
 - Every decision you make on the driver's behalf goes into the packet's decisions file before
   the prompt that relies on it, numbered like the rest (D19…). The packet is the source, your
   context is not.
-- Disk: the driver builds; check `df -h` between stages; four heavy *core-workspace* builds max
-  on this Mac. Provider (wasm component) builds are small and their wall clock is GitHub
-  runners, not local disk: run every independent provider at once, never in batches of three
-  (the 0.18.0 re-pin lost about an hour to batching).
+- Disk: the driver builds; check `df -h` between stages; cap heavy local builds at the
+  campaign's limit. Repos whose builds are small and whose wall clock is CI runners, not local
+  disk, all run at once, never in batches of three (a fleet re-pin lost about an hour to
+  batching).
 - **Many independent repos = many pi sessions, not one driver with a workflow script.** One
   brief template with the repo name filled in, one session id per repo, one log per repo, the
   watch loop checks each log in one `for` loop. The 0.18.0 fleet's workflow-script fan-out lost
@@ -339,8 +339,8 @@ the parent `*.jsonl` (assistant `usage.cost.total`) plus every pi-subagents chil
 `subagent-artifacts/*_meta.json` (`usage.cost`). Children are separate processes and never appear in the
 driver's own log, so summing the driver log alone undercounts; on the vm-runner core run the
 verifiers were ~14% of the total. It still works after `git worktree remove`, so reap freely.
-`--prefix` matches on the slug, so `/Users/xavier/code/dekopon/dekopon` would also catch
-`dekopon-provider-*`: name worktrees exactly when repos share a stem. `ccusage pi daily` is
+`--prefix` matches on the slug, so `~/code/proj/proj` would also catch
+`proj-plugin-*`: name worktrees exactly when repos share a stem. `ccusage pi daily` is
 right for whole-machine daily totals but groups children by filename (`lane-verifier_transcript`,
 `session`) across projects, so it cannot attribute them to one effort. Claude-side spend (fable
 reviews, sonnet rehearsals) is not in these files: that is `ccusage claude session`.
@@ -364,7 +364,7 @@ session at 17%, where the handoff had said the coordinator "stayed small".
 
 Run it between stages, unasked, and read it beside the diff: spend out of line with diff size,
 or a tool tally that is mostly polling, means the driver is stuck on a chokepoint, not working
-(dekopon `AGENTS.md` §Large multi-agent runs has the between-wave checks). The 2026-09-27
+([LAWS.md](../../LAWS.md) §44–51 has the between-wave checks). The 2026-09-27
 supervisor did not look until Xavier asked.
 
 ## Unattended: the watch loop (2026-09-20)
@@ -412,18 +412,16 @@ Send the driver the verbatim error line, never a paraphrase.
 Things a literal driver stops on that are not stops (answer from these, record, continue):
 `/kache/...` in a rustc source-location note is the compiler-diagnostics path remap, never a
 kache failure (the 0.18.0 fleet parked on it once); a `Codex error: Unable to verify … access`
-is transient, resume or respawn the child on the same model; `gh attestation verify oci://…`
-returns 404 for every provider because the shared release workflow attests the wasm and SBOM
-files, not the OCI manifest (verify the release assets instead); a red local test after a fixture
+is transient, resume or respawn the child on the same model; an attestation 404 is a stop only after the repo's release docs say which artifact is attested; a red local test after a fixture
 bump in a fresh worktree is a stale gitignored fixture until CI disagrees: refetch, then compare.
 
 ## Retro: the 0.18.0 release and fleet drive (2026-09-20)
 
 One day, ~9 hours wall clock, of which the code was under three: core release with zero stops
-(1 h 25 m), site push (10 m), eleven provider re-pins (~2 h, batched three at a time), four
-code-change providers in parallel sessions (~1 h), python alone 3 h 25 m (a real regression: SDK
-0.18.0 dropped Wasmtime's `cache` feature, every testkit test recompiled RustPython, the shared
-release job's 30-minute timeout fired twice; fixed inside python's tests). The process losses
+(1 h 25 m), site push (10 m), eleven fleet re-pins (~2 h, batched three at a time), four
+code-change repos in parallel sessions (~1 h), one repo alone 3 h 25 m (a real regression: a
+dependency dropped a compile-cache feature, every test recompiled the component, the shared
+release job's 30-minute timeout fired twice; fixed inside that repo's tests). The process losses
 were the orphaned-child turn boundary above (~1.5 h across five relaunches), the batching (~1 h),
 one false hard stop and one transient (15 m each). The briefs were not over-specified: the two
 sonnet dry runs found nineteen defects, at least six of them guaranteed stops or wrong actions.
@@ -438,7 +436,7 @@ failure), do not write a packet. First rule on every finding yourself: fix, acce
 review argues with it or does all of it. Then start a **fresh** pi session (new `--session-id`)
 with `templates/FIX-BRIEF.md` filled in, one turn, then the watch loop. The brief's shape: cwd line;
 role and the PR/worktree/head; read order (guidelines → decisions → the review file in full; the
-stage/verifier files forbidden); "its Fix lines are the spec"; the no-list (WIT, wire, config
+stage/verifier files forbidden); "its Fix lines are the spec"; the no-list (interfaces, wire, config
 keys, dependencies → blocker file instead; no shims, no ignored tests); the §Don't write this
 patterns and forward-compat default from `pi-subagent-plan/templates/DRIVER.md`; scoped tests
 while iterating, one full gate in the background to a log under `execution/`; one conventional

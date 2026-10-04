@@ -39,15 +39,14 @@ rather than let lanes run cargo.
 ## 1. Before launching (fable, in the main session)
 
 1. **Worktree.** Never the main checkout. One worktree for the whole swarm (`git worktree add
-   ../.worktrees/<name> -b <branch> <base-sha>` from the repo root; dekopon:
-   `~/code/dekopon/.worktrees/`); every lane edits the same tree. `cd` into it before launching
+   ../.worktrees/<name> -b <branch> <base-sha>` from the repo root); every lane edits the same tree. `cd` into it before launching
    so agents inherit it, and still put the absolute path in every prompt.
 2. **Scout with Explore agents, decide everything up front.** Line-cited briefs per lane; every
    design choice stated as a decision. Check every literal you put in a brief against the tree:
-   one wrong probe name copied from the plan into a chart message survived two verify rounds.
-   A wire-format, WIT or config-key change also fixes the ship order: enumerate every consumer
+   one wrong name copied from the plan into a user-facing message survived two verify rounds.
+   A wire-format, interface or config-key change also fixes the ship order: enumerate every consumer
    at its *deployed* version, verify each against the real artifact, write the order into the
-   PR (dekopon `AGENTS.md` §Releases across repos and GitOps).
+   PR ([LAWS.md](../../LAWS.md) §42).
 3. **Acceptance lines.** One sentence per item, keyed `S1…`, checkable against the tree. These
    ids are the only ones verifiers may use.
 4. **Ownership table** — this table IS the router, written as code, not prose:
@@ -60,13 +59,12 @@ rather than let lanes run cargo.
    Repair ownership follows the causing change. A path no lane may edit is a routing bug you
    pay for in fix rounds; the template widens the requesting lane rather than bouncing.
 5. **Shared files.** A file every lane needs is a chokepoint, not work. Where the repo takes
-   the edit at release time instead (`Changelog:` commit-message lines; dekopon `AGENTS.md`
-   §Large multi-agent runs), pass `changelog: null` and no lane touches it. Otherwise one writer
+   the edit at release time instead (`Changelog:` commit-message lines; [LAWS.md](../../LAWS.md)
+   §44), pass `changelog: null` and no lane touches it. Otherwise one writer
    lane; the others return bullets and a single-writer step inserts them. Never bullet
    branch-local churn (a script added and deleted on the same branch drew a residue-grep failure).
-6. **Gate commands, tiered** (§3), and **fixtures first** (dekopon:
-   `ci/fetch-external-provider-components.sh examples/providers` as the first `test` command;
-   `echo-provider.wasm` is gitignored and a scoped unit test needs it). Refetch after any
+6. **Gate commands, tiered** (§3), and **fixtures first** (the repo's
+   fixture fetch as the first `test` command when a scoped unit test needs a gitignored fixture). Refetch after any
    fixture bump: a red gate that CI passes is a stale fixture, not a bug.
 
 ## 2. Lanes (what the editors get)
@@ -94,8 +92,7 @@ their own `git diff` + verbatim failures; transcript continuity was not needed a
 ## 3. Reconciler: the tiered gate
 
 Cheap tiers first, so a compile-class failure costs a two-minute round, not a 27-minute one.
-Any fix restarts at tier 0. Every tier runs the repo's CI commands in CI's order (dekopon:
-`.github/workflows/ci.yml`), scoped with `-p` until `full`.
+Any fix restarts at tier 0. Every tier runs the repo's CI commands in CI's order, scoped with `-p` until `full`.
 
 ```
 check:  cargo check -p <touched pkgs + reverse deps> --all-targets --all-features --locked
@@ -108,10 +105,8 @@ test:   <fixture fetch>
         cargo test -p <same> --all-features --locked
         cargo test -p <same> --all-features --locked --doc
         <python gate scripts, helm lint/template incl. negative renders, actionlint, residue grep>
-full:   the repo's complete local definition of done (dekopon: docs/development.md
-        #root-workspace verbatim + provider example workspaces + python gates + release-metadata
-        + docs gates + chart job with kubeconform + wit-package.yml component rebuilds when
-        guest-linked crates change), skipping only lanes untouched by the change
+full:   the repo's complete local definition of done, as its development guide lists it,
+        skipping only lanes untouched by the change
 ```
 
 **Who runs it.** Default: the coordinator, in Bash, in the main session — the script has no
@@ -152,7 +147,7 @@ run returns the residue; never widen.
    reviewer found a permission failure a fresh-volume test had passed.
 2. **Full** tier once, then the script returns `{green, summaries, verdicts, nits}`.
 3. **Fable tail** (you): read `git diff main...HEAD` once against the acceptance lines and the
-   nits (the first run's tail found three more: a changelog overclaim, a wrong probe name, a
+   nits (the first run's tail found three more: a changelog overclaim, a wrong name, a
    test with no positive control); commit per lane (`git add -A -- <lane files>` so deletions
    and new files land; conventional subject; session trailers); ff-merge/push; PR edits and
    reply; one blocking `gh pr checks --watch`, never polling; a commit made after the review

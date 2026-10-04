@@ -24,15 +24,15 @@ if (args.measure) {
     cwd: args.measure.worktree,
     task: "Baseline-measurement harness, per the brief's preflight step 8 and §Acceptance. " +
           "Worktree " + args.measure.worktree + " on branch " + args.measure.branch + " at " +
-          args.measure.sha + ". Cherry-pick the existing harness branches' commits (gateway branch " +
-          "first, then broker) onto this branch, resolve conflicts toward measuring the new " +
-          "code paths, keep any provider-repo hunks out of core, and commit. Report what " +
+          args.measure.sha + ". Cherry-pick the existing harness branches' commits, in the brief's order, " +
+          "onto this branch, resolve conflicts toward measuring the new " +
+          "code paths, keep hunks that belong to other repos out, and commit. Report what " +
           "changed and how to run it.",
   });
   const run = await runs.run("measure-baseline", {
     agent: "gate-runner",
     cwd: args.measure.worktree,
-    task: "Run the baseline measurement harness in the linux/arm64 container exactly as the " +
+    task: "Run the baseline measurement harness in the brief's container exactly as the " +
           "measurements documents describe (same cases, seeds, three runs, medians) and write " +
           "the table to measurements/baseline-" + args.measure.sha.slice(0, 8) + ".md. " +
           "Editor's notes:\n" + harness.output,

@@ -144,12 +144,12 @@ write one too early.
 - **A fresh adversarial pass has run on the design** (a different fable agent than the designer,
   told to break it, with `file:line` evidence). Its "facts an implementer must be told" list goes
   into the brief verbatim; its amendments are applied to the design *before* the brief is written.
-- **The contracts are concrete and machine-checked**: WIT parsed with `wasm-tools component wit`
-  on the real files (a `contracts/` folder in the brief dir that lanes copy byte-for-byte), Rust
+- **The contracts are concrete and machine-checked**: interface definitions (IDL, schema)
+  parsed by their own tool on the real files (a `contracts/` folder in the brief dir that lanes copy byte-for-byte), Rust
   seams as signatures, config keys named against the existing struct and its `rename_all`; every
   constant that moves or dies is named with its locator; every consumer of a deleted convention
-  is enumerated. Prose WIT in a design is pseudocode until it parses: `as`, `list` and `stream`
-  are keywords, a variant case carries one payload, `error` must be defined — the asset run
+  is enumerated. A prose interface in a design is pseudocode until it parses: reserved keywords,
+  payload rules and undefined types all surface there — the asset run
   stopped on all three. Every "a config key for X", "a budget", "a directory" in the design
   becomes a named key with a value and a mandatory/defaulted call.
 - **Cross-lane seams are written, and lanes are staged by what they consume.** If lane C's code
@@ -223,8 +223,8 @@ write one too early.
 - **A dependency move has been diffed, not just named.** When the work re-pins a published crate
   (SDK 0.15 → 0.18), the recon diffs the two published manifests' features and dependencies
   (`cargo info`, or the registry `Cargo.toml`s under `~/.cargo/registry/src/`) and the brief
-  names what changed. SDK 0.18.0 dropping Wasmtime's `cache` feature was visible there and cost
-  python 3.5 hours of release-job timeouts because nobody looked.
+  names what changed. A dropped compile-cache feature was visible there and cost one consumer
+  3.5 hours of release-job timeouts because nobody looked.
 - **What stays with the owner is explicit**: releases, tags, published packages, private-repo
   commits, paid or real external calls, merges. Agents open PRs; they never merge or approve. Say
   the other half too: version fields edited inside a PR are ordinary work — "chart bump" read
@@ -386,7 +386,7 @@ subscription, so its dollars are notional and Claude's are not.
 | Dry-run rehearsal of a brief (§5), invention audit, scenario walk, consequence walk | pi sol at high (`pi-dry-run.sh`), sol only (owner 2026-09-30: no sonnet second run); sonnet only when pi's login is down | a dry run simulates the executor, so it runs on the executor's model; the defects it finds are mechanical |
 | **Plan check of the brief before launch** | fable, fresh | it found a critical error in each of the three plans it read on 2026-09-29, for about $3 each |
 | Rewriting the brief in one voice after the plan check and dry run | the coordinator session or pi sol, then a sol rehearsal of the rewrite (owner 2026-09-30: no Fable rewrite) | a Fable rewrite cost more than it found; the rehearsal after it catches what the rewrite breaks |
-| **Interfaces on a contract surface** (WIT, wire format, config keys, a public SDK or provider trait) | opus drafts the sketch, naming the states it makes unrepresentable; a fresh fable walks one real scenario through it; Xavier decides | opus's API sketches graded A on 2026-09-28; fable's design reviews found the P1s. The designer never reviews its own sketch |
+| **Interfaces on a contract surface** (interface definitions, wire format, config keys, a public SDK or plugin trait) | opus drafts the sketch, naming the states it makes unrepresentable; a fresh fable walks one real scenario through it; Xavier decides | opus's API sketches graded A on 2026-09-28; fable's design reviews found the P1s. The designer never reviews its own sketch |
 | Types and signatures inside a crate, behind a fixed entry point | the pi sol driver, by `DRIVER.md` §Order of work | the eval scored exactly this: the order of work added 1.4 points for 4 cents, a Claude-written sketch plus shape review added 0.25 for 6 to 10 times the run cost. No per-stage sketch |
 | Editing, building, PRs, releases, watching CI | pi driver (`openai-codex/gpt-6-sol`, medium, recipe A) | the volume; the owner's dial of 2026-09-30 |
 | **The step that sets a spine's shape** (the types the later steps extend) | one Opus agent building directly, then the verifier | sub-campaign 4's A2 built both ways: the blind Fable judge landed Opus's spine; pi kept the old plumbing with pipes bolted on |
@@ -559,7 +559,7 @@ means a seam signature in the brief and a stage boundary between the two lanes. 
 into the decisions table with a value, or
 becomes an explicit "editor's choice within these bounds" line, or moves the lane to a later
 stage. The audit is done when a rerun returns nothing. This is where the asset run's three
-stops (an undefined WIT `error`, an unnamed config key, an A↔C seam) would have surfaced for a
+stops (an undefined interface type, an unnamed config key, an A↔C seam) would have surfaced for a
 few cents instead of a stalled run.
 
 **Scenario walk** — §0's end-to-end scenario against the design: which rule each step touches,
@@ -620,9 +620,9 @@ gets the fix set via `pi-drive`'s `templates/FIX-BRIEF.md`.
   against about $29 of pi runs, and $52 went to protocol design before any run. Fix the judging
   budget first, and give the scoring to a second family so a Claude subject is not judged only
   by Claude.
-- Handing off a *design* instead of a brief: the implementer invents the protocol fields, the WIT,
-  the release order — differently from what was decided.
-- "Additive" claims that aren't: changing an existing WIT function's types re-pins every provider.
+- Handing off a *design* instead of a brief: the implementer invents the protocol fields, the
+  interface, the release order — differently from what was decided.
+- "Additive" claims that aren't: changing an existing interface function's types re-pins every consumer.
 - Editors that run cargo: eight overlapping builds took the disk to zero once. Only the
   gate-runner builds; editors' bash is for git/grep.
 - The lane that skipped verification held all the must-fixes. Every lane gets a fresh verifier,
@@ -653,8 +653,8 @@ gets the fix set via `pi-drive`'s `templates/FIX-BRIEF.md`.
   workflow collides with its editor's artifact. Give every resumed step its own `output`.
 - Seven stops on one swarm: each was a different category, and each fix was a patch on the
   previous patch. After the third stop, change the shape, not the brief.
-- The design's WIT used three keywords (`as`, `list`, `stream`) and a two-payload variant; nobody
-  had run `wasm-tools` on it. Parse the contract before the brief exists.
+- The design's interface used reserved keywords and an invalid variant; nobody had run its
+  parser on it. Parse the contract before the brief exists.
 - "A config key for the path" and "one byte budget" — no key names, no values, no
   mandatory/defaulted call. The editor proposed; the run stopped. Name every key.
 - Lanes A (protocol types) and C/D (their consumers) started in parallel from the same base; C
@@ -674,15 +674,15 @@ gets the fix set via `pi-drive`'s `templates/FIX-BRIEF.md`.
 - (#321) Redaction that blanked the whole body on any control char or at the read cap, byte
   budgets on error excerpts, `Option<i64>` token counts "so invalid values join semantic
   problems", and production JSON keys sorted so a golden survived `serde_json/preserve_order`
-  arriving through cedar-policy-core feature unification. Each is a row in §Don't write this.
-- (#321) Timing assertions in tests flake on CI runners and the Pi; assert structure and order.
+  arriving through a dependency's feature unification. Each is a row in §Don't write this.
+- (#321) Timing assertions in tests flake on CI runners and slow hosts; assert structure and order.
 - (#321) CHANGELOG `Fixed` entries for bugs the same PR introduced; `Fixed` is for released code.
 - `$SHA:crates/...` in zsh: `:c` is a modifier and eats the path. Use `${SHA}:path`.
 - The planner's seam sketch said `Result<_, ProtocolError>` where the real client returns
   `ClientError` with execution-uncertainty semantics, and named a type that already existed as a
   re-export. Fact-check seams; never write a signature from memory.
-- `MSG_CMSG_CLOEXEC` is Linux-only; the brief mandated it unconditionally and the run stopped on
-  macOS. State the platform matrix per mechanism.
+- A brief mandated a platform-only flag unconditionally and the run stopped on the other
+  platform. State the platform matrix per mechanism.
 - Stage-1 whole-workspace gate on a change that widens a signature consumed by stage 2: red by
   construction. Scope stage gates to the stage's crates.
 - A cheap invention audit after a fable design + fable review + planner pass still found ~50
@@ -702,25 +702,19 @@ gets the fix set via `pi-drive`'s `templates/FIX-BRIEF.md`.
   holds `.cargo/bin` in `PATH`. Use `pgrep -x`.
 - A bare `gh pr create` prompts for the body and hangs a non-interactive driver; always
   `--title … --body-file …`.
-- Providers pin the core crates (`dekopon-core`, `-capability`, `-broker`, `-broker-host`,
-  `-shell`) as exact dev-dependencies at the workspace version; a re-pin brief that names only
-  `dekopon-provider-*` leaves them behind and the tests fail to compile against the new API.
-- python's `build.rs` pins SHA-256 hashes of its WIT files and panics on drift; a WIT refresh
-  must recompute them. Say "read `build.rs` if present" in the child's read list.
-- A new provider whose name equals an interface it imports (`asset` ↔ `dekopon:asset@0.1.0`)
-  needs a distinct own package name (`dekopon:asset-provider`); the "name it like ripgrep does"
-  rule collides there.
-- The shared provider release job has `timeout-minutes: 30` and rebuilds from a clean checkout;
-  a component whose tests recompile it per test (RustPython after the SDK dropped Wasmtime
-  `cache`) cannot fit. Fix the tests (one compile cache per test binary), not the timeout.
-- (2026-10-03) A consumer's adversarial review found its dependency's defect: python #18's review
-  showed core logging every clock and entropy read, which DataFusion's per-poll clock and per-row
-  `uuid()` turned into millions of records per query. No core-only review could see it. When a
+- A re-pin brief must name every pinned crate, dev-dependencies included; one that names only
+  the obvious family leaves the rest behind and the tests fail to compile against the new API.
+- A build script that pins hashes of contract files panics on drift. Put "read `build.rs` if
+  present" in a refresh child's read list.
+- A release job with a fixed timeout cannot absorb tests that recompile a component per test.
+  Fix the tests (one compile cache per test binary), not the timeout.
+- (2026-10-03) A consumer's adversarial review found its dependency's defect: the consumer's review
+  showed the dependency logging every clock read, which the consumer's per-row clock use turned
+  into millions of records per query. No core-only review could see it. When a
   unit consumes another unit's new API, its adversarial review reads the dependency's diff too,
   and the dependency's release waits for it.
-- (2026-10-03) macOS `ar` writes an empty `libzstd.a` from wasm32 objects; local wasm component
-  builds of a provider that links zstd need `AR_wasm32_unknown_unknown` set to llvm-ar. CI on
-  Linux does not. Set it in the packet's `gate.sh`.
+- (2026-10-03) A local build that differs from CI by platform (a Mac toolchain quirk CI on Linux
+  never hits) belongs in the packet's `gate.sh`, copied from the repo's agent guide.
 - (2026-10-03) A sol supervisor ran driver turns in the foreground; the bash tool's 3600 s timeout
   cut one off and cost a continue turn. The launch-and-wait block in `SUPERVISOR.md` is the pattern;
   for a unit whose gate builds a large component, the turn tripwire goes to 120 minutes.

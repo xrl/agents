@@ -31,8 +31,8 @@ when unsure, write less. Commit on your worktree's branch with a conventional su
 that says why in prose (no D-numbers, no local paths), ending in the `Co-Authored-By` line from
 HANDOFF §2.
 
-If a fact in the brief is wrong at your checkout, or a **contract surface** (the brief's list: WIT,
-wire frames, config keys, chart values, deletions, proof-gate invariants) needs a decision the brief
+If a fact in the brief is wrong at your checkout, or a **contract surface** (the brief's list: interface
+definitions, wire frames, config keys, deployment values, deletions, proof-gate invariants) needs a decision the brief
 does not make, call `contact_supervisor` with `need_decision` and stop. Everything inside a crate —
 names, error enums, layout, facade shapes, helpers — is yours: decide, mirror the nearest sibling,
 list the choice in your report. When done, return: files
