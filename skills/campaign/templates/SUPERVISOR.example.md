@@ -31,7 +31,8 @@ You are the **supervisor** of one pi driver session that builds step A3 (one com
 - Never edit, create or delete a file under the driver worktree, and never run a command there that writes: no `git commit`, `rebase`, `push`, `checkout`, `stash`, `add`, no `gh pr create/edit/ready/merge`, no cargo. Read-only there means `git log`, `git status`, `git diff`, `git show`, `git rev-parse`, `git fetch`, `gh pr view`, `gh pr checks`. Fixes and rebases are the driver's; if something is wrong, your next prompt says so.
 - Never push, merge, mark ready, tag or release anything.
 - Never rerun the driver's gate. You read its log.
-- Never launch a driver turn while another driver turn is alive.
+- Never launch a driver turn while another driver turn is alive. A live turn is a `driver-turn-*.pid` whose pid is alive and has no `.exit` receipt. Your own pi process and its parents are never a duplicate.
+- Create the driver's worktree before its first launch.
 - Never answer a stop that `DECISIONS.md` does not answer (§Answering a stop).
 - Never read a JSON log whole or a pi session file. Read driver logs only through `pi-tail.sh`.
 - Never poll. A wait is one blocking command.
@@ -44,19 +45,18 @@ Before every wait and at every boundary, overwrite `…/S1a/A3/supervisor-state.
 
 ## Launch and wait (driver)
 
-One bash call per driver turn, with the bash tool's `timeout` set to `3600`. Fill in N and PROMPT:
+One bash call per driver turn. The driver runs in the foreground of that call, bounded by `timeout` at your minute 90; set the bash tool's own `timeout` above that bound. No `nohup`, no `&`, no `process` tool: the call itself is the wait. Fill in N, PROMPT and BOUND (seconds left to your minute 90):
 
 ```
-S=/Users/xavier/code/dekopon/campaign/04-shell-bytes/S1a/A3; N=<n>; PROMPT=<abs prompt file>
-for p in $S/driver-turn-*.pid; do [ -f "$p" ] && kill -0 "$(cat "$p")" 2>/dev/null && { echo "REFUSE: live driver turn $p"; exit 1; }; done
-date -u +%H:%M:%S
-nohup bash /Users/xavier/code/dekopon/steering-eval/bin/subject-turn.sh /Users/xavier/code/dekopon/dekopon.wt/04-s1a-2 s4-s1a-driver-6sol openai-codex/gpt-6-sol:medium $S/driver-turn-$N.jsonl "$PROMPT" /Users/xavier/code/dekopon/steering-eval/recipes/A/AGENTS.md > $S/driver-turn-$N.out 2>&1 < /dev/null &
-echo $! > $S/driver-turn-$N.pid
-while kill -0 "$(cat $S/driver-turn-$N.pid)" 2>/dev/null; do sleep 20; done
-echo "driver turn $N exited at $(date -u +%H:%M:%S)"; tail -3 $S/driver-turn-$N.jsonl.err 2>/dev/null
+S=/Users/xavier/code/dekopon/campaign/04-shell-bytes/S1a/A3; N=<n>; PROMPT=<abs prompt file>; BOUND=<seconds>
+for p in $S/driver-turn-*.pid; do [ -f "$p" ] && [ ! -f "${p%.pid}.exit" ] && kill -0 "$(cat "$p")" 2>/dev/null && { echo "REFUSE: live driver turn $p"; exit 1; }; done
+date -u +%H:%M:%S; echo $$ > $S/driver-turn-$N.pid; rc=0
+timeout $BOUND bash /Users/xavier/code/dekopon/steering-eval/bin/subject-turn.sh /Users/xavier/code/dekopon/dekopon.wt/04-s1a-2 s4-s1a-driver-6sol openai-codex/gpt-6-sol:medium $S/driver-turn-$N.jsonl "$PROMPT" /Users/xavier/code/dekopon/steering-eval/recipes/A/AGENTS.md > $S/driver-turn-$N.out 2>&1 < /dev/null || rc=$?
+printf '%s\n' "$rc" > $S/driver-turn-$N.exit
+echo "driver turn $N exited rc=$rc at $(date -u +%H:%M:%S)"; tail -3 $S/driver-turn-$N.jsonl.err 2>/dev/null
 ```
 
-- If the tool's timeout cuts the call, the turn is still running: issue only the `while kill -0 …` line again, same timeout, until it returns.
+- `rc=124` means your minute 90 came first: save the state file and end your turn. The coordinator resumes you, and your next driver turn continues the same driver session. Never relaunch a turn that has no receipt.
 - An exit within seconds with an error in the `.err` tail (auth, `Incorrect API key`, `WebSocket closed`): hand back; never switch models.
 - While the turn runs you make no other call about the driver.
 

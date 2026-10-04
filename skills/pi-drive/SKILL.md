@@ -70,10 +70,12 @@ an opus supervisor's cost.
   `<effort>-supervisor-<date>`), one per step, launched by Claude with `pi-turn.sh` in the
   background with the plan folder as cwd, so `pi-usage.sh` shows it apart from the driver. Its
   whole prompt is `templates/SUPERVISOR.md`, filled in.
-- **Launch and wait, inside pi.** One bash call per driver turn, bash `timeout` `3600`: a pid-file
-  check refuses a second live turn, `nohup bash pi-turn.sh … &` starts it, its pid goes to a
-  file, and a `while kill -0` loop in the same call waits. Never the `pi-processes` `process`
-  tool: a process started that way dies when the supervisor's print-mode turn ends.
+- **Launch and wait, inside pi.** One bash call per driver turn: a pid-file check refuses a
+  second live turn (alive pid, no `.exit` receipt; the supervisor's own process never counts),
+  then `timeout <seconds to minute 90> bash pi-turn.sh …` runs in the foreground and writes an
+  exit receipt, with the bash tool's own timeout set above that bound. Never the `process`
+  tool, which survives `-ne`: a process started that way dies when the supervisor's print-mode
+  turn ends. The foreground run also works for a supervisor that refuses `nohup` (sub-campaign 8).
 - **What it hands back.** A stop the decisions file does not answer, a hard stop, the same
   tripwire twice, the cases in `templates/SUPERVISOR.md` §Hand back to Claude, an auth error or
   outage, and every merge, mark-ready, tag, release, deploy or deployment-repo push. It writes

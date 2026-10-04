@@ -69,23 +69,24 @@ first and continue from it; do not start over.
 
 ## Launch and wait
 
-One bash call per driver turn, with the bash tool's `timeout` set to `3600`. It refuses to
-launch if a driver turn is alive, starts the turn, records its pid, and returns when the turn
-ends. Fill in N and PROMPT (`<ABS PLAN FOLDER>/pi/KICKOFF.md` for turn 1, else
-`<ABS PLAN FOLDER>/execution/prompts/driver-turn-N.md`):
+One bash call per driver turn. It refuses to launch if a driver turn is alive (a pid file with
+a live pid and no `.exit` receipt; your own pi process never counts), then runs the turn in
+the foreground, bounded by `timeout` at your minute 90, and writes an exit receipt. Set the
+bash tool's own `timeout` above BOUND. No `nohup`, no `&`, no `process` tool. Fill in N, BOUND
+(seconds left to minute 90) and PROMPT (`<ABS PLAN FOLDER>/pi/KICKOFF.md` for turn 1, else
+`<ABS PLAN FOLDER>/execution/prompts/driver-turn-N.md`). The worktree must exist first.
 
 ```
-E=<ABS PLAN FOLDER>/execution; N=<n>; PROMPT=<abs prompt file>
-for p in $E/pi/driver-turn-*.pid; do [ -f "$p" ] && kill -0 "$(cat "$p")" 2>/dev/null && { echo "REFUSE: live driver turn $p"; exit 1; }; done
-date -u +%H:%M:%S
-nohup bash /Users/xavier/.claude/skills/pi-drive/scripts/pi-turn.sh <ABS WORKTREE> <effort>-driver-<date> openai-codex/gpt-6-sol:medium $E/pi/driver-turn-$N.jsonl "$PROMPT" > $E/pi/driver-turn-$N.out 2>&1 < /dev/null &
-echo $! > $E/pi/driver-turn-$N.pid
-while kill -0 "$(cat $E/pi/driver-turn-$N.pid)" 2>/dev/null; do sleep 20; done
-echo "driver turn $N exited at $(date -u +%H:%M:%S)"; tail -3 $E/pi/driver-turn-$N.jsonl.err 2>/dev/null
+E=<ABS PLAN FOLDER>/execution; N=<n>; PROMPT=<abs prompt file>; BOUND=<seconds>
+for p in $E/pi/driver-turn-*.pid; do [ -f "$p" ] && [ ! -f "${p%.pid}.exit" ] && kill -0 "$(cat "$p")" 2>/dev/null && { echo "REFUSE: live driver turn $p"; exit 1; }; done
+date -u +%H:%M:%S; echo $$ > $E/pi/driver-turn-$N.pid; rc=0
+timeout $BOUND bash /Users/xavier/.claude/skills/pi-drive/scripts/pi-turn.sh <ABS WORKTREE> <effort>-driver-<date> openai-codex/gpt-6-sol:medium $E/pi/driver-turn-$N.jsonl "$PROMPT" > $E/pi/driver-turn-$N.out 2>&1 < /dev/null || rc=$?
+printf '%s\n' "$rc" > $E/pi/driver-turn-$N.exit
+echo "driver turn $N exited rc=$rc at $(date -u +%H:%M:%S)"; tail -3 $E/pi/driver-turn-$N.jsonl.err 2>/dev/null
 ```
 
-- If the tool's timeout cuts the call, the driver turn is still running: issue only the
-  `while kill -0 …` line again, same timeout, until it returns.
+- `rc=124` means minute 90 came first: save the state file and end your turn; the next turn
+  continues the same driver session. Never relaunch a turn that has no receipt.
 - The pid file is the only way to find a turn. A running pi shows in the process list as `pi`
   with no arguments, so a search for its session id finds nothing.
 - An exit within seconds with an error in the `.err` tail (auth, `Incorrect API key`,
