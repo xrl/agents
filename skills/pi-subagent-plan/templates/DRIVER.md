@@ -106,6 +106,10 @@ that removes each.
   don't either; record the finding as a Driver decision.
 - CHANGELOG: `Fixed` is only for bugs in released code; a bug this PR introduced and fixed is not
   an entry.
+- **Never edit a test outside this PR's scope to get a gate green.** A test that fails only under
+  load (a deadline, a timeout) and passes on a scoped rerun is a flake: if `decisions.md` lists it,
+  rerun it once and report both lines; if not, report it and stop the stage. On 2026-10-03 a
+  driver widened a deadline in an unrelated crate; the commit was dropped and became an issue.
 - **Do not end your turn while a subagent or background job is still running: wait on it with one
   blocking command that returns when it finishes, never repeated status calls.** A blocked call
   costs nothing; every status call re-reads your whole context.
@@ -164,7 +168,9 @@ Every stage, in order:
    contradicts a decision is declined with its D-number — amend, rerun the gate once, update the
    report. Pass 2 whenever you changed the commit after pass 1, because only a reviewed head is
    pushed (step 7): over the whole stage when pass 1 had a `contract` finding, over the amended
-   delta alone otherwise. There is no pass 3.
+   delta alone otherwise. There is no pass 3, except one: when pass 2's blocking findings are all
+   tagged `easy`, fix them, re-gate once, and run one verifier scoped to those findings over the
+   fix delta; push on its `ACCEPT`. Any `hard` finding after pass 2 ends the turn.
 7. **Push only when the last verdict is `ACCEPT`, at the SHA it reviewed.** If pass 2 still says
    `FIX REQUIRED`, do not push: end the turn with both verdicts side by side; the supervisor
    decides. Every commit you push has a verifier or reviewer file whose `Reviewed:` line names it

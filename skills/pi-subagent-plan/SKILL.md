@@ -212,6 +212,14 @@ write one too early.
   itself; the brief's stop rule names only contract surfaces. Mechanical rules are workspace lints,
   not verifier reading.
 - **The baseline is stated**: which PRs are assumed merged, which SHA, which measurements to beat.
+  **Re-verify every base ref at launch**, not only at recon: refs moved under three packets in one
+  afternoon on 2026-10-03, and one move (a branch becoming an ancestor of `main` through another
+  session's ours-merge) turned a planned merge into a silent no-op that would have deleted the
+  feature. `git merge-base --is-ancestor` and `git merge-tree` on the real refs, the hour you launch.
+- **Known flakes are in the decisions file before launch.** List each test that fails under
+  concurrent heavy builds (with its issue) and the rule: one scoped rerun at the unchanged head,
+  green counts. Parallel units on one Mac make these certain; without the row, every one is a
+  hand-back or, worse, a driver edit to a test outside its scope.
 - **A dependency move has been diffed, not just named.** When the work re-pins a published crate
   (SDK 0.15 → 0.18), the recon diffs the two published manifests' features and dependencies
   (`cargo info`, or the registry `Cargo.toml`s under `~/.cargo/registry/src/`) and the brief
@@ -220,7 +228,11 @@ write one too early.
 - **What stays with the owner is explicit**: releases, tags, published packages, private-repo
   commits, paid or real external calls, merges. Agents open PRs; they never merge or approve. Say
   the other half too: version fields edited inside a PR are ordinary work — "chart bump" read
-  literally is a stop condition.
+  literally is a stop condition. **The auto-mode classifier enforces this on the coordinator
+  too:** merging a PR that only a sol verifier read ("Merge Without Review") and pushing a
+  release tag ("Create Public Surface") were refused on 2026-10-03; PRs with a Fable review merged.
+  A release plan names each merge and tag as one owner command to paste, written out in full, or
+  asks once up front for a permission rule.
 - **The rehearsal (§5) passed** with no stops.
 
 ## 1. The brief (`HANDOFF.md`)
@@ -702,3 +714,14 @@ gets the fix set via `pi-drive`'s `templates/FIX-BRIEF.md`.
 - The shared provider release job has `timeout-minutes: 30` and rebuilds from a clean checkout;
   a component whose tests recompile it per test (RustPython after the SDK dropped Wasmtime
   `cache`) cannot fit. Fix the tests (one compile cache per test binary), not the timeout.
+- (2026-10-03) A consumer's adversarial review found its dependency's defect: python #18's review
+  showed core logging every clock and entropy read, which DataFusion's per-poll clock and per-row
+  `uuid()` turned into millions of records per query. No core-only review could see it. When a
+  unit consumes another unit's new API, its adversarial review reads the dependency's diff too,
+  and the dependency's release waits for it.
+- (2026-10-03) macOS `ar` writes an empty `libzstd.a` from wasm32 objects; local wasm component
+  builds of a provider that links zstd need `AR_wasm32_unknown_unknown` set to llvm-ar. CI on
+  Linux does not. Set it in the packet's `gate.sh`.
+- (2026-10-03) A sol supervisor ran driver turns in the foreground; the bash tool's 3600 s timeout
+  cut one off and cost a continue turn. The launch-and-wait block in `SUPERVISOR.md` is the pattern;
+  for a unit whose gate builds a large component, the turn tripwire goes to 120 minutes.

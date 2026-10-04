@@ -72,9 +72,29 @@ Same row, same decisions, same verifier; separate worktrees; neither may read th
 
 Coordinator only, on the integration branch: `git merge --squash origin/<branch>`, one commit whose body keeps every `Changelog:` line one per physical line, `git diff --quiet HEAD origin/<branch>` must hold (tree identical), push, close the PRs with the landing SHA, reap worktrees with `df` before and after. The author pushes its own branch; the coordinator never pushes onto a reviewed branch.
 
+## Closing
+
+Every coordinator session ends, at a close or a clean stop, with a fenced `/loop …` command that runs in a fresh context: the next unit's, filled in (folder, scope, end state, version), or this unit's resume if it stopped early. Write the same command into the `RESUME.md` banner. Shape (owner, 2026-10-01):
+
+```
+/loop You are the campaign coordinator for <unit> (<scope>), funded per JOURNAL.md. Read campaign/RESUME.md, <NN-name>/STATE.md and LIMITS.toml, and follow the campaign skill. <what to draft and check>, then drive <unit> to <end state: merged on main / vX.Y.Z released and live on the Pi>. No check-ins: decide under ambiguity and journal it. Wake only on completion notices. Write state before every wait.
+```
+
 ## Spend
 
 pi: `pi-usage.sh <worktree> <supervisor folder>` plus each verifier's printed `cost_usd` (dry runs have no session). Claude: by role, not model (pi-drive §Cost accounting). Project at every landing; stop at the tripwire. Sub-campaign 4 actuals: ≈ $154 for 13 steps and ≈ 9,400 lines; pi ≈ $78 (≈ $4.60 per step of driver + supervisor, ≈ $1.20 of verifiers per step), Claude ≈ $76 (two coordinator sessions with ≈ 20 wakes, the A2 Opus build, two Fable reads, the ship supervisor). A sol supervisor session carried across resumes grew to $7: start a fresh one every few steps.
+
+Claude's number is the coordinator session's `/cost`, which includes its subagents. ccusage 5-hour blocks count Claude only: never subtract pi from them (2026-10-02: reported $15, real $62).
+
+### Where Claude money goes (rest of 6, 2026-10-02: $62 Claude, $47 pi)
+
+Opus was $47, almost all of it 134M cache-read tokens: every tool call re-reads the whole context, so cost ≈ context size × calls. Three things drove it, and each has a rule:
+
+1. **Size Opus steps at ≤ 800 changed production lines.** At a contract break the tests move with the code: S1b-1 was estimated at 1,400 and came to ≈ 4,000 gross. It took four Opus agents, three of them ending at the 300k cap, where every call re-reads the largest context.
+2. **An Opus agent stops when production code compiles and its witnesses are green.** It commits and writes NOTES. The test fix-up, the full gate and the verifier go to a pi driver as the next step. The S1b-1c finish was exactly that work, and pi did it.
+3. **The coordinator hands off after each landing, or at ≈ 240k tokens.** It writes STATE and prints its `/loop`, and a fresh session continues. One coordinator session ran six hours, with a context of several hundred k re-read on about 150 turns.
+
+The Fable reads ($15) were worth it: they found the design break before the build, and the final read cleared the merge. Keep them.
 
 ## Things that bite
 
@@ -87,6 +107,17 @@ pi: `pi-usage.sh <worktree> <supervisor folder>` plus each verifier's printed `c
 - A prompt that says "amend" after a push diverges the branch: CI fixes are new commits on top.
 - A driver that runs under DRIVER.md's third-FIX stop refuses a fix unless the prompt quotes the coordinator ruling that authorizes it.
 - Grepping task output files can pull whole subagent transcripts into the coordinator's context; read only the named output of a Bash task.
+- A Bash background task dies at 2 h. A pi supervisor turn that runs several steps outlives that, and its driver dies with it (the RG supervisor died mid-RG-b, 2026-10-02). Launch one supervisor turn per step.
+- Launch a pi turn with `run_in_background`. A foreground `&` is killed as soon as the call returns.
+- Deleting a live unit's `target/` forces a cold rebuild. Overlapped with another build, it dipped free disk from 69 to 13 GiB for a minute. Check disk when a build launches, never in the middle of one.
+- On macOS, a passed SCM_RIGHTS descriptor stays open when the frame is read with plain `read(2)`; Linux closes it. A test fake that receives `Invoke` must read with `DescriptorStream`, or a pipe never sees EOF and the test hangs only on the Mac.
+- When a pilot needs a core fix while a driver owns the core worktree, commit the fix on a side branch cut from the pushed head. The pilot pins to it, and the core step cherry-picks it. That keeps one writer per worktree.
+- If time is short, run the PR's Fable read beside the unit's last CI wait rather than after it. It needs the local head, not CI.
+- The classifier refuses `gh pr merge` into a shared repo whose `@main` every provider calls (provider-workflows). Ask the owner for that merge up front.
+- Start a step when its own dependency lands, not when the whole unit does. 2026-10-03: curl's typed-SDK migration needed only S1b on main but waited for S2, so the testkit defect it found surfaced hours late.
+- Before a push, the driver runs CI's own steps for what it touched: every checked probe rebuilt and byte-compared when the SDK or WIT changes, the audit-event docs check when it adds a trace event, `cargo doc` with `-D warnings`, `cargo deny`. 2026-10-03: four CI reds (rustdoc link, Wasmtime advisory, probe bytes, undocumented event) each cost a fix turn plus a CI cycle.
+- A pi turn that dies on `fetch failed` twice is a network problem, not a model one. Hand the half-done easy fix to one Claude agent working from the uncommitted diff rather than retrying a third time.
+- `gh pr merge --rebase` rewrites SHAs. A pilot that must pin to the merged commit waits for the merge, then pins to `mergeCommit.oid`.
 
 ## Routing decided for sub-campaign 6 (owner, 2026-09-30)
 
@@ -99,3 +130,4 @@ Opus builds the seam step where shape decides; pi fans out the mechanical steps 
 1. A tripwire inside the funded budget is a journal line, not a stop; only spend past the budget and owner-only items block.
 2. Ask a foreseeable owner decision the moment a projection shows it, batched, with a recommendation.
 3. A blocking question left unanswered: journal it, write every state file, stop cleanly, so the owner answers in a fresh short session.
+4. **Drop the straggler (owner, 2026-10-03).** When every other provider is green and one cannot get a release compatible with the new core (a release snag, a failing review, an owner-only step), the rollout ships without it. Remove its `providers.yaml` entry, its `broker.d` file and its Cedar grants from the homelab PR, journal the drop, and roll out. The straggler returns in its own small homelab PR once its release exists. Exception: a provider the funding line or BRIEF names **essential** blocks the rollout instead, and the coordinator asks the owner. With no essential list, nothing is essential; the owner named python non-essential. 2026-10-03: python's release-branch snag held eleven released providers off the Pi for six hours.

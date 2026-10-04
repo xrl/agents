@@ -128,7 +128,9 @@ A driver's report is a claim, not a receipt. Accept only when all of these hold,
    pr-reviewer's, on the stages that have one. `verdict=NOT OK` is not accepted.
 4. `cd $W && gh pr view --json state,isDraft,headRefOid,url` shows `OPEN`, `isDraft: true` and
    `headRefOid` equal to local HEAD (the pushed head is the reviewed head).
-5. The commits since the merge base are exactly one per accepted stage, and
+5. The commits since the merge base are one per accepted stage (two for a split stage), plus any
+   commit made after a push that a verify or review file names on its `Reviewed:` line (or
+   contains), and
    `git -C $W diff --stat $(git -C $W merge-base origin/main HEAD) HEAD` touches only
    <the paths each stage may touch, per stage, from the brief>.
 
@@ -200,8 +202,17 @@ a second time in this unit: hand back.**
 
 Hand back, instead of deciding, for: a stop `decisions.md`/`DRIVER.md` does not answer; a hard
 stop (the driver's four stops in DRIVER.md §Authority); the same tripwire twice; a verifier verdict
-of FIX REQUIRED after pass 2; an auth error or a provider outage; anything that would merge, mark
-ready, tag, release, deploy or push to `main`.
+of FIX REQUIRED after pass 2 with any `hard` finding, or a scoped re-check that says FIX REQUIRED;
+an auth error or a provider outage; anything that would merge, mark ready, tag, release, deploy or
+push to `main`.
+
+Not hand-backs (2026-10-03, three of four hand-backs in one run were these):
+- **Pass 2 FIX REQUIRED with every blocking finding tagged `easy`:** send the driver a Correction
+  to fix them, re-gate once, and run one fresh verifier scoped to those findings over the fix delta;
+  accept on its `ACCEPT`.
+- **A gate red only on a known flake** the decisions file lists: run that one test once yourself at
+  the unchanged head; green counts the gate green. A flake not on the list is a hand-back, never a
+  driver edit to that test.
 
 To hand back: write `<ABS PLAN FOLDER>/execution/supervisor-blockers.md`
 with, per item: what happened (the mechanism facts: file, line, command, verbatim output), the
