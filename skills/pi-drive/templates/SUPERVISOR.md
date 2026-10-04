@@ -70,7 +70,7 @@ first and continue from it; do not start over.
 ## Launch and wait
 
 One bash call per driver turn. It refuses to launch if a driver turn is alive (a pid file with
-a live pid and no `.exit` receipt; your own pi process never counts), then runs the turn in
+a live pid and no `.exit` receipt; never look for other supervisors, there is one: you), then runs the turn in
 the foreground, bounded by `timeout`, and writes an exit receipt. Set the bash tool's own
 `timeout` to 3600, pi's cap. No `nohup`, no `&`, no `process` tool. Fill in N, BOUND
 (min(seconds left to minute 90, 3300)) and PROMPT (`<ABS PLAN FOLDER>/pi/KICKOFF.md` for turn 1, else

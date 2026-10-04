@@ -71,7 +71,8 @@ an opus supervisor's cost.
   background with the plan folder as cwd, so `pi-usage.sh` shows it apart from the driver. Its
   whole prompt is `templates/SUPERVISOR.md`, filled in.
 - **Launch and wait, inside pi.** One bash call per driver turn: a pid-file check refuses a
-  second live turn (alive pid, no `.exit` receipt; the supervisor's own process never counts),
+  second live driver turn (alive pid, no `.exit` receipt; the supervisor never looks for other
+  supervisors, which finds its own process),
   then `timeout <min(seconds to minute 90, 3300)> bash pi-turn.sh …` runs in the foreground and
   writes an exit receipt, with the bash tool's own timeout at 3600 (pi's cap; a longer turn
   continues as turn N+1 in the same session). Never the `process`
