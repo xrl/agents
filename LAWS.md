@@ -216,10 +216,10 @@ CRDs, and other destructive resource classes with explicit prune exclusions or
 approval gates. A business app may omit self-healing for deliberate live
 debugging, but must document that choice.
 
-- **Receipt, scientist-hq k3, 2026-06-09:** drift-deleted ARC
+- **Receipt, a production k3s cluster, 2026-06-09:** drift-deleted ARC
   `Certificate`/`Issuer` resources went unnoticed behind a retained Secret;
   renewal failed, the cert expired, and GHA lost workers for 80 minutes while
-  the app had seen no commit since Nov 11. Fixed in `k3-applications@553385e`.
+  the app had seen no commit in seven months.
 
 ### 25. Apps that install CRDs use ServerSideApply — and must be able to reach Synced.
 
@@ -230,8 +230,8 @@ defaulted `conversion.strategy`) causes permanent diffs, add ServerSideDiff or
 precise `ignoreDifferences`. Permanently red apps hide real drift.
 
 - **Receipt:** ARC had been OutOfSync/Failed on five CRDs since November,
-  masking the certificate drift in §24. `k3-applications@b92954b..4ad839f`
-  split/ignored/skipped CRDs and made it Synced for the first time since Nov 2025.
+  masking the certificate drift in §24. Splitting, ignoring and skipping CRDs
+  made it Synced for the first time since Nov 2025.
 
 ### 26. Inline `values: |` in the ApplicationSet, not a per-app values file.
 

@@ -295,9 +295,9 @@ remember to stop; `pi-rpc-stop.sh` at the end of the session.
   stall); if you launch pi by hand, do the same. Check with `jq -r .type <log> | head -3`.
 - **Prompts go by file, never inline in argv.** Write every stage prompt to a file and pass its
   path; `pi-turn.sh` hands pi `@<abs path>` (changed 2026-09-23), which pi expands into a
-  `<file>` block. Long command lines are fragile under the sandbox (the omnibus capture hit it;
+  `<file>` block. Long command lines are fragile under the sandbox (a capture run hit it;
   the 100/300/600-byte ladder did not reproduce a hard limit), and the file block caches:
-  `reveal-capture-atfile-test` read 17,920 tokens from cache for 1,272 fresh ones. By hand:
+  one test turn read 17,920 tokens from cache for 1,272 fresh ones. By hand:
   `pi … -- "@/abs/prompt.md"`. Short literal text still works for one-liners.
 - Auth: an expired OpenAI login shows as an immediate exit with an error in `<log>.err`.
   Tell Xavier; do not switch models.

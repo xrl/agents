@@ -4,10 +4,11 @@ Three Claude Code skills. `pi-subagent-plan` authors the packet (brief, decision
 files, kickoff, rehearsal) that hands decided work to a cheap pi driver
 (`openai-codex/gpt-6-astra`); `pi-drive` runs it turn by turn from Claude Code, answering stops
 from the decisions file and escalating only owner actions; `rust-feature-swarm` lands one coupled
-multi-lane Rust change with concurrent lane editors behind a tiered cargo gate. Canonical copies
-live in `~/.claude/skills/`; this directory is the durable record of where they stood.
+multi-lane Rust change with concurrent lane editors behind a tiered cargo gate. This directory is
+canonical: `~/.claude/skills/<name>` is a symlink into it, and edits land here through a PR.
 
-Install by copying the skill directories into `~/.claude/skills/`. The scripts under
+Install with `ln -s ~/code/xrl/agents/skills/<name> ~/.claude/skills/<name>`; update with
+`git pull --ff-only` on `main`. The scripts under
 `pi-drive/scripts/` need `pi` 0.85+, `jq`, `lsof` and `python3`; `rust-feature-swarm/` needs the
 Claude Code `Workflow` tool.
 

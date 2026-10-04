@@ -485,24 +485,24 @@ When a stage stops or repoints a shared service (a container, a shared database,
 the branch's build, its first step is a read-only boot check of **everything the window will
 use**: every host and route it will open answers (login page 200, not 500 or "blocked host"),
 pending migrations are listed, required env/host settings exist. Only then stop the shared
-service. The #41538 capture stopped the shared rx-reveal first and then found, one turn at a
-time, a pending-migration 500 and a refused storefront host: two round trips and a longer outage
-of the shared container. Repo-specific checks (which command lists migrations, which env var
+service. One capture run stopped a shared app container first and then found, one turn at a
+time, a pending-migration 500 and a refused host: two round trips and a longer outage of the
+shared container. Repo-specific checks (which command lists migrations, which env var
 admits a host) belong in that repo's agent guide, and the brief points at it.
 
 **Screenshot clips.** A capture of an element that opens a popup (listbox, menu, modal) clips to
 the union of the trigger and the popup plus padding, and asserts every item the shot is about
-lies inside the clip. The #41538 W2 clip was computed from the input alone and cut the dropdown
+lies inside the clip. One clip was computed from the input alone and cut the dropdown
 after two rows while every DOM assertion passed.
 
-## 3c. Vision classification lanes (omnibus screenshots, 2026-09-23)
+## 3c. Vision classification lanes (screenshot pairs, 2026-09-23)
 
 When a run ends with images to judge (before/after pairs, "is this capture blank"), the
 classifiers are their own lanes, and they are cheap only if you keep them small:
 
 - **Rubric, not skill.** Each child gets a ≤1 KB rubric (the verdict labels, what each means,
-  the one fact the pair must show) plus absolute image paths. All 21 phase-4 pair children
-  read the 15 KB `rx-reveal-browser/SKILL.md` first, about 370 KB of context spent on nothing.
+  the one fact the pair must show) plus absolute image paths. All 21 pair children of one
+  run read a 15 KB browser skill first, about 370 KB of context spent on nothing.
 - **Cheap pass, then Sol.** Luna shortlists and classifies. Sol re-reviews every unclear or
   disagreeing pair before a verdict reaches a PR. Luna picks images well and calls verdicts
   generously (`agent-routing` has the numbers).
@@ -546,9 +546,8 @@ run in parallel, rulings on findings, one-voice rewrite, rehearsal. The files ar
 `~/code/dekopon/effort-tuning-design/execution/rehearsal/`.
 The passes are the **ops rehearsal** below, the **invention audit** and the **scenario walk**. The rehearsal runs
 **after** any adversarial pass and re-verifies each amendment that pass applied against the
-source: amendments are claims, not facts. On #41538 the adversarial reviewer declared
-`htmx_push_url` nonexistent and rewrote a decision around it; the rehearsal found it at
-`app/modules/htmx.rb:74`.
+source: amendments are claims, not facts. Once an adversarial reviewer declared a real
+helper nonexistent and rewrote a decision around it; the rehearsal found it in the source.
 
 **Invention audit** — per lane, an agent given only that lane's brief and the design sections it
 cites answers: "list every name, type, value, path, default, error shape, ordering and
