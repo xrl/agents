@@ -163,7 +163,8 @@ inline. Keep them to the text below.
   > turn while a subagent or background job is still running.
 - **Correction after a failed read-only check:**
   > Your report says <claim>; at <sha> <command> shows <verbatim line>. Fix it within stage N,
-  > amend, rerun the gate once, re-verify, update the report. Do not end your turn while a
+  > amend if stage N is unpushed, otherwise commit the fix on top; rerun the gate once,
+  > re-verify, update the report. Do not end your turn while a
   > subagent or background job is still running.
 
 ## Answering a stop

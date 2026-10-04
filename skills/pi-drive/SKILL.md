@@ -44,8 +44,8 @@ So the supervisor is the cheapest tier that has been shown to do it:
 
 1. **A pi sol supervisor for a mechanical unit** (a re-pin, a CI or docs change, a path
    cleanup). The pilot in §A sol supervisor passed on 2026-09-29.
-2. **A pi sol supervisor for a code unit too** since sub-campaign 4 (below); Opus at `medium` only for a ship unit that merges and tags. One
-   fresh supervisor per unit, resumed from a state file, handed off at 120k tokens. Never `max`:
+2. **A pi sol supervisor for a code unit too** since sub-campaign 4 (below), and for the ship unit since 2026-10-01. One
+   supervisor session per step, resumed from a state file, handed off at 120k tokens. Never `max`:
    a supervisor writes no code.
 3. **Fable never runs the loop.** Spawn it as a fresh `Agent` for the rows `pi-subagent-plan`
    §3a gives Claude: a stop the decisions file does not answer (the brief, the decisions file
@@ -117,7 +117,7 @@ The packet is `~/code/dekopon/sol-supervisor-pilot/`.
   packet, not the model: a Push prompt that said "amend" after a push (fix: a CI repair is a new
   commit on top), a driver refusing a fix because the prompt did not carry the coordinator's
   authority (fix: quote the ruling file), and one supervisor session carried across five
-  resumes that grew to $7 (fix: a fresh session every few steps). A standing ruling for
+  resumes that grew to $7 (fix: a fresh session per step). A standing ruling for
   repeated third-FIX cases (fix and one scoped re-check when every finding is in the step's own
   hunks) removed a coordinator wake per step. The packets are
   `~/code/dekopon/campaign/04-shell-bytes/S1a/A4-12/` and the `campaign` skill.

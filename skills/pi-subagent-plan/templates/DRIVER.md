@@ -158,10 +158,10 @@ not run an example's `#[cfg(test)]` module unless its `[[example]]` entry sets `
 Every stage, in order:
 
 1. `git fetch origin && git rebase origin/main`; record conflicts in the report. From stage 2:
-   `gh pr checks <url>` for the pushed head; a red **required** check is fixed first, amending the
-   previous stage's commit. Pending is not red.
+   `gh pr checks <url>` for the pushed head; a red **required** check is fixed first, with a new commit on
+   top; a pushed commit is never amended. Pending is not red.
 2. Implement the stage block below. Scoped checks while iterating.
-3. `df -h ~`. Commit (one commit; amend it for every later fix in this stage).
+3. `df -h ~`. Commit (one commit; amend it for every later fix in this stage until it is pushed).
 4. The full gate in the background (§Gate); one blocking wait to green.
 5. Draft `<design>/execution/stage-N-report.md` (§Report): the verifier reads it.
 6. **Verify** (§Verify). Apply every `contract` and `guideline` finding — a finding that

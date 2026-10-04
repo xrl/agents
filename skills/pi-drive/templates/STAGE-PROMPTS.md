@@ -43,5 +43,6 @@ is the reviewed SHA and the stage is under the cap (or was split).
 **Correction after a failed read-only check:**
 
 > Your report says <claim>; at <sha> <command> shows <verbatim line>. Fix it within stage N,
-> amend, rerun the gate once, re-verify, update the report. Do not end your turn while a subagent
+> amend if stage N is unpushed, otherwise commit the fix on top; rerun the gate once,
+> re-verify, update the report. Do not end your turn while a subagent
 > or background job is still running.

@@ -3,8 +3,6 @@ name: campaign
 description: Run one funded sub-campaign of a large multi-step code effort economically — a Claude coordinator that rules and lands, pi sol supervisors that watch, a pi GPT driver that builds, a fresh gpt-6-sol verifier per commit, and a few fresh Fable reads — from a folder of state files. Use when Xavier funds a sub-campaign, says "run the campaign", "continue sub-campaign N", or asks how to drive a big change cheaply across many steps. Not for a one-file change (one Opus agent), and not for writing the brief (pi-subagent-plan) or for the mechanics of one pi session (pi-drive).
 ---
 
-<!-- STAGED, 2026-09-30: drafted at A3, filled from sub-campaign 4 actuals at its close. Installing it into ~/.claude/skills is the owner's call. -->
-
 # Running a campaign
 
 **Claude decides; pi does.** Claude quota is the scarce resource, and a coordinator's own wakes are its largest line once supervision moves to pi. Every rule below either keeps Claude out of a loop or makes a Claude call count.
@@ -13,10 +11,10 @@ description: Run one funded sub-campaign of a large multi-step code effort econo
 
 | Role | Model | Lives | Does | Never |
 |---|---|---|---|---|
-| Coordinator | Claude Opus, one session | across units until ~240k tokens, then a fresh session from `RESUME.md` | rules on hand-backs by quoting or adding a decision, launches Opus for `hard` findings, lands, journals, reads spend | supervises a step; rereads a gate; polls; writes a brief, packet or re-check prompt pi can write |
+| Coordinator | Claude Opus, one session | until the next landing or 120k tokens, whichever comes first, then a fresh session from `RESUME.md` | rules on hand-backs by quoting or adding a decision, launches Opus for `hard` findings, lands, journals, reads spend | supervises a step; rereads a gate; polls; writes a brief, packet or re-check prompt pi can write |
 | Brief drafter | pi `gpt-6-sol:medium`, one run | once per sub-campaign | RECON, BRIEF and DECISIONS drafts from DESIGN and the source; the coordinator rules, then the plan check and dry run | decides an owner question |
 | Packet writer | pi `gpt-6-sol:medium`, one run | once per sub-campaign | DRIVER, SUPERVISOR, step prompts and verify templates from `templates/`; a sol rehearsal checks it | |
-| Supervisor | pi `gpt-6-sol:high`, one session per step (or per run of steps) | `pi-turn.sh` in the background from its own folder | launches driver turns, runs the verifier, sends fix/integrate/push prompts, runs the scoped re-checks, hands back hard findings | decides scope; edits the worktree; answers a stop without quoting a row |
+| Supervisor | pi `gpt-6-sol:high`, one session per step; a step that outgrows 120k tokens hands off from its state file | `pi-turn.sh` in the background from its own folder | launches driver turns, runs the verifier, sends fix/integrate/push prompts, runs the scoped re-checks, hands back hard findings | decides scope; edits the worktree; answers a stop without quoting a row |
 | Driver | pi `gpt-6-sol:medium`, recipe A, `-nc -ne` | one session per step | edits, builds, commits, gates, easy fixes, witnesses for Opus fixes, pushes on ACCEPT | spawns agents; pushes before ACCEPT; edits Opus fix lines |
 | Verifier | pi `gpt-6-sol:high` via `pi-dry-run.sh … bash` | fresh per pass | reviews exactly one commit range, tags findings `hard`/`easy` | cargo, writes |
 | Opus | fresh `general-purpose` agent, `model: opus` | one step or one fix | the spine step; `hard` findings as code only | writes tests for its own fix; shares a worktree with a live writer |
@@ -92,7 +90,7 @@ Opus was $47, almost all of it 134M cache-read tokens: every tool call re-reads 
 
 1. **Size Opus steps at ≤ 800 changed production lines.** At a contract break the tests move with the code: S1b-1 was estimated at 1,400 and came to ≈ 4,000 gross. It took four Opus agents, three of them ending at the 300k cap, where every call re-reads the largest context.
 2. **An Opus agent stops when production code compiles and its witnesses are green.** It commits and writes NOTES. The test fix-up, the full gate and the verifier go to a pi driver as the next step. The S1b-1c finish was exactly that work, and pi did it.
-3. **The coordinator hands off after each landing, or at ≈ 240k tokens.** It writes STATE and prints its `/loop`, and a fresh session continues. One coordinator session ran six hours, with a context of several hundred k re-read on about 150 turns.
+3. **The coordinator hands off after each landing, or past 120k tokens.** It writes STATE and prints its `/loop`, and a fresh session continues. One coordinator session ran six hours, with a context of several hundred k re-read on about 150 turns.
 
 The Fable reads ($15) were worth it: they found the design break before the build, and the final read cleared the merge. Keep them.
 
