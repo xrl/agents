@@ -108,7 +108,6 @@ The Fable reads ($15) were worth it: they found the design break before the buil
 - A Bash background task dies at 2 h. A pi supervisor turn that runs several steps outlives that, and its driver dies with it (the RG supervisor died mid-RG-b, 2026-10-02). Launch one supervisor turn per step.
 - Launch a pi turn with `run_in_background`. A foreground `&` is killed as soon as the call returns.
 - Deleting a live unit's `target/` forces a cold rebuild. Overlapped with another build, it dipped free disk from 69 to 13 GiB for a minute. Check disk when a build launches, never in the middle of one.
-- On macOS, a passed SCM_RIGHTS descriptor stays open when the frame is read with plain `read(2)`; Linux closes it. A test fake that receives `Invoke` must read with `DescriptorStream`, or a pipe never sees EOF and the test hangs only on the Mac.
 - When a pilot needs a core fix while a driver owns the core worktree, commit the fix on a side branch cut from the pushed head. The pilot pins to it, and the core step cherry-picks it. That keeps one writer per worktree.
 - If time is short, run the PR's Fable read beside the unit's last CI wait rather than after it. It needs the local head, not CI.
 - The classifier refuses `gh pr merge` into a shared repo whose `@main` every provider calls (provider-workflows). Ask the owner for that merge up front.
