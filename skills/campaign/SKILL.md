@@ -42,7 +42,7 @@ Design-shaping steps (the one where the spine's types are set) may go to one Opu
 
 ## Before a step launches
 
-1. `LIMITS.toml`: not paused, spend under the tripwire, free disk minus kache headroom over the floor, heavy builds under the cap.
+1. `LIMITS.toml`: not paused, spend within the funded budget, free disk minus kache headroom over the floor, heavy builds under the cap.
 2. A worktree cut from the integration head, upstream unset, fixtures fetched.
 3. The step prompt: the row verbatim, the packages, the witnesses, what the previous step landed in one paragraph, "decide under ambiguity and record it; never end a turn with a question".
 4. The verify template: `verifier-role.md` + the range + the row + the step's specific checks + **every coordinator ruling so far**, stated as "not findings". A ruling missing from the template is re-raised by the next verifier.
@@ -80,7 +80,7 @@ Every coordinator session ends, at a close or a clean stop, with a fenced `/loop
 
 ## Spend
 
-pi: `pi-usage.sh <worktree> <supervisor folder>` plus each verifier's printed `cost_usd` (dry runs have no session). Claude: by role, not model (pi-drive §Cost accounting). Project at every landing; stop at the tripwire. Sub-campaign 4 actuals: ≈ $154 for 13 steps and ≈ 9,400 lines; pi ≈ $78 (≈ $4.60 per step of driver + supervisor, ≈ $1.20 of verifiers per step), Claude ≈ $76 (two coordinator sessions with ≈ 20 wakes, the A2 Opus build, two Fable reads, the ship supervisor). A sol supervisor session carried across resumes grew to $7: start a fresh one every few steps.
+pi: `pi-usage.sh <worktree> <supervisor folder>` plus each verifier's printed `cost_usd` (dry runs have no session). Claude: by role, not model (pi-drive §Cost accounting). Project at every landing; journal a tripwire crossing; stop past the funded budget. Sub-campaign 4 actuals: ≈ $154 for 13 steps and ≈ 9,400 lines; pi ≈ $78 (≈ $4.60 per step of driver + supervisor, ≈ $1.20 of verifiers per step), Claude ≈ $76 (two coordinator sessions with ≈ 20 wakes, the A2 Opus build, two Fable reads, the ship supervisor). A sol supervisor session carried across resumes grew to $7: start a fresh one every few steps.
 
 Claude's number is the coordinator session's `/cost`, which includes its subagents. ccusage 5-hour blocks count Claude only: never subtract pi from them (2026-10-02: reported $15, real $62).
 

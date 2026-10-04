@@ -383,8 +383,9 @@ so a wakeup needs no memory of this file; copy this block into it and fill the b
   the effort's `LIMITS.toml` where it has one. First firing: one `pi-tail.sh` look and, if the
   driver is looping, a correction prompt at its next turn. The same tripwire again after a
   correction: stop the lane and report.
-- Turn ended (`alive=no`; `pi-check.sh` prints nothing at all when no process holds the log —
-  treat an empty line as `alive=no`): `pi-tail.sh <log> 2 1000`; verify claims read-only
+- Empty output from `pi-check.sh` is a script failure, not a dead driver: diagnose; don't
+  relaunch.
+- Turn ended (`alive=no`): `pi-tail.sh <log> 2 1000`; verify claims read-only
   (`git log`, `git status --short`, `gh pr view --json headRefOid,state`, `gh pr checks`); then
   the next stage as a new `pi-turn.sh` turn in the background, and put the new log path in the
   next wakeup prompt. Ended mid-stage with no report and no question: relaunch at once with the

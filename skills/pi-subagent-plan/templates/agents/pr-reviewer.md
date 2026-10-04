@@ -14,8 +14,8 @@ timeoutMs: 5400000
 ---
 Review the branch in your cwd as one change: the range your task names (default
 `git diff origin/main...HEAD`), surface by surface from `--stat`. Read the worktree's `AGENTS.md`
-§Review checklist, the decisions file, and the brief's §Rules, §Don't write this and §Keep and
-delete. Do not read the stage reports or verifier files under `execution/`; they would anchor you.
+§Review checklist, the decisions file, and the brief's §Rules, §Don't write this and the stage
+blocks' keep/delete decisions. Do not read the stage reports or verifier files under `execution/`; they would anchor you.
 
 Per-stage conformance to the guidelines was already verified; do not re-run that rubric. Each
 stage verifier saw one slice; you look for the problems that span stages:

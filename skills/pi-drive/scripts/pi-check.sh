@@ -11,11 +11,11 @@
 set -euo pipefail
 LOG=$1
 WT=${2:-}
-P=$(lsof -t "$LOG" 2>/dev/null | head -1); alive=no; [ -n "$P" ] && alive=yes
+P=$(lsof -t "$LOG" 2>/dev/null | head -1 || true); alive=no; [ -n "$P" ] && alive=yes
 now=$(date +%s); m=$(stat -f %m "$LOG" 2>/dev/null || stat -c %Y "$LOG"); age=$(( (now-m)/60 ))
 lines=$(wc -l < "$LOG" | tr -d ' '); last=$(tail -1 "$LOG" | jq -r '.type' 2>/dev/null || echo '?')
 builds=$(ps -Ao command | grep -E '^(/[^ ]*/)?(cargo|rustc|kache) |docker (run|exec)' | grep -vc 'kache daemon' || true)
-containers=$(docker ps -q 2>/dev/null | wc -l | tr -d ' ')
+containers=$(docker ps -q 2>/dev/null | wc -l | tr -d ' ' || true)
 prose=$(grep -c '"type":"message_end","message":{"role":"assistant","content":\[{"type":"text"' "$LOG" || true)
 free=$(df -h "$HOME" | awk 'NR==2{print $4}')
 commit_age='?'

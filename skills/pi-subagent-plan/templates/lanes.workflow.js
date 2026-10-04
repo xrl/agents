@@ -176,7 +176,7 @@ if (!verdictIs(review, "READY")) {
   });
 }
 
-// 5. Hand back. The parent (orchestrator) runs §9.4 tiers 6–8: measurement re-run, then opens the PR.
+// 5. Hand back. The parent (orchestrator) runs the brief §Gate tiers 6–8: measurement re-run, then opens the PR.
 return {
   head: JSON.parse(gate.output).head,
   gate: gate.output,

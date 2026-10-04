@@ -4,7 +4,7 @@ description: Edits exactly one lane's seams ; never runs cargo
 advertise: false
 tools: read, grep, find, ls, edit, write, bash
 excludeTools: subagent
-model: openai-codex/gpt-6.1-sol
+model: openai-codex/gpt-6-sol
 thinking: medium
 systemPromptMode: replace
 inheritProjectContext: true
