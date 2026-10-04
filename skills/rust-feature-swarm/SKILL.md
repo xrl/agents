@@ -57,7 +57,8 @@ rather than let lanes run cargo.
      `cargo tree -i -p <crate> --workspace --prefix none --edges normal | sort -u`.
    - `forbid`: paths inside a prefix the lane must not touch (e.g. `Chart.yaml`).
    Repair ownership follows the causing change. A path no lane may edit is a routing bug you
-   pay for in fix rounds; the template widens the requesting lane rather than bouncing.
+   pay for in fix rounds; the template widens the requesting lane to the path's directory,
+   except a repo-root file: that returns in `blockers` for your ruling.
 5. **Shared files.** A file every lane needs is a chokepoint, not work. Where the repo takes
    the edit at release time instead (`Changelog:` commit-message lines; [LAWS.md](../../LAWS.md)
    §44), pass `changelog: null` and no lane touches it. Otherwise one writer
@@ -144,7 +145,8 @@ run returns the residue; never widen.
    rule on every finding before anything is routed: fix, accepted trade-off (named in the PR),
    or ignore; a lane never receives a raw verdict. Verifiers test against the shape of live
    state (existing data, volumes, permissions), not only a fresh fixture: on 2026-09-27 a fresh
-   reviewer found a permission failure a fresh-volume test had passed.
+   reviewer found a permission failure a fresh-volume test had passed. A lane whose verdict is
+   missing or lacks any of its ids stops the run for you; it never counts as verified.
 2. **Full** tier once, then the script returns `{green, summaries, verdicts, nits}`.
 3. **Fable tail** (you): read `git diff main...HEAD` once against the acceptance lines and the
    nits (the first run's tail found three more: a changelog overclaim, a wrong name, a
