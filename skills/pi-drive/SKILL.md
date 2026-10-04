@@ -72,8 +72,9 @@ an opus supervisor's cost.
   whole prompt is `templates/SUPERVISOR.md`, filled in.
 - **Launch and wait, inside pi.** One bash call per driver turn: a pid-file check refuses a
   second live turn (alive pid, no `.exit` receipt; the supervisor's own process never counts),
-  then `timeout <seconds to minute 90> bash pi-turn.sh …` runs in the foreground and writes an
-  exit receipt, with the bash tool's own timeout set above that bound. Never the `process`
+  then `timeout <min(seconds to minute 90, 3300)> bash pi-turn.sh …` runs in the foreground and
+  writes an exit receipt, with the bash tool's own timeout at 3600 (pi's cap; a longer turn
+  continues as turn N+1 in the same session). Never the `process`
   tool, which survives `-ne`: a process started that way dies when the supervisor's print-mode
   turn ends. The foreground run also works for a supervisor that refuses `nohup` (sub-campaign 8).
 - **What it hands back.** A stop the decisions file does not answer, a hard stop, the same

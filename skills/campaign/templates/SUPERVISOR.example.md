@@ -45,7 +45,7 @@ Before every wait and at every boundary, overwrite `…/S1a/A3/supervisor-state.
 
 ## Launch and wait (driver)
 
-One bash call per driver turn. The driver runs in the foreground of that call, bounded by `timeout` at your minute 90; set the bash tool's own `timeout` above that bound. No `nohup`, no `&`, no `process` tool: the call itself is the wait. Fill in N, PROMPT and BOUND (seconds left to your minute 90):
+One bash call per driver turn. The driver runs in the foreground of that call, bounded by `timeout`; set the bash tool's own `timeout` to 3600, pi's cap. No `nohup`, no `&`, no `process` tool: the call itself is the wait. Fill in N, PROMPT and BOUND = min(seconds left to your minute 90, 3300):
 
 ```
 S=/Users/xavier/code/dekopon/campaign/04-shell-bytes/S1a/A3; N=<n>; PROMPT=<abs prompt file>; BOUND=<seconds>
@@ -56,7 +56,7 @@ printf '%s\n' "$rc" > $S/driver-turn-$N.exit
 echo "driver turn $N exited rc=$rc at $(date -u +%H:%M:%S)"; tail -3 $S/driver-turn-$N.jsonl.err 2>/dev/null
 ```
 
-- `rc=124` means your minute 90 came first: save the state file and end your turn. The coordinator resumes you, and your next driver turn continues the same driver session. Never relaunch a turn that has no receipt.
+- `rc=124` means the bound came first. If your minute 90 is still ahead, launch the next turn N+1 in the same driver session with a one-line "continue" prompt. Otherwise save the state file and end your turn; the coordinator resumes you. Never relaunch a turn that has no receipt.
 - An exit within seconds with an error in the `.err` tail (auth, `Incorrect API key`, `WebSocket closed`): hand back; never switch models.
 - While the turn runs you make no other call about the driver.
 
