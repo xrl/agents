@@ -558,10 +558,21 @@ Run `pi-dry-run.sh` (sol at high, fresh, read-only) with the kickoff prompt plus
 RUN: mutate nothing; walk every step exactly as a literal executor would, with nothing but the
 files it has; per step list the exact commands, the directory, every file/worktree/branch/tool/
 credential it needs and whether it exists now, and every point where you would stop, guess, or
-do the wrong thing. Also walk the brief's acceptance section and every agent file." Fix the brief
-until the walk has no stops. The rehearsal must cover the acceptance section and the agent
-frontmatter, not only the kickoff — the first rehearsal walked the kickoff and missed an
-acceptance grep that contradicted the brief's own contract.
+do the wrong thing. Label each gap **blocking** (an owner action, an irreversible or public step,
+two rules that contradict, a file or tool that does not exist) or **driver's call** (derivable
+from the repo, its docs or the decisions file). Also walk the brief's acceptance section and every
+agent file." Fix the brief until the walk has no blocking gaps; leave driver's calls to the
+driver. The rehearsal must cover the acceptance section and the agent frontmatter, not only the
+kickoff — the first rehearsal walked the kickoff and missed an acceptance grep that contradicted
+the brief's own contract.
+
+**Don't pre-chew.** Every unlabelled guess reads as a gap, and patching each one by writing the
+command makes Claude author what the driver should derive. Spell commands out only where a
+literal mistake is irreversible or public (tag push, a production delete, a secret read) or where
+the step is the only strict gate. Everything else is outcome plus constraints. Receipt,
+sub-campaign 2 re-plan (2026-10-05): three rehearsals pushed about 80 lines of hand-written
+import and smoke commands into the packet, and the next rehearsal found a bug in them (`jq .id`
+where the API returns `sessionId`) that a driver reading `openapi.yaml` would not have made.
 
 Checklist the rehearsal must confirm:
 
