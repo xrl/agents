@@ -73,12 +73,17 @@ Coordinator only, on the integration branch: `git merge --squash origin/<branch>
 
 ## Closing
 
-Before the `/loop`, propose the session's new rules to the owner as one multi-select question (each option a rule and its receipt), and commit only what he picks (owner, 2026-10-04: "We should always strive to improve our rules by asking me"). Journal-only lessons get lost.
+The closing session asks no question: a question at the end means reviving an expensive context to answer it (owner, 2026-10-05). The owner still decides the rules ("We should always strive to improve our rules by asking me", 2026-10-04); the closing step leaves the decisions where he can answer them without Claude:
+
+1. **Lessons become an open PR.** One commit per lesson, each body carrying its receipt, on the skill's or rule file's repo. Leave it unmerged: his merge, edit or partial revert is the vote. Journal-only lessons get lost.
+2. **Scope calls take the cheaper default.** Apply the no-spend or smaller option, file the alternative as an issue with a recommendation and its cost, and journal it as applied by default. He vetoes in any later session.
+3. **Anything that cannot default goes in `OWNER-QUEUE.md`,** one item per heading with the recommendation and a line for his answer. The next session's `/loop` reads it first and acts on the answers.
+4. **Ask live only while he is demonstrably present** (he wrote in the last few minutes), batched early, per standing order 2. Never as the last act of a session.
 
 Every coordinator session ends, at a close or a clean stop, with a fenced `/loop …` command that runs in a fresh context: the next unit's, filled in (folder, scope, end state, version), or this unit's resume if it stopped early. Write the same command into the `RESUME.md` banner. Shape (owner, 2026-10-01):
 
 ```
-/loop You are the campaign coordinator for <unit> (<scope>), funded per JOURNAL.md. Read campaign/RESUME.md, <NN-name>/STATE.md and LIMITS.toml, and follow the campaign skill. <what to draft and check>, then drive <unit> to <end state: merged on main / vX.Y.Z released and live on the Pi>. No check-ins: decide under ambiguity and journal it. Wake only on completion notices. Write state before every wait.
+/loop You are the campaign coordinator for <unit> (<scope>), funded per JOURNAL.md. Read campaign/RESUME.md, OWNER-QUEUE.md, <NN-name>/STATE.md and LIMITS.toml, and follow the campaign skill. <what to draft and check>, then drive <unit> to <end state: merged on main / vX.Y.Z released and live on the Pi>. No check-ins: decide under ambiguity and journal it. Wake only on completion notices. Write state before every wait.
 ```
 
 ## Spend
