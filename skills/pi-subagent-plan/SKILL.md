@@ -529,7 +529,7 @@ rule rested on, and that nothing checked the effort actually applied. They miss 
 things. Sol only, since the owner's cut of 2026-09-30, for every brief. **Rehearse again after
 the one-voice rewrite** (sub-campaign 4: a $0.30 sol rehearsal caught a rewrite telling a `-ne`
 driver to spawn its own verifier). The sequence that worked: draft, rulings, plan check and dry
-run in parallel, rulings on findings, one-voice rewrite, rehearsal. The files are in
+run in parallel, rulings on findings, one-voice rewrite, **one** rehearsal (below), hand off. The files are in
 `~/code/dekopon/effort-tuning-design/execution/rehearsal/`.
 The passes are the **ops rehearsal** below, the **invention audit** and the **scenario walk**. The rehearsal runs
 **after** any adversarial pass and re-verifies each amendment that pass applied against the
@@ -565,6 +565,29 @@ agent file." Fix the brief until the walk has no blocking gaps; leave driver's c
 driver. The rehearsal must cover the acceptance section and the agent frontmatter, not only the
 kickoff — the first rehearsal walked the kickoff and missed an acceptance grep that contradicted
 the brief's own contract.
+
+**One rehearsal, three exhaustive walks, then hand off.** No number of rehearsals proves a
+packet complete: an open-ended "where would you stop" pass samples, and each pass misses
+different things. What stays after one pass must be cheaper to hit live than to keep hunting
+for, and it is wherever a backstop exists: silent wrong code meets the verifier, Astra, Fable
+and CI; a contradiction or a wrong order meets a driver stop and one coordinator ruling. Only
+irreversible or public steps have no backstop. So the rehearsal prompt names three mechanical
+walks, which a sol pass completes instead of sampling:
+
+1. **Dependency walk:** for every step, what it consumes and which earlier step produces it.
+2. **Public-action preconditions:** for every merge, tag, push, PR state change, production
+   delete or secret read, each precondition checked against the real refs (PR draft state, tag
+   unused, SHA equality).
+3. **Contradiction sweep:** for every value a ruling sets (levels, owners, order, counts), grep
+   every packet file for it.
+
+Owner prerequisites (funding, a concurrent unit's close) are listed once as launch gates and are
+not rehearsal findings. Fix the blocking gaps; re-rehearse **only the changed files**, and only
+when a fix touched an irreversible or public step; then hand off. Receipt, sub-campaign 2
+re-plan (2026-10-05): the Fable plan check and the first dry run found every design and
+silent-wrong defect; three further open-ended rehearsals (~45 min) mostly checked the planner's
+own patches, and their two late real finds (IMPORT before the SMOKE data it proves; merging a
+draft PR) were each a one-turn live stop, and each falls to walk 1 or walk 2.
 
 **Don't pre-chew.** Every unlabelled guess reads as a gap, and patching each one by writing the
 command makes Claude author what the driver should derive. Spell commands out only where a
