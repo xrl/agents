@@ -182,8 +182,16 @@ Every stage, in order:
 <Stage blocks: **Stage N — title.** What lands, the D-numbers it implements, packages, exit
 criteria. Each ≤ ~1k changed lines by estimate; the planner splits anything larger.>
 
-**Cross-stage review.** <For ≥ 4 stages: after stage <midpoint>, and again after the last stage.>
-Instead of step 6's verifier on those stages, also run:
+**Review tier.**
+- <Record the Sol-high brief check and full-review requirement or prelaunch skip reason
+  under pi-subagent-plan §3a. Never waive repo/campaign gates or final Fable PR review.>
+
+**Cross-stage review.**
+- <For ≥ 4 stages: review after stage <midpoint> and the last stage.>
+- Keep step 6's verifier; also obtain the designated review verdict before accepting its gate.
+- Route consequential review through the supervisor to fresh Fable in Claude; wait for rulings.
+  If unavailable, stop and ask. Keep Pi OpenAI-only; do not substitute Sol max.
+- Use this Astra call only for small bounded review:
 
 ```
 subagent({ agent: "pr-reviewer", context: "fresh", async: false, cwd: "<ABS WORKTREE>",

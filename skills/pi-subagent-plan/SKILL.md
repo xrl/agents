@@ -135,9 +135,10 @@ write one too early.
 
 - **Decisions are settled and written down** as a table the implementer must not relitigate.
   Every open question either has the owner's answer or is an explicit stop condition.
-- **A fresh adversarial pass has run on the design** (a different fable agent than the designer,
-  told to break it, with `file:line` evidence). Its "facts an implementer must be told" list goes
-  into the brief verbatim; its amendments are applied to the design *before* the brief is written.
+- **Record the review tier before launch** (§3a, Plan checking versus full review). Run a fresh
+  Sol-high brief check; apply §3a's full-review triggers/skip rules. Use a different reviewer
+  from the designer; require `file:line` evidence. Copy its "facts an implementer must be told"
+  verbatim into the brief; apply coordinator-ruled amendments before launch.
 - **The contracts are concrete and machine-checked**: interface definitions (IDL, schema)
   parsed by their own tool on the real files (a `contracts/` folder in the brief dir that lanes copy byte-for-byte), Rust
   seams as signatures, config keys named against the existing struct and its `rename_all`; every
@@ -277,7 +278,9 @@ belongs where.
 
 **Roles and levels.** The driver and the lane editors run `openai-codex/gpt-6-sol` at
 `medium` (the owner's dial, 2026-09-30, §3a). The stage verifier, fact-checker, gate-runner and
-supervisor run `openai-codex/gpt-6-sol`; the cross-stage `pr-reviewer` runs `gpt-6-astra`. Nothing Anthropic: Xavier keeps the Anthropic spend in Claude. One
+supervisor run `openai-codex/gpt-6-sol`; the brief checker uses it at `high`.
+Use `gpt-6-astra` for small bounded Pi reviews; route consequential review to Fable in Claude (§3a).
+Nothing Anthropic: Xavier keeps the Anthropic spend in Claude. One
 provider, `openai-codex`, for the whole run. The lever is the
 reasoning level (pi: `minimal ~1k`, `low ~2k`, `medium ~8k`, `high ~16k`, `xhigh ~32k`, `max`):
 mostly medium; the command runner low; reviewers high/max. Provider ids are `<provider>/<model>`
@@ -289,7 +292,8 @@ and the provider segment is not guessable — read `subagent({action:"models"})`
 | Lane editor (one per lane or prep stage) | medium | **never runs cargo**; edits only its seams; `contact_supervisor` → `need_decision` instead of guessing |
 | Gate-runner | low | the **only** agent that runs cargo; merges lane branches; returns JSON with verbatim tails and an attributed lane |
 | Verifier (one per lane) | high, **fresh context**, read-only | adversarial acceptance of one lane's diff; a late lane gets one too |
-| PR reviewer | xhigh, fresh context | cross-stage: cost over the whole stream, forward compatibility, pinned assumptions about other services, size, coherence; no spawning by default (add `subagent` + `allowNestedSubagents: true` to allow ≤ 2 fact-checkers) |
+| Brief checker | sol high, fresh, read-only | completeness and executability against settled decisions; no scope authority |
+| PR reviewer | fresh: astra xhigh for small bounded Pi review; Fable max in Claude for consequential review | cross-stage: cost over the whole stream, forward compatibility, pinned assumptions about other services, size, coherence; no spawning by default (add `subagent` + `allowNestedSubagents: true` to allow ≤ 2 fact-checkers) |
 | Fact-checker | medium, fresh | one pointed question with locators |
 
 **Preflight** (orchestrator, before any lane), executable in the order written: provider auth
@@ -379,7 +383,8 @@ subscription, so its dollars are notional and Claude's are not.
 | Recon, inventories, release-path lookup | pi sol at medium, fresh, read-only | lookup and extraction. First graded run 2026-09-29: the model-card recon, 235 rows through a headed browser for $1.29, every one of seven spot-checked numbers right. Grade two more; sonnet `Agent` is the measured fallback |
 | First draft of the briefs, agent files and kickoff, from the recon and a decided plan | pi sol | large, well-specified prose |
 | Dry-run rehearsal of a brief (§5), invention audit, scenario walk, consequence walk | pi sol at high (`pi-dry-run.sh`), sol only (owner 2026-09-30: no sonnet second run); sonnet only when pi's login is down | a dry run simulates the executor, so it runs on the executor's model; the defects it finds are mechanical |
-| **Plan check of the brief before launch** | fable, fresh | it found a critical error in each of the three plans it read on 2026-09-29, for about $3 each |
+| Prelaunch brief check | pi sol high, fresh, read-only | check settled decisions; scope below |
+| **Consequential architectural challenge** | fable max, fresh | Xavier's engineering-taste preference. 2026-09-29: critical error in each of three plans, about $3 each |
 | Rewriting the brief in one voice after the plan check and dry run | the coordinator session or pi sol, then a sol rehearsal of the rewrite (owner 2026-09-30: no Fable rewrite) | a Fable rewrite cost more than it found; the rehearsal after it catches what the rewrite breaks |
 | **Interfaces on a contract surface** (interface definitions, wire format, config keys, a public SDK or plugin trait) | opus drafts the sketch, naming the states it makes unrepresentable; a fresh fable walks one real scenario through it; Xavier decides | opus's API sketches graded A on 2026-09-28; fable's design reviews found the P1s. The designer never reviews its own sketch |
 | Types and signatures inside a crate, behind a fixed entry point | the pi sol driver, by `DRIVER.md` §Order of work | the eval scored exactly this: the order of work added 1.4 points for 4 cents, a Claude-written sketch plus shape review added 0.25 for 6 to 10 times the run cost. No per-stage sketch |
@@ -387,7 +392,7 @@ subscription, so its dollars are notional and Claude's are not.
 | **The step that sets a spine's shape** (the types the later steps extend) | one Opus agent building directly, then the verifier | sub-campaign 4's A2 built both ways: the blind Fable judge landed Opus's spine; pi kept the old plumbing with pipes bolted on |
 | A step's fix round | split by the verifier's `hard`/`easy` tags: Opus fixes the hard findings (code only), the pi driver witnesses them and does the easy list; all-easy rounds stay in pi; a failed re-check goes to Opus (`pi-drive` §Fix rounds split by difficulty) | sub-campaign 5 sent every second round to Opus: five Opus fix agents, mostly writing tests, two rounds with no hard finding (owner, 2026-10-01) |
 | Per-stage verifier | pi sol (`lane-verifier`, fresh) | cheap and it finds real contract bugs |
-| Cross-stage and whole-design review | pi astra (`pr-reviewer`, xhigh or max) | about $6 a review; nine majors on 2026-09-28, none overlapping fable's |
+| **Cross-stage and whole-design review** | fresh fable in Claude for consequential review; pi astra (`pr-reviewer`, xhigh) for small bounded review | routing preference, not universal ranking. Astra, 2026-09-28: about $6, nine majors, none overlapping Fable's |
 | Re-check of a fix against the finding it answers | pi sol verifier, fresh | "did this commit do what the Fix line says" is mechanical. A second fable pass only when the fix moved a contract surface or answered a P1 |
 | The watch loop: liveness, relaunches, read-only checks, stage prompts, routing findings | pi sol supervisor for mechanical and code units (`pi-drive` §A sol supervisor: piloted 2026-09-29, passed on sub-campaign 4's A2-A13 with zero decisions of its own); releases and rollouts too (campaign §Who does what: Ship) | mechanical; it was the largest Claude line on 2026-09-29 |
 | **Ruling on each review finding** (fix, accepted trade-off, ignore) | fable or the session | this is where scope stays proportionate |
@@ -405,6 +410,28 @@ attempts) and a Claude shape review after every stage (+0.25 points for 6 to 10 
 Receipt, 2026-09-29: Claude $240 against pi $116; Opus supervisors ($70) cost more than the
 drivers that wrote the code ($60); the reviews and plan checks found every real defect.
 
+### Plan checking versus full review
+
+- Run bounded prelaunch brief checks, stage checks and fix rechecks on fresh, read-only
+  `gpt-6-sol:high`. Check settled decisions: signatures, completeness, ownership/order,
+  scenarios/consequences, acceptance tests and stops. Cite requirement, source and failure.
+- Use full-fat fresh **Fable in Claude** for consequential engineering taste; **Astra** is fine
+  for small bounded reviews. Keep Pi OpenAI-only. If Fable is unavailable, stop and ask.
+  Do not treat Sol max as a proven substitute.
+- Require full review for changes to security/credentials/authority/isolation; public/persisted
+  contracts; migrations/cross-service compatibility or rollout order; concurrency/cancellation/
+  shutdown; aggregate limits/long-lived state; security/resource-test deletion; new spines/
+  cross-stage dependencies; unresolved requirements/material disagreement. Small diffs count.
+- Skip only the **additional full-fat prelaunch** pass: settled, local, reversible, no trigger;
+  source/consumer and scenario/consequence checks closed; required gates and fresh scoped review.
+  Record `Review tier` and the skip reason. Never waive repo/campaign gates or **final fresh
+  Fable PR review (§5b)**.
+- Leave scope, trade-offs, uncovered stops and finding rulings to the coordinator; record decisions
+  before dependent prompts. Rehearse the rewrite. Treat Sol `ACCEPT` as bounded evidence only,
+  not authority to broaden scope, merge, release or deploy.
+- Keep the expanded Sol brief-check role provisional; require task-matched omission-detection
+  evidence, not vendor aggregates, before expanding it.
+
 ### Effort: the start of the flat part
 
 Set each role at the lowest effort after which the next step gains under about 1 point on the
@@ -420,8 +447,9 @@ smaller lever: fewer turns and smaller briefs save more than a lower setting.
 | Recon, inventories, brief and packet drafts | sol `medium` |
 | Supervisor | sol `high`; never `max` |
 | Interface sketch, spine step | opus `high` |
-| Cross-stage reviewer | astra `xhigh` |
-| Plan check, adversarial review | fable `max` |
+| Bounded prelaunch brief checker | `gpt-6-sol` `high`; not automatically `max` |
+| Small bounded cross-stage reviewer | astra `xhigh` |
+| Consequential whole-design challenge, final adversarial PR review | fable `max`, fresh through Claude |
 
 Receipts: 2026-09-29, the cards put `gpt-6-sol`'s knee at `high`, the steering eval
 (`~/code/dekopon/steering-eval/REPORT.md`) found `medium` held; dry runs went up from low to high

@@ -28,8 +28,10 @@ if it really is similar quality"): on the steering eval's effort block it matche
 `medium` on hidden tests and cost ($0.19 a run) and was 1.85 times faster; its blind score was
 1.5 lower, all of it on pipe-type shape. Sub-campaign 4 ran A3-A13 on it (≈ 8,000 lines). Where a
 step sets a spine's shape, an Opus agent builds it instead (§A sol supervisor, sub-campaign 4).
-The stage verifier, the fact-checker and the supervisor run `gpt-6-sol` at `high`; dry runs use
-`gpt-6-sol` at `high`.
+- Use `gpt-6-sol:high` for stage verification, fact-checking, supervision, dry runs and brief checks.
+- Keep implementation on Sol medium: Xavier reaffirms equivalent work/token use, ~30% faster.
+  Do not conflate that observation with the 1.85x receipt above or infer universal speed gains.
+  Do not switch to 6.1 merely because it is newer.
 
 ## Which model supervises
 
@@ -49,8 +51,8 @@ So the supervisor is the cheapest tier that has been shown to do it:
    a supervisor writes no code.
 3. **Fable never runs the loop.** Spawn it as a fresh `Agent` for the rows `pi-subagent-plan`
    §3a gives Claude: a stop the decisions file does not answer (the brief, the decisions file
-   and the blocker file only), the plan check and the rehearsal review of a new brief, rulings
-   on review findings, and the adversarial review of the landed PR.
+   and the blocker file only), consequential architectural challenge, review rulings and final
+   adversarial PR review. Use fresh Sol high for bounded brief checks and post-rewrite rehearsals.
 
 The split that works: cheap driver and cheap verifier per stage, one expensive fresh reviewer
 per PR before merge; that review is never cut for cost (2026-09-27: $97 of pi for −2,250 lines,
@@ -60,6 +62,21 @@ counterexample adversary, neither of which paid in the steering eval. A fix is r
 fresh pi sol verifier against the finding's Fix line; it gets a second fable pass only when it
 moved a contract surface or answered a P1. Say in the first message which tier is supervising,
 and report both bills.
+
+## Review routing and authority
+
+- Check `Review tier` against `pi-subagent-plan` §3a **Plan checking versus full review** before
+  launch. Apply its triggers and skip conditions; record any additional-prelaunch-pass skip reason.
+- Use fresh read-only Sol high for bounded brief/stage checks and fix rechecks, not scope rulings.
+  Rehearse rewrites after coordinator rulings.
+- Use full-fat fresh Fable in Claude for consequential engineering taste; Astra is fine for
+  small bounded reviews. Keep Pi OpenAI-only; stop and ask if Fable is unavailable.
+  Treat this as routing preference, not universal ranking; Sol max is no proven substitute.
+- Finish required whole-design review before accepting its gate. Never waive repo/campaign
+  gates or final fresh Fable PR review; stage checks and small Astra reviews do not replace them.
+- Quote decisions verbatim for covered Sol-supervisor stops. Send scope, trade-offs and uncovered
+  stops to the Claude coordinator; record rulings before dependent prompts.
+- Treat Sol `ACCEPT` as bounded evidence, not authority to broaden scope, merge, release or deploy.
 
 ## A sol supervisor
 
