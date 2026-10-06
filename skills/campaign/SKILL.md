@@ -26,6 +26,8 @@ Routing owner-approved 2026-10-01 after sub-campaign 5 (Claude ≤ $69 of ≤ $8
 
 Design-shaping steps (the one where the spine's types are set) may go to one Opus agent instead of the driver: on A2 of sub-campaign 4 the blind judge preferred Opus's spine; pi had the better tests and the better numbers, cost $5.26 of pi and no Claude. Mechanical steps go to pi.
 
+A sub-campaign of independent units (one per provider) runs as one Opus unit agent at a time, launched from a shared brief, and each agent marches its own unit: rule, packet, the pi steps, smoke and landing. The coordinator only launches the agents, rules on what they send up, and re-reads each landing. Each agent pings the coordinator every 30 minutes and at every step boundary, so the coordinator's context stays current without polling. Sub-campaign 10 (2026-10-06) landed five providers and a core/console release that way overnight, ≈ 1.5–2.5 h per provider.
+
 ## The folder
 
 `campaign/` holds the state; a session that forgets everything resumes from it.
