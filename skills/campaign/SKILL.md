@@ -26,6 +26,8 @@ Routing owner-approved 2026-10-01 after sub-campaign 5 (Claude ≤ $69 of ≤ $8
 
 Design-shaping steps (the one where the spine's types are set) may go to one Opus agent instead of the driver: on A2 of sub-campaign 4 the blind judge preferred Opus's spine; pi had the better tests and the better numbers, cost $5.26 of pi and no Claude. Mechanical steps go to pi.
 
+A sub-campaign of independent units (one per provider) runs as one Opus unit agent at a time, launched from a shared brief, and each agent marches its own unit: rule, packet, the pi steps, smoke and landing. The coordinator only launches the agents, rules on what they send up, and re-reads each landing. Each agent pings the coordinator every 30 minutes and at every step boundary, so the coordinator's context stays current without polling. Sub-campaign 10 (2026-10-06) landed five providers and a core/console release that way overnight, ≈ 1.5–2.5 h per provider.
+
 ## The folder
 
 `campaign/` holds the state; a session that forgets everything resumes from it.
@@ -114,6 +116,8 @@ The Fable reads ($15) were worth it: they found the design break before the buil
 - A driver that runs under DRIVER.md's third-FIX stop refuses a fix unless the prompt quotes the coordinator ruling that authorizes it.
 - Grepping task output files can pull whole subagent transcripts into the coordinator's context; read only the named output of a Bash task.
 - A Bash background task dies at 2 h. A pi supervisor turn that runs several steps outlives that, and its driver dies with it (the RG supervisor died mid-RG-b, 2026-10-02). Launch one supervisor turn per step.
+- An API 529 (Overloaded) can end a Claude unit agent mid-step. Its pi supervisor turn runs on in its own background Bash task and finishes the step. Resume the agent with SendMessage, naming the supervisor's exit receipt and its `supervisor-state.md`. Never relaunch the step. If the resume hits a 529 too, wait ten minutes and send it again (sub-campaign 10 unit 6: two 529s, SHIP completed untouched).
+- A scripted console smoke cannot see the TUI's readiness text once a redraw drops letters, and a redraw can cut off an asset id. Drive the leg by hand in one sized PTY, and read ids from `asset ls`, not from the attach output. That decides PASS/FAIL on the real call; only the script failed (sub-campaign 10: file, unit 6 and memory-chat).
 - Launch a pi turn with `run_in_background`. A foreground `&` is killed as soon as the call returns.
 - Deleting a live unit's `target/` forces a cold rebuild. Overlapped with another build, it dipped free disk from 69 to 13 GiB for a minute. Check disk when a build launches, never in the middle of one.
 - When a pilot needs a core fix while a driver owns the core worktree, commit the fix on a side branch cut from the pushed head. The pilot pins to it, and the core step cherry-picks it. That keeps one writer per worktree.
