@@ -382,7 +382,7 @@ subscription, so its dollars are notional and Claude's are not.
 |---|---|---|
 | Recon, inventories, release-path lookup | pi sol at medium, fresh, read-only | lookup and extraction. First graded run 2026-09-29: the model-card recon, 235 rows through a headed browser for $1.29, every one of seven spot-checked numbers right. Grade two more; sonnet `Agent` is the measured fallback |
 | First draft of the briefs, agent files and kickoff, from the recon and a decided plan | pi sol | large, well-specified prose |
-| Dry-run rehearsal of a brief (§5), invention audit, scenario walk, consequence walk | pi sol at high (`pi-dry-run.sh`), sol only (owner 2026-09-30: no sonnet second run); sonnet only when pi's login is down | a dry run simulates the executor, so it runs on the executor's model; the defects it finds are mechanical |
+| Dry-run rehearsal of a brief (§5), invention audit, scenario walk, consequence walk | pi sol at high (`pi-dry-run.sh`) and sonnet `Agent` in parallel on the same prompt (owner 2026-10-08, reversing 2026-09-30's sol only); sonnet alone when pi's login is down | a dry run simulates the executor, so sol runs on the executor's model; sonnet misses a different quarter (§5) |
 | Prelaunch brief check | pi sol high, fresh, read-only | check settled decisions; scope below |
 | **Consequential architectural challenge** | fable max, fresh | Xavier's engineering-taste preference. 2026-09-29: critical error in each of three plans, about $3 each |
 | Rewriting the brief in one voice after the plan check and dry run | the coordinator session or pi sol, then a sol rehearsal of the rewrite (owner 2026-09-30: no Fable rewrite) | a Fable rewrite cost more than it found; the rehearsal after it catches what the rewrite breaks |
@@ -514,19 +514,21 @@ without merging; report). End with the stop conditions and what is out of this r
 
 ## 5. Rehearse before handing over
 
-Three cheap passes, each a fresh read-only run of **the driver's own model at high effort**
-(`openai-codex/gpt-6-sol:high`): a dry run simulates the executor, so it runs on the
-executor's model. Not at low: sol's factual error rate is about twice as high there (§3a Effort).
+Three cheap passes, each run by **two voices on the same prompt, in parallel**: the driver's own
+model at high effort (`openai-codex/gpt-6-sol:high`), because a dry run simulates the executor,
+and sonnet (`Agent`, `model: sonnet`), because another family misses different things. The union
+of their findings goes through one ruling pass. Not at low: sol's factual error rate is about twice as high there (§3a Effort).
 `pi-drive/scripts/pi-dry-run.sh <workdir> <prompt-file> <out.md>` does it with no write, edit
 or bash tool, so read-only is enforced; pass `bash` as the fifth argument only when the walk
-must check git refs or installed tools. A packet rehearsal cost $0.10 at low on 2026-09-29. Sonnet
-(`Agent`, `model: sonnet`) is the fallback when pi's login is down. **Sol against sonnet, one frozen brief, same prompt (2026-09-29).** Sol at high: 119 s, 39 tool
+must check git refs or installed tools. A packet rehearsal cost $0.10 at low on 2026-09-29. When pi's login is down, sonnet
+runs alone. **Sol against sonnet, one frozen brief, same prompt (2026-09-29).** Sol at high: 119 s, 39 tool
 calls, $0.40. Sonnet: 144 s, 12 tool calls. Of 27 real findings, 13 were found by both, 7 by
 sol only and 7 by sonnet only, so each alone caught about three quarters. Neither was the
 better one: sol alone found that a failed cell and a model mismatch pass silently; sonnet alone
 found that the batch script ran two at a time, which would have broken the pairing the decision
 rule rested on, and that nothing checked the effort actually applied. They miss different
-things. Sol only, since the owner's cut of 2026-09-30, for every brief. **Rehearse again after
+things, so both run on every brief (owner, 2026-10-08, gauntlet R1; reverses the 2026-09-30
+"sol only" cut). **Rehearse again after
 the one-voice rewrite** (sub-campaign 4: a $0.30 sol rehearsal caught a rewrite telling a `-ne`
 driver to spawn its own verifier). The sequence that worked: draft, rulings, plan check and dry
 run in parallel, rulings on findings, one-voice rewrite, **one** rehearsal (below), hand off. The files are in
@@ -554,7 +556,8 @@ whether the rules compose, with `file:line`.
 
 **Ops rehearsal** —
 
-Run `pi-dry-run.sh` (sol at high, fresh, read-only) with the kickoff prompt plus: "DRY
+Run `pi-dry-run.sh` (sol at high, fresh, read-only) and a sonnet `Agent` side by side, each with
+the kickoff prompt plus: "DRY
 RUN: mutate nothing; walk every step exactly as a literal executor would, with nothing but the
 files it has; per step list the exact commands, the directory, every file/worktree/branch/tool/
 credential it needs and whether it exists now, and every point where you would stop, guess, or
