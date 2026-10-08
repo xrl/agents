@@ -2,7 +2,7 @@
 
 Four Claude Code skills. Each `SKILL.md` owns its current routing and execution rules.
 
-- [`campaign`](campaign/SKILL.md) runs one funded sub-campaign from a folder of state files: a
+- [`campaign`](campaign/SKILL.md) runs one sub-campaign from a folder of state files: a
   Claude coordinator rules and lands, pi sol supervisors watch, a pi `gpt-6-sol` driver builds.
 - [`pi-subagent-plan`](pi-subagent-plan/SKILL.md) writes the packet (brief, decisions file, agent
   files, kickoff, rehearsal) that hands decided work to a pi `gpt-6-sol` driver.
