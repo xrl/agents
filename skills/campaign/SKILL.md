@@ -147,6 +147,7 @@ The Fable reads ($15) were worth it: they found the design break before the buil
 - A PR branch catches up by rebasing onto `origin/main`, never by merging main into it. A rebase-only repo refuses a branch with a merge commit, and the fix is a linear rebase plus a range-diff read before merge. Every fixer prompt says "rebase, never merge main". Advanced-schlubbing: #499 and #500 both carried merge commits from main; #499 could not merge until its fixer rebased it.
 - A core release is two tags, core then chart, and the chart is cut from main. Every other core PR holds until the chart tag exists, then merges one at a time, each riding the next minor. A merge between the two tags puts unreleased code under the chart's tag.
 - Every brief, recon included, says: never read or print a credential file (`~/.config/dekopon/broker-credentials.yaml`, auth JSON, kubeconfigs); a step that needs one edits a scratch copy by script or skips the call. A read-only recon agent is not safe by being read-only: one printed both GitHub PATs into its transcript, and rotation is the owner's.
+- A Claude subagent cannot write a report file: the harness refuses it ("Subagents should return findings as text, not write report files"). Briefs say "return your findings as text in your final message", and the coordinator saves it where it belongs. Files that are the work product (a packet, a brief, code) are fine.
 
 ## Routing decided for sub-campaign 6 (owner, 2026-09-30)
 
