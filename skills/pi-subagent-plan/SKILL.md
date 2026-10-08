@@ -578,7 +578,7 @@ the prompt also names three walks a sol pass completes instead of sampling:
 3. **Contradiction sweep:** per value a ruling sets (levels, owners, order, counts), grep every
    packet file.
 
-Fix blocking gaps only; owner prerequisites (funding, a concurrent unit's close) are launch
+Fix blocking gaps only; owner prerequisites (an owner action, a concurrent unit's close) are launch
 gates, not findings. **Don't pre-chew:** writing the command for a driver's call makes Claude
 author what the driver should derive. Spell a command out only where a literal mistake is
 irreversible or public (tag push, production delete, secret read) or the step is the only strict

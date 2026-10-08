@@ -301,8 +301,7 @@ boundary, and hand off when the context grows large. Keep campaign state in
 files a person can edit, so the run can pause for a week, slow down, or lose a
 session. Drive nothing from the session that planned it. Sketches, briefs,
 rehearsals and reviews are about one percent of spend: never cut one to save
-money. Feed actual spend back into the estimate before funding the next
-milestone.
+money. Feed actual spend back into the estimate for the next milestone.
 
 - **Receipt, dekopon, 2026-09-29:** on this machine's logs for 15 to 28
   September, 97 to 98% of tokens were cache reads; a fresh supervisor per unit
@@ -324,10 +323,10 @@ that already passed on the same commit (§3).
 
 A running build is not progress. Give each lane tripwires a machine can read:
 commit age, tool calls since the last edit, repeats of one command, a file
-outside the brief's list, spend against the estimate. One firing is a look; the
+outside the brief's list. One firing is a look; the
 same one twice after a correction stops the lane. Ask for a first commit by
 minute 30. Give every reviewer and recon agent a timebox in minutes, calls and
-tokens. Set the budget at the estimate's p90 and the tripwire at its p50, and
+tokens. Set the timebox at the estimate's p90 and the tripwire at its p50, and
 stop a lane only at a stage boundary.
 
 ### 52. Recon finds facts; a scenario walk finds design errors; a second model family finds a different class.
@@ -357,7 +356,7 @@ configuration, never from defaults in source.
 ### 54. Name the version and the authority before the run.
 
 Where release authorization names one version, write each milestone's version
-down when the milestone is funded, with who may decide what: the supervisor,
+down when the milestone is planned, with who may decide what: the supervisor,
 the called reviewer, the owner. Otherwise a supervisor that finishes overnight
 cannot tag, or decides something that was not its to decide.
 

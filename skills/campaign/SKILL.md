@@ -1,6 +1,6 @@
 ---
 name: campaign
-description: Run one funded sub-campaign of a large multi-step code effort economically — a Claude coordinator that rules and lands, pi sol supervisors that watch, a pi GPT driver that builds, a fresh gpt-6-sol verifier per commit, and a few fresh Fable reads — from a folder of state files. Use when Xavier funds a sub-campaign, says "run the campaign", "continue sub-campaign N", or asks how to drive a big change cheaply across many steps. Not for a one-file change (one Opus agent), and not for writing the brief (pi-subagent-plan) or for the mechanics of one pi session (pi-drive).
+description: Run one sub-campaign of a large multi-step code effort economically — a Claude coordinator that rules and lands, pi sol supervisors that watch, a pi GPT driver that builds, a fresh gpt-6-sol verifier per commit, and a few fresh Fable reads — from a folder of state files. Use when Xavier starts a sub-campaign, says "run the campaign", "continue sub-campaign N", or asks how to drive a big change cheaply across many steps. Not for a one-file change (one Opus agent), and not for writing the brief (pi-subagent-plan) or for the mechanics of one pi session (pi-drive).
 ---
 
 # Running a campaign
@@ -20,7 +20,7 @@ description: Run one funded sub-campaign of a large multi-step code effort econo
 | Opus | fresh `general-purpose` agent, `model: opus` | one step or one fix | the spine step; `hard` findings as code only | writes tests for its own fix; shares a worktree with a live writer |
 | Fable | fresh `campaign-reviewer` | one read | plan check; whole-PR read (trial: Astra on the PR instead, once) | stays resident |
 | Astra | pi `gpt-6-astra:xhigh` | once | cross-step review of the assembled unit | |
-| Ship | pi sol supervisor + pi driver | once | prep, checks, PR, merge, tag, verify, the deployment rollout end to end once the owner has authorized pi to ship; the funding line quoted as authority | |
+| Ship | pi sol supervisor + pi driver | once | prep, checks, PR, merge, tag, verify, the deployment rollout end to end once the owner has authorized pi to ship; the owner's ship authorization quoted as authority | |
 
 Routing owner-approved 2026-10-01 after sub-campaign 5 (Claude ≤ $69 of ≤ $82): the brief, the packet, the ship phase and all-easy fix rounds were Opus there and move to pi; expected Claude ≈ $35-40 on a unit that size. Claude keeps the spine, `hard` fixes, the plan check, rulings and landing.
 
@@ -34,15 +34,15 @@ Design-shaping steps (the one where the spine's types are set) may go to one Opu
 |---|---|---|
 | `RESUME.md` banner | coordinator | what is running, what to read next |
 | `JOURNAL.md` | coordinator, append only | every launch, ruling, landing and spend line, with the owner's words quoted |
-| `LIMITS.toml` | owner (coordinator applies measured dials) | budgets, tripwire, models, disk floor, timeboxes |
-| `NN-name/BRIEF.md` | written once, rewritten in one voice after the plan check | steps, landing model, routing, budget, stops, hold list |
+| `LIMITS.toml` | owner (coordinator applies measured dials) | runaway ceiling, models, disk floor, timeboxes |
+| `NN-name/BRIEF.md` | written once, rewritten in one voice after the plan check | steps, landing model, routing, stops, hold list |
 | `NN-name/DECISIONS.md` | settled rows D1..Dn + red witnesses | the only thing a stop may be answered from |
 | `NN-name/<unit>/STATE.md` | the unit's one writer | alive table (worktrees, sessions, PRs), intent before every push, next action |
 | `<unit>/<step>/` | the supervisor | `SUPERVISOR.md`, `verify.tpl.md`, `supervisor-state.md`, `supervisor-decisions.md` (S-numbers), blockers, report |
 
 ## Before a step launches
 
-1. `LIMITS.toml`: not paused, spend within the funded budget, free disk minus kache headroom over the floor, heavy builds under the cap.
+1. `LIMITS.toml`: not paused, spend under the runaway ceiling, free disk minus kache headroom over the floor, heavy builds under the cap.
 2. A worktree cut from the integration head, upstream unset, fixtures fetched.
 3. The step prompt: the row verbatim, the packages, the witnesses, what the previous step landed in one paragraph, "decide under ambiguity and record it; never end a turn with a question".
 4. The verify template: `verifier-role.md` + the range + the row + the step's specific checks + **every coordinator ruling so far**, stated as "not findings". A ruling missing from the template is re-raised by the next verifier.
@@ -83,12 +83,12 @@ The closing session asks no question: a question at the end means reviving an ex
 Every coordinator session ends, at a close or a clean stop, with a fenced `/loop …` command that runs in a fresh context: the next unit's, filled in (folder, scope, end state, version), or this unit's resume if it stopped early. Write the same command into the `RESUME.md` banner. Shape (owner, 2026-10-01):
 
 ```
-/loop You are the campaign coordinator for <unit> (<scope>), funded per JOURNAL.md. Read campaign/RESUME.md, OWNER-QUEUE.md, <NN-name>/STATE.md and LIMITS.toml, and follow the campaign skill. <what to draft and check>, then drive <unit> to <end state: merged on main / vX.Y.Z released and live on the Pi>. No check-ins: decide under ambiguity and journal it. Wake only on completion notices. Write state before every wait.
+/loop You are the campaign coordinator for <unit> (<scope>). Read campaign/RESUME.md, OWNER-QUEUE.md, <NN-name>/STATE.md and LIMITS.toml, and follow the campaign skill. <what to draft and check>, then drive <unit> to <end state: merged on main / vX.Y.Z released and live on the Pi>. No check-ins: decide under ambiguity and journal it. Wake only on completion notices. Write state before every wait.
 ```
 
 ## Spend
 
-pi: `pi-usage.sh <worktree> <supervisor folder>` plus each verifier's printed `cost_usd` (dry runs have no session). Claude: by role, not model (pi-drive §Cost accounting). Project at every landing; journal a tripwire crossing; stop past the funded budget. Sub-campaign 4 actuals: ≈ $154 for 13 steps and ≈ 9,400 lines; pi ≈ $78 (≈ $4.60 per step of driver + supervisor, ≈ $1.20 of verifiers per step), Claude ≈ $76 (two coordinator sessions with ≈ 20 wakes, the A2 Opus build, two Fable reads, the ship supervisor). A sol supervisor session carried across resumes grew to $7: start a fresh one every few steps.
+pi: `pi-usage.sh <worktree> <supervisor folder>` plus each verifier's printed `cost_usd` (dry runs have no session). Claude: by role, not model (pi-drive §Cost accounting). Journal spend at every landing as a record, not a gate. There is no funding step, no budget and no money tripwire (owner, 2026-10-08: "ditch the money thing, it hasn't really caught anything"). The one money stop is the runaway ceiling in `LIMITS.toml`, $1,000 per epoch, which catches a loop burning money, not ordinary spend. Sub-campaign 4 actuals: ≈ $154 for 13 steps and ≈ 9,400 lines; pi ≈ $78 (≈ $4.60 per step of driver + supervisor, ≈ $1.20 of verifiers per step), Claude ≈ $76 (two coordinator sessions with ≈ 20 wakes, the A2 Opus build, two Fable reads, the ship supervisor). A sol supervisor session carried across resumes grew to $7: start a fresh one every few steps.
 
 Claude's number is the coordinator session's `/cost`, which includes its subagents. ccusage 5-hour blocks count Claude only: never subtract pi from them (2026-10-02: reported $15, real $62).
 
@@ -152,7 +152,7 @@ Opus builds the seam step where shape decides; pi fans out the mechanical steps 
 
 ## Standing orders (owner, 2026-09-30)
 
-1. A tripwire inside the funded budget is a journal line, not a stop; only spend past the budget and owner-only items block.
+1. No money gate (owner, 2026-10-08). Never ask for funding or price a wave; a tripwire is a journal line, not a stop. Only the runaway ceiling and owner-only items block.
 2. Ask a foreseeable owner decision the moment a projection shows it, batched, with a recommendation.
 3. A blocking question left unanswered: journal it, write every state file, stop cleanly, so the owner answers in a fresh short session.
 4. **Ship without the straggler (owner, 2026-10-03).** A non-essential repo does not hold up a fleet rollout. When one is stuck (a release snag, a failing review, an owner-only step), ship without it and journal why it blocked.
