@@ -148,6 +148,7 @@ The Fable reads ($15) were worth it: they found the design break before the buil
 - A core release is two tags, core then chart, and the chart is cut from main. Every other core PR holds until the chart tag exists, then merges one at a time, each riding the next minor. A merge between the two tags puts unreleased code under the chart's tag.
 - Every brief, recon included, says: never read or print a credential file (`~/.config/dekopon/broker-credentials.yaml`, auth JSON, kubeconfigs); a step that needs one edits a scratch copy by script or skips the call. A read-only recon agent is not safe by being read-only: one printed both GitHub PATs into its transcript, and rotation is the owner's.
 - A Claude subagent cannot write a report file: the harness refuses it ("Subagents should return findings as text, not write report files"). Briefs say "return your findings as text in your final message", and the coordinator saves it where it belongs. Files that are the work product (a packet, a brief, code) are fine.
+- Every brief gets one Sonnet cold read before its builder launches, all briefs of a wave in parallel. The coordinator rules each blocking finding into the brief as a C-numbered ruling, then launches. Advanced-schlubbing: blocking findings in 5 of 10 briefs (a missing template source, an SDK-pin contradiction, an unanswered paging rule, a probe that would refresh a credential, a hook ordering that selective syncs skip).
 
 ## Routing decided for sub-campaign 6 (owner, 2026-09-30)
 
