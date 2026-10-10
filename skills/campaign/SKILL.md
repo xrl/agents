@@ -28,7 +28,15 @@ Design-shaping steps (the one where the spine's types are set) may go to one Opu
 
 ## The folder
 
-`campaign/` holds the state; a session that forgets everything resumes from it.
+The selected campaign root holds the state; a session that forgets everything resumes from it.
+For Dekopon's current epochs, use `~/code/dekopon/campaign-trail/store/epochs/<epoch>/`,
+not the closed `~/code/dekopon/campaign/` archive. Read the selected execution root's
+`LIMITS.toml`: Advanced Schlubbing's `cm-trial/LIMITS.toml` and Bounded Bounces'
+`LIMITS.toml` are distinct. New Dekopon rollouts use the local ignored
+`~/code/dekopon/campaign-trail/.runtime/homelab.lock` and the shared
+`~/code/dekopon/campaign-trail/tools/smoke/` transport. Dated packets in the
+archive retain old paths as historical evidence; never relaunch one as-is. This
+navigation does not change the generic folder contract for other campaigns.
 
 | File | Owner | Holds |
 |---|---|---|
@@ -83,7 +91,7 @@ The closing session asks no question: a question at the end means reviving an ex
 Every coordinator session ends, at a close or a clean stop, with a fenced `/loop …` command that runs in a fresh context: the next unit's, filled in (folder, scope, end state, version), or this unit's resume if it stopped early. Write the same command into the `RESUME.md` banner. Shape (owner, 2026-10-01):
 
 ```
-/loop You are the campaign coordinator for <unit> (<scope>). Read campaign/RESUME.md, OWNER-QUEUE.md, <NN-name>/STATE.md and LIMITS.toml, and follow the campaign skill. <what to draft and check>, then drive <unit> to <end state: merged on main / vX.Y.Z released and live on the Pi>. No check-ins: decide under ambiguity and journal it. Wake only on completion notices. Write state before every wait.
+/loop You are the campaign coordinator for <unit> (<scope>). Read <campaign root>/RESUME.md, OWNER-QUEUE.md, <NN-name>/STATE.md and the selected execution root's LIMITS.toml, and follow the campaign skill. <what to draft and check>, then drive <unit> to <end state: merged on main / vX.Y.Z released and live on the Pi>. No check-ins: decide under ambiguity and journal it. Wake only on completion notices. Write state before every wait.
 ```
 
 ## Spend
