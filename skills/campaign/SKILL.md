@@ -120,6 +120,7 @@ The Fable reads ($15) were worth it: they found the design break before the buil
 - `gh run view`/`gh pr checks` from a non-repo cwd fail silently: always pass `-R <owner/repo>`.
 - A prompt that says "amend" after a push diverges the branch: CI fixes are new commits on top.
 - A driver that runs under DRIVER.md's third-FIX stop refuses a fix unless the prompt quotes the coordinator ruling that authorizes it.
+- A ruling sent to a lane that cannot ask back (Codex through a relay, a cloud session) is checked against the brief, row by row, before it is sent, and it goes to every arm building the same unit. 2026-10-10, T1c bake-off: a relayed scope ruling told Codex that pre-admission refusals record `failed` where the brief said the refusal outcome; both judges' decisive findings against the Codex build were that ruling's.
 - Grepping task output files can pull whole subagent transcripts into the coordinator's context; read only the named output of a Bash task.
 - A Bash background task dies at 2 h. A pi supervisor turn that runs several steps outlives that, and its driver dies with it (the RG supervisor died mid-RG-b, 2026-10-02). Launch one supervisor turn per step.
 - Launch a pi turn with `run_in_background`. A foreground `&` is killed as soon as the call returns.
