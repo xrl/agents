@@ -8,6 +8,7 @@ Opinionated engineering guides. **Start with the task, not a full-library read.*
 | Code/API taste, error handling, testing | [CODE_DESIGN_RULES.md](CODE_DESIGN_RULES.md) |
 | Build/release, GitOps, worktree conventions, multi-PR and multi-agent campaigns | [LAWS.md](LAWS.md) |
 | Current host Rust policy | [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md) |
+| Steering for GPT executors, read by URL at a pinned SHA | [steering/GPT.md](steering/GPT.md) |
 | Why private targets and copy-on-write | [RUST_WORKTREES.md](RUST_WORKTREES.md) |
 | Cache checks and evidence requirements | [RUST_CACHE_VALIDATION.md](RUST_CACHE_VALIDATION.md) |
 | Dated experiments and superseded plans | [RUST_CACHE_HISTORY.md](RUST_CACHE_HISTORY.md) |
