@@ -1,8 +1,8 @@
 # <CHANGE NAME> — driver brief
 
 You are the single driver of the <repo> PR that <one sentence of what the PR does>. No workflow
-script, no lanes: you edit, run cargo, commit once per stage, and spawn one fresh verifier per
-stage. Your supervisor issues one stage per turn and answers your stops; the turn-1 prompt is
+script, no lanes: you edit, run cargo and commit once per stage. Your supervisor runs one fresh
+verifier per stage, issues one stage per turn and answers your stops; the turn-1 prompt is
 `KICKOFF.md`.
 
 `<design>` below means `<ABS PLAN FOLDER>`; always write it out as that absolute path. The worktree
@@ -14,7 +14,10 @@ you write lives under `<design>/execution/`; a bare `execution/...` path is neve
 1. This file.
 2. `<design>/pi/decisions.md` — D1–D<n>, settled. Do not relitigate them. Where this brief points
    at a D-number, the decision's wording is the contract; this brief does not restate it.
-3. <the one PLAN section the driver needs, with a `sed -n` range>. **Do not read** the rest of the
+3. `/Users/xavier/code/xrl/agents/RUST_AGENT_RULES.md` — host Rust and worktree rules (`-nc` omits global context).
+4. `/Users/xavier/code/dekopon/campaign-trail/steering/gpt/AGENTS.md` — executor steering.
+5. The checkout's `AGENTS.md` — the current repo contract, not a copied recipe.
+6. <the one PLAN section the driver needs, with a `sed -n` range>. **Do not read** the rest of the
    plan, the review, the README, `PLANNER-FEEDBACK.md` or `execution/rehearsal/`.
 
 The repo's `AGENTS.md` is your project context: its §Rust guidelines are the tone and your
@@ -46,8 +49,8 @@ one is blocked, finish the others, then report the blocked one.
 
 The four stops: forking, patching or bumping a dependency to make something pass; moving a config
 key/value, wire field or decision away from `decisions.md`; deleting something this brief keeps or
-keeping what it deletes; owner-only actions (releases, tags, publishing, merging, <any real call to
-the paid/external services>). To stop: write every open question into one
+keeping what it deletes; owner-only actions (releases, tags, publishing, merging without the
+owner's quoted ship authorization, <any real call to the paid/external services>). To stop: write every open question into one
 `<design>/execution/<topic>-blockers.md` with the mechanism facts and one proposed answer each,
 then end your turn with its path. Nothing else is a stop: lock additions, lint fixes, test
 rewrites, naming, a verifier you disagree with and a red CI check are handled in the turn and
@@ -73,8 +76,8 @@ that removes each.
 ## Rules
 
 - Work only in the worktree. Plain `cargo`, always `--locked` except the lock update below. The
-  machine's Rust rules are in your global context (`~/.pi/agent/AGENTS.md` §Rust worktrees and
-  compiler cache); follow them, never restate or work around them. A `/kache/...` path in a rustc
+  machine's Rust rules are in `/Users/xavier/code/xrl/agents/RUST_AGENT_RULES.md`;
+  follow them, never restate or work around them. A `/kache/...` path in a rustc
   diagnostic is the compiler's path remap, not a cache failure. Never delete the worktree's
   `target/`: the supervisor removes it at hand-off.
 - **Lock updates are yours.** When a stage adds a dependency line, run `cargo check -p <pkg>`
@@ -164,7 +167,8 @@ Every stage, in order:
 3. `df -h ~`. Commit (one commit; amend it for every later fix in this stage until it is pushed).
 4. The full gate in the background (§Gate); one blocking wait to green.
 5. Draft `<design>/execution/stage-N-report.md` (§Report): the verifier reads it.
-6. **Verify** (§Verify). Apply every `contract` and `guideline` finding — a finding that
+6. **Verify:** the supervisor runs the fresh verifier outside your `-ne` driver session and sends
+   its verdict in the next turn. Apply every `contract` and `guideline` finding — a finding that
    contradicts a decision is declined with its D-number — amend, rerun the gate once, update the
    report. Pass 2 whenever you changed the commit after pass 1, because only a reviewed head is
    pushed (step 7): over the whole stage when pass 1 had a `contract` finding, over the amended
@@ -188,18 +192,12 @@ criteria. Each ≤ ~1k changed lines by estimate; the planner splits anything la
 
 **Cross-stage review.**
 - <For ≥ 4 stages: review after stage <midpoint> and the last stage.>
-- Keep step 6's verifier; also obtain the designated review verdict before accepting its gate.
-- Route consequential review through the supervisor to fresh Fable in Claude; wait for rulings.
+- Keep step 6's supervisor-run verifier; the supervisor also obtains the designated review
+  verdict before accepting its gate and routes consequential review to fresh Fable in Claude.
   If unavailable, stop and ask. Keep Pi OpenAI-only; do not substitute Sol max.
-- Use this Astra call only for small bounded review:
-
-```
-subagent({ agent: "pr-reviewer", context: "fresh", async: false, cwd: "<ABS WORKTREE>",
-  task: "Review <origin/main>...<head-sha> as one change against <design>/pi/DRIVER.md
-  §Rules and §Don't write this, and <design>/pi/decisions.md." })
-```
-
-Save it to `<design>/execution/review-P.md`. Same fix rules as step 6. After the last stage: only
+- The supervisor runs bounded cross-stage review outside the `-ne` driver session and sends
+  findings back in the next turn. Save the verdict to `<design>/execution/review-P.md`.
+  Same fix rules as step 6. After the last stage: only
 on `READY` does `gh pr ready` run; then one blocking `gh pr checks --watch --fail-fast <url>`,
 its output to `<design>/execution/logs/checks.log`. No checks 60 s after a push: run
 `gh pr view --json mergeable`; `CONFLICTING` means rebase once, anything else is reported. A red
@@ -208,23 +206,7 @@ at most two rounds. Otherwise leave the PR a draft and end the turn with what re
 
 ## Verify
 
-<If the driver runs under `steering-eval/bin/subject-turn.sh` (`-ne`: no `subagent` tool), delete this section and §Cross-stage review's call: the supervisor runs the verifier outside the driver with `pi-drive/scripts/pi-dry-run.sh <worktree> <prompt> <out.md> openai-codex/gpt-6-sol:high bash` and sends the verdict back as the next turn (sub-campaign 4). Keep the stop list in one place, the brief, and point at it; a restated count drifts.>
-
-```
-subagent({ agent: "lane-verifier", context: "fresh", async: false, cwd: "<ABS WORKTREE>",
-  task: "Verify stage N: diff <parent-sha> <head-sha> against <design>/pi/DRIVER.md §Stages
-  (stage N block), §Rules and §Don't write this, and <design>/pi/decisions.md. Driver's report:
-  <design>/execution/stage-N-report.md." })
-```
-
-`async: false` keeps your turn alive until it returns (if the harness refuses a foreground final-review child, launch it async and wait on it to completion in the same turn); if it comes back with a run id instead of
-the verdict, check `subagent status` no more than once a minute, with one `sleep 60` call
-between checks, until it finishes. Pass no `acceptance`
-field: read the verdict from the returned text. Nothing resumes your turn when a child finishes;
-every wait happens inside the turn. Save the returned text verbatim to
-`<design>/execution/stage-N-verify-P.md`, where N is the stage and P the pass number
-(`stage-1-verify-1.md`, then `stage-1-verify-2.md`). `taste` findings are yours to take or decline with a
-sentence in the report.
+The supervisor runs the verifier with `pi-drive/scripts/pi-dry-run.sh <worktree> <prompt> <out.md> openai-codex/gpt-6-sol:high bash` and sends the verdict back as the next turn. Its output is saved verbatim to `<design>/execution/stage-N-verify-P.md`; `taste` findings are yours to take or decline with a sentence in the report.
 
 ## Report
 
