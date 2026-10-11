@@ -171,16 +171,17 @@ leaves stale `.git/worktrees/` administration.
 
 See [RUST_WORKTREES.md](RUST_WORKTREES.md).
 
-### 31. Worktrees are aggressive, branch-per-agent, and siblings of the main checkout.
+### 31. Worktrees are aggressive, branch-per-agent, and explicitly tracked.
 
-For `~/code/org/foo`, branch `perf/make-faster` lives at
-`~/code/org/foo-perf-make-faster`: flat, sibling, branch-named. `ls ~/code/org`
-is the dashboard. Claude Code's built-in isolation creates hidden
-`.claude/worktrees/`, concealing stale branches and violating this law. Create
-explicitly:
+For `~/code/org/foo`, branch `perf/make-faster` may live at
+`~/code/org/foo/.worktrees/perf-make-faster` or
+`~/code/org/foo.wt/perf-make-faster`. Both layouts are blessed; name each worktree
+for its branch and inspect `git worktree list` as the dashboard. Claude Code's
+built-in isolation creates hidden `.claude/worktrees/`, concealing stale branches
+and violating this law. Create explicitly:
 
 ```bash
-git worktree add ../foo-perf-make-faster -b perf/make-faster
+git worktree add .worktrees/perf-make-faster -b perf/make-faster
 ```
 
 - **Repeat anti-receipt, 2026-07-26:** at 94% disk use (26 GiB free), five
