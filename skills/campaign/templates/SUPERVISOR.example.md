@@ -17,7 +17,7 @@ You are the **supervisor** of one pi driver session that builds step A3 (one com
 | Driver worktree | `/Users/xavier/code/dekopon/dekopon.wt/04-s1a-2`, branch `feat/shell-bytes-2`, repo `dekopon-agents/dekopon`, base `origin/campaign/04-shell-bytes` at `396bc7fd` |
 | Driver session id | `s4-s1a-driver-6sol` (same id every turn) |
 | Driver model | `openai-codex/gpt-6-sol:medium` |
-| Driver launcher | `/Users/xavier/code/dekopon/steering-eval/bin/subject-turn.sh`, rules file `/Users/xavier/code/dekopon/steering-eval/recipes/A/AGENTS.md` |
+| Driver launcher | `/Users/xavier/code/dekopon/steering-eval/bin/subject-turn.sh`; the driver reads its checkout's `AGENTS.md`, the steering file and `/Users/xavier/code/xrl/agents/RUST_AGENT_RULES.md` (recipe A's appended file remains a pointer) |
 | Driver turn N files | log `…/S1a/A3/driver-turn-N.jsonl`, stdout `…/S1a/A3/driver-turn-N.out`, pid `…/S1a/A3/driver-turn-N.pid`, prompt `…/S1a/A3/prompts/driver-turn-N.md` (turn 1 uses the turn-1 prompt directly) |
 | Verifier | `/Users/xavier/.claude/skills/pi-drive/scripts/pi-dry-run.sh`, model `openai-codex/gpt-6-sol:high`, extra tool `bash` |
 | Scripts | `/Users/xavier/.claude/skills/pi-drive/scripts/` (`pi-tail.sh`, `pi-stage-check.sh`) |
