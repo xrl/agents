@@ -69,6 +69,8 @@ Wake only on a completion notice. A supervisor's notice comes at the end of its 
 | Third FIX REQUIRED | rule on the finding, not the count. Real and scoped → one fix turn and a **re-check scoped to that finding** (`templates/recheck.example.md`), not a full re-review. Pre-existing or unreachable in this step → carry it to a named step and write the carry into STATE and every later verify template |
 | An Opus agent near 300k context | fresh agent from its `NOTES.md`; below that, resume it with SendMessage |
 
+A fix text names the defect and the behaviour that must hold, never an implementation to delete: "`Tee` needs no `Drop`" made an Opus fixer remove the `Drop` that kept a mid-stream drop's meter record inside the call span, and cost a fix round (2026-10-10, dekopon #525 round 1).
+
 Rulings that recur: a fix re-check that raises new pre-existing defects is not grounds to block; the verifier's number is not the contract, the row is (sub-campaign 4: `null\n` vs `display(Null)` + newline); a test that cannot fail before the fix is kept as a pin when a later step can make the path reachable.
 
 ## Measuring both ways (when a step is worth it)
