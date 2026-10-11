@@ -15,7 +15,9 @@ you write lives under `<design>/execution/`; a bare `execution/...` path is neve
 2. `<design>/pi/decisions.md` — D1–D<n>, settled. Do not relitigate them. Where this brief points
    at a D-number, the decision's wording is the contract; this brief does not restate it.
 3. `/Users/xavier/code/xrl/agents/RUST_AGENT_RULES.md` — host Rust and worktree rules (`-nc` omits global context).
-4. `/Users/xavier/code/dekopon/campaign-trail/steering/gpt/AGENTS.md` — executor steering.
+4. `https://raw.githubusercontent.com/xrl/agents/<STEERING SHA>/steering/GPT.md` — executor steering,
+   pinned at the commit the brief stamps. Quote its first line in your stage-1 report, so a skipped
+   fetch is visible.
 5. The checkout's `AGENTS.md` — the current repo contract, not a copied recipe.
 6. <the one PLAN section the driver needs, with a `sed -n` range>. **Do not read** the rest of the
    plan, the review, the README, `PLANNER-FEEDBACK.md` or `execution/rehearsal/`.
