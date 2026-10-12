@@ -87,10 +87,12 @@ The closing session asks no question: a question at the end means reviving an ex
 
 1. **Lessons become an open PR.** One commit per lesson, each body carrying its receipt, on the skill's or rule file's repo. Leave it unmerged: his merge, edit or partial revert is the vote. Journal-only lessons get lost.
 2. **Scope calls take the cheaper default.** Apply the no-spend or smaller option, file the alternative as an issue with a recommendation and its cost, and journal it as applied by default. He vetoes in any later session.
-3. **Anything that cannot default goes in `OWNER-QUEUE.md`,** one item per heading with the recommendation and a line for his answer. The next session's `/loop` reads it first and acts on the answers.
+3. **Anything that cannot default goes in `OWNER-QUEUE.md`,** one item per heading with the recommendation and a line for his answer. He drains it with the coordinator before any new `/loop` (below).
 4. **Ask live only while he is demonstrably present** (he wrote in the last few minutes), batched early, per standing order 2. Never as the last act of a session.
 
-Every coordinator session ends, at a close or a clean stop, with a fenced `/loop …` command that runs in a fresh context: the next unit's, filled in (folder, scope, end state, version), or this unit's resume if it stopped early. Write the same command into the `RESUME.md` banner. Shape (owner, 2026-10-01):
+Every coordinator session ends, at a close or a clean stop, with a fenced `/loop …` command that runs in a fresh context: the next unit's, filled in (folder, scope, end state, version), or this unit's resume if it stopped early. Write the same command into the `RESUME.md` banner.
+
+**No `/loop` while `OWNER-QUEUE.md` has an open item** (owner, 2026-10-12: "I think offering a `/loop` while my owner-queue.md is still running has contributed to unfinished epochs. let's make a rule: no `/loop` proposals until the queue is drained. it makes it very confusing to juggle "little threads" and "kicking off a big task""). A session that stops with items open ends with the queue instead: each item's exact action, one line each. The RESUME banner says `OWNER-QUEUE not drained: /loop withheld` in place of the command. The `/loop` is printed only by the session that sees the queue empty, and that includes a session the owner drains item by item. Shape (owner, 2026-10-01):
 
 ```
 /loop You are the campaign coordinator for <unit> (<scope>). Read <campaign root>/RESUME.md, OWNER-QUEUE.md, <NN-name>/STATE.md and the selected execution root's LIMITS.toml, and follow the campaign skill. <what to draft and check>, then drive <unit> to <end state: merged on main / vX.Y.Z released and live on the Pi>. No check-ins: decide under ambiguity and journal it. Wake only on completion notices. Write state before every wait.
