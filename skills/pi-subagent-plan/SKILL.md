@@ -9,9 +9,12 @@ user-invocable: true
 
 # Writing a pi-subagents plan from Claude
 
-The plan, the review and the packet live in a **plan folder sibling to the checkout** that
-receives the implementation (`~/code/<project>/<effort>-design/`), never under the repo's
-`docs/` and never as a PR: repo docs describe what is implemented, a plan says on line one that it
+The plan, the review and the packet live in a **plan folder**, never under the repo's `docs/`
+and never as a PR. For Dekopon the folder is `~/code/dekopon/campaign-trail/store/designs/<effort>-design/`,
+committed and pushed to the private campaign-trail repo as meaningful writes happen, so reviewers
+off the Mac can read it (owner rule, 2026-10-13; its `.gitignore` keeps run logs and binaries out).
+Other projects use a folder sibling to the checkout (`~/code/<project>/<effort>-design/`). Why not
+the product repo: repo docs describe what is implemented, a plan says on line one that it
 is not, its locators rot with every merge, and the execution artifacts beside it cannot be
 committed. The multi-LLM plan was opened as a docs PR (#319) and closed unmerged for this reason;
 what lands in git afterwards is the changelog, the upgrading note, the rewritten implementation
