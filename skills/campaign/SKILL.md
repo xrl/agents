@@ -11,7 +11,7 @@ description: Run one sub-campaign of a large multi-step code effort economically
 
 | Role | Model | Lives | Does | Never |
 |---|---|---|---|---|
-| Coordinator | Claude Opus, one session | until the next landing or 120k tokens, whichever comes first, then a fresh session from `RESUME.md` | rules on hand-backs by quoting or adding a decision, launches Opus for `hard` findings, lands, journals, reads spend | supervises a step; rereads a gate; polls; writes a brief, packet or re-check prompt pi can write |
+| Coordinator | Claude Opus, one session | until the next landing, or the first natural boundary (a batch launched, a brief frozen) past 200k tokens with a hard stop at 250k, then a fresh session from `RESUME.md` | rules on hand-backs by quoting or adding a decision, launches Opus for `hard` findings, lands, journals, reads spend | supervises a step; rereads a gate; polls; writes a brief, packet or re-check prompt pi can write |
 | Brief drafter | pi `gpt-6-sol:medium`, one run | once per sub-campaign | RECON, BRIEF and DECISIONS drafts from DESIGN and the source; the coordinator rules, then the plan check and dry run | decides an owner question |
 | Packet writer | pi `gpt-6-sol:medium`, one run | once per sub-campaign | DRIVER, SUPERVISOR, step prompts and verify templates from `templates/`; a sol rehearsal checks it | |
 | Supervisor | pi `gpt-6-sol:high`, one session per step; a step that outgrows 120k tokens hands off from its state file | `pi-turn.sh` in the background from its own folder | launches driver turns, runs the verifier, sends fix/integrate/push prompts, runs the scoped re-checks, hands back hard findings | decides scope; edits the worktree; answers a stop without quoting a row |
@@ -110,7 +110,7 @@ Opus was $47, almost all of it 134M cache-read tokens: every tool call re-reads 
 
 1. **Size Opus steps at ≤ 800 changed production lines.** At a contract break the tests move with the code: S1b-1 was estimated at 1,400 and came to ≈ 4,000 gross. It took four Opus agents, three of them ending at the 300k cap, where every call re-reads the largest context.
 2. **An Opus agent stops when production code compiles and its witnesses are green.** It commits and writes NOTES. The test fix-up, the full gate and the verifier go to a pi driver as the next step. The S1b-1c finish was exactly that work, and pi did it.
-3. **The coordinator hands off after each landing, or past 120k tokens.** It writes STATE and prints its `/loop`, and a fresh session continues. One coordinator session ran six hours, with a context of several hundred k re-read on about 150 turns.
+3. **The coordinator hands off after each landing, or at the first natural boundary past 200k tokens (hard stop 250k).** It writes STATE and prints its `/loop`, and a fresh session continues. A fresh session starts at ≈ 60k of fixed load and ≈ 100k once it has read its state, so a 120k cap left ≈ 20-35k of work and spent ≈ 40% of each session's reads on startup; at 250k the cost per working call is about the same and startup falls under 10% (owner, 2026-10-15: "250k is great"). No compaction instead of handoffs: it fires near the window limit, so the coordinator would idle at its largest context, and its summary blurs ruling numbers and paths that a handoff writes exactly. One coordinator session ran six hours, with a context of several hundred k re-read on about 150 turns.
 
 The Fable reads ($15) were worth it: they found the design break before the build, and the final read cleared the merge. Keep them.
 
