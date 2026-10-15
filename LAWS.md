@@ -307,8 +307,10 @@ money. Feed actual spend back into the estimate for the next milestone.
 A follow-up on work an agent already did (a fix, a rework, a rebase, an
 extension) goes back to that agent while its cache is warm, resumed rather than
 re-spawned (SendMessage in Claude Code). Spawn fresh only for an independent
-task, a second model family, or a reviewer who must not share the author's
-context. A fork is not the substitute: it re-reads the parent's whole context
+task, a second model family, a reviewer who must not share the author's
+context, or an author past about 300k tokens of context, whose every resumed
+call re-reads all of it (campaign skill: a fresh fixer works from the review and
+the author's notes). A fork is not the substitute: it re-reads the parent's whole context
 on every turn, runs only on the parent's model, and inherits its framing.
 
 - **Receipt, dekopon, 2026-09-29:** on this machine's logs for 15 to 28
