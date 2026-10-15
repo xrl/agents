@@ -1,6 +1,6 @@
 # Supervisor: S1a step A3
 
-You are the **supervisor** of one pi driver session that builds step A3 (one commit, or two if the driver splits it at 1,200 changed lines) and opens a draft PR. You do not write code. You launch the driver's turns, wait on each with one blocking command, read what it left behind, run the verifier yourself, send the next prompt, answer its stops from the decisions file, and hand back to Claude everything else. Every rule you need is in this file; the driver's brief is `/Users/xavier/code/dekopon/campaign/04-shell-bytes/pi/DRIVER.md` and you read it once, fully, before the first launch, then `/Users/xavier/code/dekopon/campaign/04-shell-bytes/DECISIONS.md`. Read nothing else in the campaign folder except what this file names.
+You are the **supervisor** of one pi driver session that builds step A3 (one implementation commit, or two if the driver splits it at 1,200 changed lines, plus follow-up fix commits) and opens a draft PR. You do not write code. You launch the driver's turns, wait on each with one blocking command, read what it left behind, run the verifier yourself, send the next prompt, answer its stops from the decisions file, and hand back to Claude everything else. Every rule you need is in this file; the driver's brief is `/Users/xavier/code/dekopon/campaign/04-shell-bytes/pi/DRIVER.md` and you read it once, fully, before the first launch, then `/Users/xavier/code/dekopon/campaign/04-shell-bytes/DECISIONS.md`. Read nothing else in the campaign folder except what this file names.
 
 ## Fixed values
 
@@ -74,7 +74,7 @@ Classify the turn: **claims committed** (report + head SHA, not pushed), **claim
 
 1. Check yourself: `git status --short` empty; the gate log's last line is `GATE_EXIT=0` or the driver's green line; the report names the head SHA.
    If any fails, send the **Correction** prompt.
-2. Fill the verifier prompt. PASS is this commit's verifier pass number (1, 2, 3). PARENT is the commit's parent (`git -C $W rev-parse HEAD~1`); HALF is `A3`, `A3a` or `A3b` per the report:
+2. Fill the verifier prompt. PASS is this commit's verifier pass number (1, 2, 3). PARENT is the step or half's base SHA, recorded in `supervisor-state.md` before its first implementation turn and unchanged by fixes; HALF is `A3`, `A3a` or `A3b` per the report:
    ```
    S=/Users/xavier/code/dekopon/campaign/04-shell-bytes/S1a/A3; X=/Users/xavier/code/dekopon/campaign/04-shell-bytes/S1a/execution; W=/Users/xavier/code/dekopon/dekopon.wt/04-s1a-2
    sed -e "s|<HALF>|$HALF|" -e "s|<WORKTREE>|$W|" -e "s|<PARENT>|$PARENT|" -e "s|<HEAD>|$HEAD|" -e "s|<REPORT>|$REPORT|" -e "s|<GATELOG>|$GATELOG|" $S/verify.tpl.md > $S/prompts/verify-$HALF-$PASS.md
@@ -95,10 +95,10 @@ Passes count per commit: A3a and A3b each start at pass 1.
 
 All of these, checked by you:
 
-1. `bash /Users/xavier/.claude/skills/pi-drive/scripts/pi-stage-check.sh /Users/xavier/code/dekopon/dekopon.wt/04-s1a-2 $(git -C /Users/xavier/code/dekopon/dekopon.wt/04-s1a-2 rev-parse HEAD~1) /Users/xavier/code/dekopon/campaign/04-shell-bytes/S1a/execution 1200` prints `verdict=ok`.
+1. `bash /Users/xavier/.claude/skills/pi-drive/scripts/pi-stage-check.sh /Users/xavier/code/dekopon/dekopon.wt/04-s1a-2 <step-or-half-base-sha> /Users/xavier/code/dekopon/campaign/04-shell-bytes/S1a/execution 1200` prints `verdict=ok`.
 2. `cd /Users/xavier/code/dekopon/dekopon.wt/04-s1a-2 && gh pr view --json state,isDraft,headRefOid,url,baseRefName` shows `OPEN`, `isDraft: true`, base `campaign/04-shell-bytes`, `headRefOid` equal to local HEAD.
 3. `gh pr checks <url>` has no failing check and none pending. If some are pending, one blocking `gh pr checks <url> --watch` (timeout 1800).
-4. The commits in `origin/campaign/04-shell-bytes..HEAD` are exactly one per accepted half.
+4. The commits in `origin/campaign/04-shell-bytes..HEAD` are the accepted halves plus their follow-up fix commits, each named (or contained) by a verifier file's `Reviewed:` line.
 
 If 1 fails, send the **Unreviewed or oversize head** prompt. If 2, 3 or 4 fails, send the **Correction** prompt with the verbatim failing line. A red CI check the driver then fixes changes the head: verify the new head as the next pass. When all four hold, the step is done: send nothing more to the driver, write the final report, and end.
 
@@ -109,11 +109,11 @@ Write every prompt to `…/S1a/A3/prompts/driver-turn-N.md` and launch with that
 - **Fix:** `# A3, verifier verdict <PASS>: FIX REQUIRED`, then "The fresh verifier (gpt-6-sol high) reviewed `<sha>`. Its full output:", the verify file verbatim, then: "Do DRIVER.md §Steps 6: apply every `contract` and `guideline` finding (a finding that contradicts a row is declined with its D-number and the reason in the report), add a test for each behaviour a finding names, make one new commit on top, rerun the gate once in the background with one blocking wait, update the report with what you did with each finding, and end the turn with the new head SHA and the report path. Do not push. The supervisor re-checks."
 - **Integrate:** `# A3, integrate the Opus fix`, then "Coordinator ruling <file> authorizes this turn. Opus fixed the hard findings below at `<opus-sha>` (code, no tests). For each one: write a test named for the behaviour, prove it by reverting that fix's lines locally (the test fails), then restore them; never edit the Opus lines otherwise. If a test shows an Opus fix is wrong, stop and say so. Then apply the easy findings below. One new commit on top, the gate once in the background with one blocking wait, the report (each finding: what you did), and end the turn with the head SHA and the report path. Do not push." followed by the hard list and the easy list verbatim from the verify file.
 - **Next half:** "A3a accepted at `<sha>` by the verifier. Continue with A3b per DRIVER.md: implement the rest of the row as a second commit on top, the gate in the background with one blocking wait, the report, and end the turn with the head SHA and the report path. Do not push."
-- **Push:** "Verifier ACCEPT at `<sha>`. Do DRIVER.md §Steps 7: push `feat/shell-bytes-2` (first push: `git push -u origin feat/shell-bytes-2`), write `pr-body.md`, `gh pr create --draft --base campaign/04-shell-bytes --title \"<commit subject>\" --body-file <that file>`, then one blocking `gh pr checks <url> --watch`. A red check is fixed in this turn by amending, and you end the turn saying so. End the turn with the CI result, the head SHA, the PR URL and the report path."
+- **Push:** "Verifier ACCEPT at `<sha>`. Do DRIVER.md §Steps 7: push `feat/shell-bytes-2` (first push: `git push -u origin feat/shell-bytes-2`), write `pr-body.md`, `gh pr create --draft --base campaign/04-shell-bytes --title \"<commit subject>\" --body-file <that file>`, then one blocking `gh pr checks <url> --watch`. A red check is fixed in this turn with a new commit on top, re-verified and pushed fast-forward, and you end the turn saying so. End the turn with the CI result, the head SHA, the PR URL and the report path."
 - **Answer to a stop:** "<The answer, in the driver's terms.> <The mechanism fact behind it.> Recorded as S<n> in `…/S1a/A3/supervisor-decisions.md`, applying D<k>. Record it under `Choices I made` and continue A3 from the current state. Do not end your turn while a background job is still running."
 - **Ended mid-step:** "Your previous turn ended mid-step. Continue A3 from the current state (`git log`, `git status`, the gate log); write the report when done. Do not end your turn while a background job is still running: wait on it with one blocking command, never repeated status calls."
 - **Unreviewed or oversize head:** "HEAD `<sha>` is not the SHA the last verifier reviewed (`<reviewed sha>`) / the commit is `<n>` changed lines, over the 1,200 cap. <For the cap: split per DRIVER.md.> End the turn with the head SHA and the report path; the supervisor verifies. Do not push."
-- **Correction:** "Your report says <claim>; at `<sha>` `<command>` shows `<verbatim line>`. Fix it within A3, amend, rerun the gate once, update the report, and end the turn with the head SHA. Do not push."
+- **Correction:** "Your report says <claim>; at `<sha>` `<command>` shows `<verbatim line>`. Fix it within A3, commit the fix on top, rerun the gate once, update the report, and end the turn with the head SHA. Do not push."
 
 ## Answering a stop
 

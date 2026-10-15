@@ -1,7 +1,7 @@
 # <CHANGE NAME> — driver brief
 
 You are the single driver of the <repo> PR that <one sentence of what the PR does>. No workflow
-script, no lanes: you edit, run cargo and commit once per stage. Your supervisor runs one fresh
+script, no lanes: you edit, run cargo, and commit each stage and its follow-up fixes. Your supervisor runs one fresh
 verifier per stage, issues one stage per turn and answers your stops; the turn-1 prompt is
 `KICKOFF.md`.
 
@@ -91,8 +91,11 @@ that removes each.
   `<design>/execution/logs/`, and you wait on it with one blocking command (§Gate). Write the
   stage report while it runs, not status calls.
 - **A stage is at most ~1k changed lines.** If `git diff --shortstat <stage parent>` passes ~1.2k,
-  split it: commit and verify the first half as stage Na, then the rest as Nb.
-- One commit per stage, conventional subject. **The commit body carries the why**: the choices a
+  split the pending work: commit and verify the first half as stage Na, then the rest as Nb.
+  If the oversized work is already committed, ask the supervisor to rescope the stage; never
+  rewrite commits to split it.
+- One implementation commit per stage; every later fix is a new commit on top, before or after
+  the first push (LAWS §56). Conventional subjects. **The commit body carries the why**: the choices a
   reviewer would question and your Driver decisions for that stage, in prose, without D-numbers
   or local paths (the repo squash-merges; the squash message is what survives). Stage files by
   path; never `git add .` or `-A`; never commit `.pi/`, fixtures, targets or anything under
@@ -164,16 +167,17 @@ Every stage, in order:
 
 1. `git fetch origin && git rebase origin/main`; record conflicts in the report. From stage 2:
    `gh pr checks <url>` for the pushed head; a red **required** check is fixed first, with a new commit on
-   top; a pushed commit is never amended. Pending is not red.
+   top; no commit is ever amended. Pending is not red. Record HEAD after the rebase as the stage
+   base SHA; it stays the base for every fix and size check in this stage.
 2. Implement the stage block below. Scoped checks while iterating.
-3. `df -h ~`. Commit (one commit; amend it for every later fix in this stage until it is pushed).
+3. `df -h ~`. Commit the implementation. Every later fix is a new commit on top.
 4. The full gate in the background (§Gate); one blocking wait to green.
 5. Draft `<design>/execution/stage-N-report.md` (§Report): the verifier reads it.
 6. **Verify:** the supervisor runs the fresh verifier outside your `-ne` driver session and sends
    its verdict in the next turn. Apply every `contract` and `guideline` finding — a finding that
-   contradicts a decision is declined with its D-number — amend, rerun the gate once, update the
-   report. Pass 2 whenever you changed the commit after pass 1, because only a reviewed head is
-   pushed (step 7): over the whole stage when pass 1 had a `contract` finding, over the amended
+   contradicts a decision is declined with its D-number — commit the fixes on top, rerun the gate
+   once, update the report. Pass 2 whenever HEAD changed after pass 1, because only a reviewed
+   head is pushed (step 7): over the whole stage when pass 1 had a `contract` finding, over the fix
    delta alone otherwise. There is no pass 3, except one: when pass 2's blocking findings are all
    tagged `easy`, fix them, re-gate once, and run one verifier scoped to those findings over the
    fix delta; push on its `ACCEPT`. Any `hard` finding after pass 2 ends the turn.
@@ -212,7 +216,8 @@ The supervisor runs the verifier with `pi-drive/scripts/pi-dry-run.sh <worktree>
 
 ## Report
 
-`stage-N-report.md`, one page: head SHA; what changed with `file:line`; the gate log path and its
+`stage-N-report.md`, one page: stage base SHA (recorded before implementation, unchanged by
+fixes); head SHA; what changed with `file:line`; the gate log path and its
 last block; verifier verdicts and what you did with each finding; `Driver decisions` (cumulative,
 numbered). Stage 1's report opens with the preflight results. The final stage's report adds every
 CI check and result, what in this brief was wrong, what you left out, and free disk before and
