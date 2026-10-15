@@ -304,10 +304,21 @@ session. Drive nothing from the session that planned it. Sketches, briefs,
 rehearsals and reviews are about one percent of spend: never cut one to save
 money. Feed actual spend back into the estimate for the next milestone.
 
+A follow-up on work an agent already did (a fix, a rework, a rebase, an
+extension) goes back to that agent while its cache is warm, resumed rather than
+re-spawned (SendMessage in Claude Code). Spawn fresh only for an independent
+task, a second model family, or a reviewer who must not share the author's
+context. A fork is not the substitute: it re-reads the parent's whole context
+on every turn, runs only on the parent's model, and inherits its framing.
+
 - **Receipt, dekopon, 2026-09-29:** on this machine's logs for 15 to 28
   September, 97 to 98% of tokens were cache reads; a fresh supervisor per unit
   cut an estimated $3,127 to $2,658; every review and rehearsal together came
   to about $25.
+- **Receipt, dekopon, 2026-10-15:** a 62-agent planning-and-fix session came to
+  about $230 at list prices. Cache writes from 57 cold Opus starts were the
+  largest line, about $88. The follow-ups resumed on warm agents (a gzip
+  rework, a CI correction, a lock re-mirror) needed no re-brief.
 
 ### 50. A blocked call is free; a poll costs a full read of the context.
 
