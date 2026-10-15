@@ -18,6 +18,15 @@ not automatic imports. If a required guide is unavailable, stop that action.
 | Offloading decided work to pi, driving it from Claude | [pi skills snapshot](skills/PI-SKILLS.md) |
 | Landing one coupled multi-lane Rust change with concurrent editors | [rust-feature-swarm](skills/rust-feature-swarm/SKILL.md) |
 
+## Agent and model evaluations
+
+- When Xavier says “eval” for agent/model behavior, he means **use Harbor**.
+  Use Harbor for comparisons of models, prompts, tools and agent configurations;
+  do not substitute an ad hoc runner or another harness without asking.
+- This selects the evaluation harness, not permission to launch paid trials,
+  delegate work, install tools or deploy changes. Software performance benchmarks
+  are a separate task, not agent/model evals.
+
 ## Authority and upkeep
 
 - kache is standard. Current host rules outrank historical recipes.
