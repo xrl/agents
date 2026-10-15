@@ -374,13 +374,20 @@ down when the milestone is planned, with who may decide what: the supervisor,
 the called reviewer, the owner. Otherwise a supervisor that finishes overnight
 cannot tag, or decides something that was not its to decide.
 
-### 56. A pushed commit is never amended; a CI fix is a new commit on top.
+<a id="56-a-pushed-commit-is-never-amended-a-ci-fix-is-a-new-commit-on-top"></a>
+### 56. Always fail forward: corrections are new commits, including in a PR.
 
-Amending what a remote already holds diverges every clone of it, and the only
-ways back are a force push or a recovery someone must review. Fix a red check
-with a new commit, verify it alone, and push it fast-forward. 2026-09-30: a
-supervisor's push prompt said "amend"; the driver's push was rejected and the
-step waited on a ruling.
+Edit uncommitted work freely. Once a commit exists, a bug fix, a failed check or a
+review finding is a new commit on top, even before the first push or in a draft
+PR. Never amend or squash a correction into an existing commit: the reviewed
+commit stays what was reviewed, and the fix is reviewed as its own delta. Catching
+up with the base is a rebase onto it (a rebase-only repo refuses merge commits);
+a rebase replays every commit, so corrections stay separate. Push a rebased PR
+branch with `--force-with-lease`, and only your own branch; push everything else
+fast-forward.
+
+- **Receipt, 2026-09-30:** a supervisor's push prompt said "amend"; the driver's
+  push was rejected and the step waited on a ruling.
 
 ### 57. Authority travels with the prompt.
 

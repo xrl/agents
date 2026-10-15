@@ -10,7 +10,8 @@ is the reviewed SHA and the stage is under the cap (or was split).
 
 > Stage N−1 accepted at <sha>. Stage N now: rebase onto origin/main first and check the previous
 > head's PR checks, then DRIVER.md §Stages step by step and the stage N block; §Don't write this
-> applies. One commit (the why in its body), one full gate after it in the background to
+> applies. One implementation commit (the why in its body); fixes are new commits on top. One
+> full gate per head in the background to
 > `<design>/execution/logs/stage-N-gate.log`; no packaging or smoke; the report at
 > `<design>/execution/stage-N-report.md`, the verifier (`async: false`, or async and waited on to completion when the harness requires final-review children to run async); push only on `ACCEPT`,
 > never over FIX REQUIRED; refresh the PR body. <Cross-review stages: then the pr-reviewer; last
@@ -43,6 +44,5 @@ is the reviewed SHA and the stage is under the cap (or was split).
 **Correction after a failed read-only check:**
 
 > Your report says <claim>; at <sha> <command> shows <verbatim line>. Fix it within stage N,
-> amend if stage N is unpushed, otherwise commit the fix on top; rerun the gate once,
-> re-verify, update the report. Do not end your turn while a subagent
+> commit the fix on top; rerun the gate once, re-verify the new head, update the report. Do not end your turn while a subagent
 > or background job is still running.

@@ -125,7 +125,7 @@ The Fable reads ($15) were worth it: they found the design break before the buil
 - No heartbeat means a hung turn stalls the run until someone looks; none hung in sub-campaign 4.
 - A subagent's completion notice can arrive before its hand-back message for the same turn; check the PR, not the notice.
 - `gh run view`/`gh pr checks` from a non-repo cwd fail silently: always pass `-R <owner/repo>`.
-- A prompt that says "amend" after a push diverges the branch: CI fixes are new commits on top.
+- Every correction is a new commit on top, before or after a push and within a PR; no prompt says "amend" (LAWS §56).
 - A driver that runs under DRIVER.md's third-FIX stop refuses a fix unless the prompt quotes the coordinator ruling that authorizes it.
 - A ruling sent to a lane that cannot ask back (Codex through a relay, a cloud session) is checked against the brief, row by row, before it is sent, and it goes to every arm building the same unit. 2026-10-10, T1c bake-off: a relayed scope ruling told Codex that pre-admission refusals record `failed` where the brief said the refusal outcome; both judges' decisive findings against the Codex build were that ruling's.
 - Grepping task output files can pull whole subagent transcripts into the coordinator's context; read only the named output of a Bash task.
