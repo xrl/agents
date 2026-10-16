@@ -125,6 +125,28 @@ class CliTests(unittest.TestCase):
         self.assertEqual(result["id"], "account-id~asenvcfg_123")
         self.assertEqual(result["message"], "<redacted>")
 
+    def test_poll_deadlines_keep_receipts_and_cursors_without_another_read(self):
+        snapshot = {"thread_id": "fixture", "done": False}
+        page = {"data": [], "nextCursor": "older"}
+        for during_read in (False, True):
+            ctx = context()
+            ctx.emit = mock.Mock()
+            ctx.rpc = mock.Mock(return_value=contextlib.nullcontext(object()))
+            args = argparse.Namespace(id="fixture", action="wait", deadline=1, interval=10, turn_id=None)
+            clock = [0, 2] if during_read else [0, .5, 2]
+            with self.subTest(during_read=during_read), mock.patch.object(cli.time, "monotonic", side_effect=clock), mock.patch.object(cli.time, "sleep"):
+                with mock.patch.object(cli, "status_snapshot", return_value=snapshot) as read, self.assertRaises(transport.CloudError) as raised:
+                    cli.wait_status(ctx, args)
+                self.assertEqual(raised.exception.outcome, "still-running")
+                self.assertIs(raised.exception.receipt, snapshot)
+                read.assert_called_once()
+            args = argparse.Namespace(id="fixture", follow=True, limit=1, deadline=1, interval=10, turn_id=None, cursor=None)
+            clock = [0, 0, 2] if during_read else [0, 0, .5, 2]
+            with mock.patch.object(cli.time, "monotonic", side_effect=clock), mock.patch.object(cli.time, "sleep"):
+                with mock.patch.object(cli, "do_rpc", return_value=page) as read:
+                    self.assertEqual(cli.logs(ctx, args), {"follow_ended": "deadline", "job_cancelled": False, "nextCursor": "older"})
+                read.assert_called_once()
+
     def test_follow_detects_a_newest_page_gap_before_advancing(self):
         def page(ident):
             return {"data": [{"turnId": "turn", "item": {"id": ident, "type": "agentMessage", "text": "fixture"}}], "nextCursor": "older"}
@@ -270,6 +292,16 @@ class CliTests(unittest.TestCase):
         with self.assertRaisesRegex(transport.CloudError, "--write"):
             session.validate_message(context(), {"id": 22, "result": {"decision": "accept"}}, {}, {22})
 
+    def test_session_ids_accept_json_strings_and_integers_but_not_booleans(self):
+        for ident in ("read", 17, True, False, None, 1.5, [], {}):
+            message = {"id": ident, "method": "thread/read", "params": {"threadId": "fixture"}}
+            with self.subTest(ident=ident):
+                if type(ident) in (str, int):
+                    self.assertEqual(session.validate_message(context(), message, {}, set()), ("request", False))
+                else:
+                    with self.assertRaisesRegex(transport.CloudError, "string/integer id"):
+                        session.validate_message(context(), message, {}, set())
+
     def test_session_write_request_checked_before_send(self):
         with self.assertRaisesRegex(transport.CloudError, "--write"):
             session.validate_message(context(), {"id": "one", "method": "turn/start", "params": {}}, {}, set())
@@ -284,6 +316,44 @@ class CliTests(unittest.TestCase):
             self.assertEqual([r["method"] for r in peer.requests], ["initialize", "initialized", "thread/read"])
             self.assertEqual(peer.headers["ChatGPT-Account-Id"], "fixture-account")
             self.assertIn("openai-bearer.fixture-token", peer.headers["Sec-WebSocket-Protocol"])
+
+    def test_continue_preserves_turn_input_and_admission_or_disconnect_receipt(self):
+        for disconnect in (False, True):
+            def reply(req):
+                if req["method"] == "turn/start":
+                    return "disconnect" if disconnect else {"result": {"turn": {"id": "admitted-turn", "status": "inProgress"}}}
+                return {"result": {}}
+            with self.subTest(disconnect=disconnect), tempfile.TemporaryDirectory() as temp:
+                prompt = pathlib.Path(temp, "prompt")
+                prompt.write_text("Authorized follow-up")
+                with SocketPeer(reply) as peer, mock.patch.object(cli.auth, "load_auth", return_value=("token", "account")):
+                    code, lines = execute(["jobs", "continue", "known-thread", "--prompt-file", str(prompt),
+                                           "--client-message-id", "stable-message", "--write"])
+            requests = [r for r in peer.requests if r["method"] not in ("initialize", "initialized")]
+            self.assertEqual([r["method"] for r in requests], ["thread/resume", "turn/start"])
+            self.assertEqual(requests[0]["params"], {"threadId": "known-thread", "excludeTurns": True})
+            self.assertEqual(requests[1]["params"], {"threadId": "known-thread", "clientUserMessageId": "stable-message",
+                "input": [{"type": "text", "text": "Authorized follow-up", "text_elements": []}]})
+            self.assertEqual(code, 2 if disconnect else 0)
+            self.assertEqual(lines[0]["receipt"], {"thread_id": "known-thread", "client_message_id": "stable-message"})
+            receipt = {**lines[0]["receipt"], "stage": "thread/resume" if disconnect else "turn-admitted"}
+            if disconnect:
+                self.assertEqual(lines[-1]["outcome"], "unknown")
+            else:
+                receipt["turn_id"] = "admitted-turn"
+            self.assertEqual(lines[-1]["receipt"], receipt)
+
+    def test_batch_preserves_completed_count_when_the_next_call_fails(self):
+        def reply(req):
+            return "disconnect" if req["method"] == "thread/archive" else {"result": {"thread": {"id": "fixture"}}}
+        requests = [{"method": method, "params": {"threadId": "fixture"}} for method in ("thread/read", "thread/archive")]
+        with SocketPeer(reply) as peer, mock.patch.object(cli.auth, "load_auth", return_value=("token", "account")):
+            code, lines = execute(["api", "batch", "--requests", json.dumps(requests), "--write"])
+        self.assertEqual(code, 2)
+        self.assertEqual(lines[0], {"method": "thread/read", "result": {"thread": {"id": "fixture"}}})
+        self.assertEqual(lines[-1]["outcome"], "unknown")
+        self.assertEqual(lines[-1]["receipt"], {"completed_calls": 1})
+        self.assertEqual([r["method"] for r in peer.requests].count("thread/archive"), 1)
 
     def test_create_disconnect_preserves_receipt_and_unknown_outcome(self):
         def reply(req):

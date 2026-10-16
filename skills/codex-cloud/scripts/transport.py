@@ -28,11 +28,9 @@ class CloudError(Exception):
 
 
 def unique_object(pairs):
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise CloudError("Duplicate JSON object key")
-        result[key] = value
+    result = dict(pairs)
+    if len(result) != len(pairs):
+        raise CloudError("Duplicate JSON object key")
     return result
 
 
@@ -40,9 +38,7 @@ def credential_secrets(token, browser_headers=None):
     cookie = (browser_headers or {}).get("Cookie", "")
     values = []
     for part in cookie.split(";"):
-        if "=" not in part:
-            continue
-        name, value = part.strip().split("=", 1)
+        name, _, value = part.strip().partition("=")
         if re.search(r"next-auth|cf_clearance|__cf_bm|_cfuvid", name) and len(value) >= 16:
             values.append(value)
     return (token, cookie, *values)

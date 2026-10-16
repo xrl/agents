@@ -32,8 +32,6 @@ def load_auth(path):
         if claims["exp"] <= time.time() + 30:
             raise CloudError("Pi's Codex token is expired; refresh it through Pi first")
         return token, account
-    except CloudError:
-        raise
     except OSError as e:
         raise CloudError(f"Cannot open Pi's OAuth store ({type(e).__name__}, errno={e.errno})") from e
     except (ValueError, KeyError, TypeError, IndexError, RecursionError) as e:
@@ -83,7 +81,6 @@ def borrow_browser_cookies(session, account):
                 self.send_error(400)
 
     server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
-    server.timeout = 5
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     bridge = f"http://127.0.0.1:{server.server_port}{nonce}"

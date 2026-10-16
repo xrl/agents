@@ -47,8 +47,7 @@ class Context:
         return Http(token, account, self.browser_headers if browser else None, timeout=self.args.timeout)
 
     def rpc(self):
-        token, account = self.credentials()
-        return connect_rpc(token, account, timeout=self.args.timeout, deadline=self.deadline)
+        return connect_rpc(*self.credentials(), timeout=self.args.timeout, deadline=self.deadline)
 
     def guard(self, mutation):
         if mutation and not (self.args.write or self.args.dry_run):
@@ -114,20 +113,19 @@ def workflow_output(args, value):
     if args.full or args.dry_run or not isinstance(value, dict) or "error" in value:
         return value
     group, action = getattr(args, "group", None), getattr(args, "action", None)
-    fields = None
-    if group == "environments" and action in ("list", "show"):
-        fields = "name description scope revision created_at updated_at"
-    elif group == "models":
-        fields = "model displayName description isDefault hidden"
-    elif group == "jobs":
-        if action in ("list", "get", "resume"):
+    match group, action:
+        case "environments", ("list" | "show"):
+            fields = "name description scope revision created_at updated_at"
+        case "models", _:
+            fields = "model displayName description isDefault hidden"
+        case "jobs", ("list" | "get" | "resume"):
             fields = "name preview createdAt updatedAt gitInfo source"
-        elif action == "turns" and args.view != "full":
+        case "jobs", "turns" if args.view != "full":
             fields = "startedAtMs completedAtMs"
-        elif action == "continue" and "result" in value:
+        case "jobs", "continue" if "result" in value:
             result = value["result"]
             return {**value, "result": {**result, "turn": summarize(result["turn"], "")}}
-        elif action == "logs":
+        case "jobs", "logs":
             def item_entry(entry):
                 item = summarize(entry["item"], "type text summary command cwd exitCode aggregatedOutput changes")
                 if "changes" in item:
@@ -136,8 +134,8 @@ def workflow_output(args, value):
             if "data" in value:
                 return {**value, "data": [item_entry(entry) for entry in value["data"]]}
             return item_entry(value) if "item" in value else value
-    if fields is None:
-        return value
+        case _:
+            return value
     if "data" in value:
         return {**value, "data": [summarize(row, fields) for row in value["data"]]}
     if "thread" in value:
@@ -215,8 +213,7 @@ def environment_list(ctx):
             if cursor is not None:
                 query["cursor"] = cursor
             return http.request("GET", catalog.http_path("environment-configs", {}, query)[1])
-        for item in paged(fetch, cursor_key="next_cursor", max_pages=ctx.args.max_pages):
-            found[item["id"]] = item
+        found.update((item["id"], item) for item in paged(fetch, cursor_key="next_cursor", max_pages=ctx.args.max_pages))
     return {"data": list(found.values())}
 
 
@@ -235,10 +232,16 @@ def resolve_environment(ctx, args):
     return ident
 
 
-def creation_requests(args, environment_id):
+def turn_params(args, thread_id):
     prompt = read_text(args.prompt_file)
     if not prompt.strip():
         raise CloudError("Prompt must not be empty")
+    return {"threadId": thread_id, "input": [{"type": "text", "text": prompt, "text_elements": []}],
+            "clientUserMessageId": args.client_message_id or str(uuid.uuid4())}
+
+
+def creation_requests(args, environment_id):
+    turn = turn_params(args, "$thread.id")
     start = {"threadSource": "user", "environments": [{"environmentConfigId": environment_id}],
              "deferredEnvironment": True, "pluginsMcp": {"productSku": "codex"}}
     if args.model:
@@ -246,10 +249,7 @@ def creation_requests(args, environment_id):
     steps = [request_plan("thread/start", start)]
     if args.title:
         steps.append(request_plan("thread/name/set", {"threadId": "$thread.id", "name": args.title}))
-    turn = {"threadId": "$thread.id", "input": [{"type": "text", "text": prompt, "text_elements": []}],
-            "clientUserMessageId": args.client_message_id or str(uuid.uuid4())}
-    steps.append(request_plan("turn/start", turn))
-    return steps
+    return [*steps, request_plan("turn/start", turn)]
 
 
 def create_job(ctx, args):
@@ -261,28 +261,20 @@ def create_job(ctx, args):
                    "client_message_id": steps[-1]["params"]["clientUserMessageId"]}
     ctx.emit({"receipt": ctx.receipt})
     with ctx.rpc() as rpc:
-        try:
-            start = ctx.call(rpc, "thread/start", steps[0]["params"])
-            thread = start.get("thread") if isinstance(start, dict) else None
-            thread_id = thread.get("id") if isinstance(thread, dict) else None
-            if not isinstance(thread_id, str) or not thread_id:
-                raise CloudError("thread/start returned no valid thread ID", outcome="unknown")
-            ctx.receipt.update(thread_id=thread_id, stage="thread-created", url=BASE + "/local/" + thread_id)
-            ctx.emit({"receipt": ctx.receipt})  # Durable receipt before a second side effect.
-            for step in steps[1:]:
-                params = {**step["params"], "threadId": thread_id}
-                if step["method"] == "turn/start":
-                    ctx.receipt["client_message_id"] = params["clientUserMessageId"]
-                result = ctx.call(rpc, step["method"], params)
-                if step["method"] == "turn/start":
-                    turn = result.get("turn") if isinstance(result, dict) else None
-                    if not isinstance(turn, dict) or not isinstance(turn.get("id"), str):
-                        raise CloudError("turn/start returned no valid turn ID; inspect the known thread before retrying", outcome="unknown")
-                    ctx.receipt.update(stage="turn-admitted", turn_id=turn["id"])
-            return {"receipt": ctx.receipt, "note": "Admission is not successful completion; poll this thread ID"}
-        except CloudError as e:
-            e.receipt = dict(ctx.receipt)
-            raise
+        start = ctx.call(rpc, "thread/start", steps[0]["params"])
+        thread = start.get("thread") if isinstance(start, dict) else None
+        thread_id = thread.get("id") if isinstance(thread, dict) else None
+        if not isinstance(thread_id, str) or not thread_id:
+            raise CloudError("thread/start returned no valid thread ID", outcome="unknown")
+        ctx.receipt.update(thread_id=thread_id, stage="thread-created", url=BASE + "/local/" + thread_id)
+        ctx.emit({"receipt": ctx.receipt})  # Durable receipt before a second side effect.
+        for step in steps[1:]:
+            result = ctx.call(rpc, step["method"], {**step["params"], "threadId": thread_id})
+        turn = result.get("turn") if isinstance(result, dict) else None
+        if not isinstance(turn, dict) or not isinstance(turn.get("id"), str):
+            raise CloudError("turn/start returned no valid turn ID; inspect the known thread before retrying", outcome="unknown")
+        ctx.receipt.update(stage="turn-admitted", turn_id=turn["id"])
+        return {"receipt": ctx.receipt, "note": "Admission is not successful completion; poll this thread ID"}
 
 
 def status_snapshot(ctx, rpc, ident, turn_id=None):
@@ -306,9 +298,7 @@ def wait_status(ctx, args):
                 request_plan("thread/turns/list", {"threadId": args.id, "limit": 10, "itemsView": "notLoaded"})]}
     deadline = ctx.deadline = time.monotonic() + args.deadline
     result = None
-    while True:
-        if result is not None and time.monotonic() >= deadline:
-            raise CloudError("Wait deadline reached; job was NOT cancelled", outcome="still-running", receipt=result)
+    while result is None or time.monotonic() < deadline:
         with ctx.rpc() as rpc:
             result = status_snapshot(ctx, rpc, args.id, args.turn_id)
         if args.action == "status" or result["done"]:
@@ -316,10 +306,11 @@ def wait_status(ctx, args):
         ctx.emit(result)
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            raise CloudError("Wait deadline reached; job was NOT cancelled", outcome="still-running", receipt=result)
+            break
         time.sleep(min(args.interval, remaining))
         # New connection reloads updated Pi credentials during a long wait.
         ctx.token, ctx.account = None, None
+    raise CloudError("Wait deadline reached; job was NOT cancelled", outcome="still-running", receipt=result)
 
 
 def logs(ctx, args):
@@ -328,9 +319,7 @@ def logs(ctx, args):
     deadline, seen, last_cursor = time.monotonic() + args.deadline, {}, None
     if args.follow:
         ctx.deadline = deadline
-    while True:
-        if args.follow and time.monotonic() >= deadline:
-            return {"follow_ended": "deadline", "job_cancelled": False, "nextCursor": last_cursor}
+    while not args.follow or time.monotonic() < deadline:
         params = {"threadId": args.id, "limit": args.limit, "sortDirection": "desc"}
         if args.turn_id:
             params["turnId"] = args.turn_id
@@ -344,7 +333,7 @@ def logs(ctx, args):
         keys = [str(entry["turnId"]) + ":" + str(entry["item"]["id"]) for entry in data]
         if seen and len(data) >= args.limit and not any(key in seen for key in keys):
             raise CloudError("Log burst exceeds newest-page window; use jobs logs with explicit cursors", outcome="read-failed")
-        for entry, ident in reversed(list(zip(data, keys))):
+        for entry, ident in zip(reversed(data), reversed(keys)):
             fingerprint = hashlib.sha256(json.dumps(entry, sort_keys=True).encode()).hexdigest()
             if seen.get(ident) != fingerprint:
                 ctx.emit({"thread_id": args.id, **entry})
@@ -353,9 +342,10 @@ def logs(ctx, args):
             raise CloudError("Log-follow deduplication bound reached; restart follow", outcome="read-failed")
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            return {"follow_ended": "deadline", "job_cancelled": False, "nextCursor": result.get("nextCursor")}
+            break
         time.sleep(min(args.interval, remaining))
         ctx.token, ctx.account = None, None
+    return {"follow_ended": "deadline", "job_cancelled": False, "nextCursor": last_cursor}
 
 
 def run_jobs(ctx, args):
@@ -388,29 +378,21 @@ def run_jobs(ctx, args):
                 "note": "Reported patches only; nothing applied to a local checkout"}
     if action == "continue":
         ctx.guard(True)
-        prompt = read_text(args.prompt_file)
-        if not prompt.strip():
-            raise CloudError("Prompt must not be empty")
-        steps = [request_plan("thread/resume", {"threadId": args.id, "excludeTurns": True}),
-                 request_plan("turn/start", {"threadId": args.id, "input": [{"type": "text", "text": prompt, "text_elements": []}],
-                              "clientUserMessageId": args.client_message_id or str(uuid.uuid4())})]
+        turn = turn_params(args, args.id)
+        steps = [request_plan("thread/resume", {"threadId": args.id, "excludeTurns": True}), request_plan("turn/start", turn)]
         if ctx.args.dry_run:
             return {"dry_run": True, "requests": steps}
-        ctx.receipt = {"thread_id": args.id, "client_message_id": steps[1]["params"]["clientUserMessageId"]}
-        try:
-            with ctx.rpc() as rpc:
-                ctx.emit({"receipt": ctx.receipt})
-                for step in steps:
-                    result = ctx.call(rpc, step["method"], step["params"])
-                    ctx.receipt["stage"] = step["method"]
-                turn = result.get("turn") if isinstance(result, dict) else None
-                if not isinstance(turn, dict) or not isinstance(turn.get("id"), str) or not turn["id"]:
-                    raise CloudError("turn/start returned no valid turn ID; inspect the known thread before retrying", outcome="unknown")
-                ctx.receipt.update(stage="turn-admitted", turn_id=turn["id"])
-            return {"receipt": ctx.receipt, "result": result}
-        except CloudError as e:
-            e.receipt = ctx.receipt
-            raise
+        ctx.receipt = {"thread_id": args.id, "client_message_id": turn["clientUserMessageId"]}
+        with ctx.rpc() as rpc:
+            ctx.emit({"receipt": ctx.receipt})
+            for step in steps:
+                result = ctx.call(rpc, step["method"], step["params"])
+                ctx.receipt["stage"] = step["method"]
+            turn = result.get("turn") if isinstance(result, dict) else None
+            if not isinstance(turn, dict) or not isinstance(turn.get("id"), str) or not turn["id"]:
+                raise CloudError("turn/start returned no valid turn ID; inspect the known thread before retrying", outcome="unknown")
+            ctx.receipt.update(stage="turn-admitted", turn_id=turn["id"])
+        return {"receipt": ctx.receipt, "result": result}
     methods = {"archive": "thread/archive", "unarchive": "thread/unarchive", "rename": "thread/name/set",
                "resume": "thread/resume", "stop": "thread/stop", "cancel": "turn/interrupt", "delete": "thread/delete"}
     params = {"threadId": args.id}
@@ -455,17 +437,17 @@ def run_api(ctx, args):
         ctx.guard(any(p["mutation"] for p in plans))
         if ctx.args.dry_run:
             return {"dry_run": True, "requests": plans}
-        results = []
+        completed = 0
         try:
             with ctx.rpc() as rpc:
                 for plan in plans:
                     result = ctx.call(rpc, plan["method"], plan["params"])
-                    results.append({"method": plan["method"], "result": result})
-                    ctx.emit(results[-1])
+                    completed += 1
+                    ctx.emit({"method": plan["method"], "result": result})
         except CloudError as e:
-            e.receipt = {"completed_calls": len(results)}
+            e.receipt = {"completed_calls": completed}
             raise
-        return {"completed_calls": len(results)}
+        return {"completed_calls": completed}
     if args.action == "session":
         from session import run_session
         return run_session(ctx, args)
@@ -581,10 +563,8 @@ def dispatch(ctx, args):
     if args.group == "models":
         return do_rpc(ctx, "model/list", {"limit": 100})
     if args.group == "diagnose":
-        result = {}
-        for operation in ("legacy-environments", "legacy-tasks"):
-            result[operation] = do_http(ctx, operation, "GET", query={"limit": 20, "task_filter": "current"} if operation == "legacy-tasks" else {})
-        return result
+        return {operation: do_http(ctx, operation, "GET", query={"limit": 20, "task_filter": "current"} if operation == "legacy-tasks" else {})
+                for operation in ("legacy-environments", "legacy-tasks")}
     raise CloudError("Unknown command")
 
 

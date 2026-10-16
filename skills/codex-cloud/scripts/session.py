@@ -10,7 +10,7 @@ from transport import MAX_BODY, CloudError, unique_object, websocket_failure
 
 
 def validate_message(ctx, message, pending_clients, pending_servers):
-    if not isinstance(message, dict) or "id" not in message or isinstance(message["id"], bool) or not isinstance(message["id"], (str, int)):
+    if not isinstance(message, dict) or type(message.get("id")) not in (str, int):
         raise CloudError("Session messages require a string/integer id")
     ident = message["id"]
     if "method" in message:
@@ -89,9 +89,7 @@ def run_session(ctx, args):
                 except (OSError, WebSocketException) as error:
                     cause, _, code = websocket_failure(error)
                     raise CloudError(f"Session receive: {cause}", code=code, outcome="read-failed") from error
-                if not isinstance(message, dict) or ("id" in message and (
-                    isinstance(message["id"], bool) or not isinstance(message["id"], (str, int))
-                )):
+                if not isinstance(message, dict) or ("id" in message and type(message["id"]) not in (str, int)):
                     raise CloudError("Invalid session response object/id", outcome="read-failed")
                 if "id" in message and "method" in message:
                     if len(pending_servers) >= 50 or message["id"] in pending_servers:
