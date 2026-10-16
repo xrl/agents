@@ -1,5 +1,6 @@
 """One runtime catalog assembled from frozen public and observed web contracts."""
 import json
+from itertools import islice
 import pathlib
 import re
 import urllib.parse
@@ -34,11 +35,10 @@ def validate_rpc(method, params):
         return  # Undocumented Cloud extensions are forwarded, never invented or auto-classified read-only.
     from jsonschema import Draft7Validator
     schema = {**variant, "definitions": SCHEMA["definitions"]}
-    errors = sorted(Draft7Validator(schema).iter_errors({"id": 1, "method": method, "params": params}),
-                    key=lambda e: str(list(e.path)))
+    errors = list(islice(Draft7Validator(schema).iter_errors({"id": 1, "method": method, "params": params}), 10))
     if errors:
         # Do not echo values from ValidationError.message (could include passwords).
-        details = [f"{'.'.join(map(str, e.path)) or 'request'} violates {e.validator}" for e in errors[:10]]
+        details = [f"{'.'.join(map(str, e.path)) or 'request'} violates {e.validator}" for e in errors]
         raise CloudError("Invalid RPC request: " + "; ".join(details))
 
 
@@ -53,6 +53,10 @@ def http_path(operation, path_params, query):
     entry = WEB["http"].get(operation)
     if entry is None:
         raise CloudError("Unknown HTTP operation; use `api list --transport http`")
+    if not isinstance(path_params, dict):
+        raise CloudError("Path parameters must be an object")
+    if not isinstance(query, dict):
+        raise CloudError("Query must be an object")
     path = entry["path"]
     required = set(re.findall(r"\{(\w+)\}", path))
     if required != set(path_params):
@@ -62,8 +66,6 @@ def http_path(operation, path_params, query):
         if not isinstance(value, str) or not value or value in (".", ".."):
             raise CloudError(f"Invalid {name}")
         path = path.replace("{" + name + "}", urllib.parse.quote(value, safe=""))
-    if not isinstance(query, dict):
-        raise CloudError("Query must be an object")
     if query:
         path += "?" + urllib.parse.urlencode(query, doseq=True)
     return entry, path

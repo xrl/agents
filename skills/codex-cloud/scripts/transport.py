@@ -3,8 +3,12 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import errno
+import http.client
 import json
 import re
+import socket
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -12,12 +16,15 @@ import urllib.request
 BASE = "https://chatgpt.com"
 WS_URL = "wss://codex-cloud-backend.chatgpt.com/"
 MAX_BODY = 4 * 1024 * 1024
+TRANSIENT_STATUS = {408, 429, 500, 502, 503, 504}
+RETRY_DELAYS = (0.5, 1.0)
 
 
 class CloudError(Exception):
-    def __init__(self, message, *, outcome="not-sent", receipt=None, code=None):
+    def __init__(self, message, *, outcome="not-sent", receipt=None, code=None, retryable=False):
         super().__init__(message)
         self.outcome, self.receipt, self.code = outcome, receipt, code
+        self.retryable = retryable
 
 
 def unique_object(pairs):
@@ -53,12 +60,54 @@ def safe_text(value, secrets=()):
 
 def redact(value, secrets=(), show_secrets=False):
     if isinstance(value, dict):
-        return {k: ("<redacted>" if not show_secrets and re.search(
-            r"(?i)(authorization|access.?token|refresh.?token|cookie|password|auth_key|^secret|encrypted_content)", k
+        return {safe_text(str(k), secrets): ("<redacted>" if not show_secrets and re.search(
+            r"(?i)(authorization|access.?token|refresh.?token|cookie|password|auth_key|^secret|encrypted_content)", str(k)
         ) else redact(v, secrets, show_secrets)) for k, v in value.items()}
     if isinstance(value, list):
         return [redact(v, secrets, show_secrets) for v in value]
     return safe_text(value, secrets) if isinstance(value, str) else value
+
+
+def retry(operation, attempt, *, timeout):
+    """At most three attempts, including backoff in the operation's time budget."""
+    deadline = time.monotonic() + timeout
+    for index in range(len(RETRY_DELAYS) + 1):
+        try:
+            return attempt(max(0, deadline - time.monotonic()))
+        except CloudError as error:
+            if not error.retryable or index == len(RETRY_DELAYS):
+                raise
+            delay = RETRY_DELAYS[index]
+            if deadline - time.monotonic() <= delay:
+                raise
+            # Never log remote text, payloads, paths, tokens or handshake headers.
+            print(f"retry {index + 2}/3 in {delay:g}s: {operation} ({error.outcome})", file=sys.stderr, flush=True)
+            time.sleep(delay)
+            if time.monotonic() >= deadline:
+                raise
+
+
+def transient_connection(error):
+    if isinstance(error, socket.gaierror):
+        return error.errno == socket.EAI_AGAIN
+    return isinstance(error, (TimeoutError, ConnectionError, http.client.IncompleteRead)) or (
+        isinstance(error, OSError) and error.errno in {errno.ETIMEDOUT, errno.ENETUNREACH, errno.EHOSTUNREACH}
+    )
+
+
+def websocket_failure(error):
+    """Keep status/close codes, not exception reprs containing auth subprotocols."""
+    from websockets.exceptions import ConnectionClosed, InvalidStatus
+    if isinstance(error, InvalidStatus):
+        status = error.response.status_code
+        return f"HTTP {status}", status in TRANSIENT_STATUS, status
+    if isinstance(error, ConnectionClosed):
+        code = error.rcvd.code if error.rcvd else None
+        return f"{type(error).__name__} (close code {code})", code in (None, 1000, 1001, 1011, 1012, 1013, 1014), code
+    cause = type(error).__name__
+    if isinstance(error, OSError):
+        cause += f" (errno={error.errno})"
+    return cause, transient_connection(error), None
 
 
 def paged(fetch, *, key="data", cursor_key="nextCursor", max_pages=5):
@@ -102,106 +151,160 @@ class Http:
         if data is not None and len(data) > MAX_BODY:
             raise CloudError("Request exceeds 4 MiB")
         request = urllib.request.Request(BASE + path, headers=self.headers, method=method, data=data)
-        mutation = method != "GET"
+        return retry(f"HTTP {method}", lambda timeout: self._request(request, timeout, binary), timeout=self.timeout)
+
+    def _request(self, request, timeout, binary):
+        mutation = request.method != "GET"
+        outcome = "unknown" if mutation else "read-failed"
+        operation = f"{request.method} {request.selector.split('?')[0]}"
+        if timeout <= 0:
+            raise CloudError(f"{operation}: request deadline reached")
         try:
-            response = self.opener.open(request, timeout=self.timeout)
-        except urllib.error.HTTPError as e:
-            response = e
-        except (OSError, urllib.error.URLError) as e:
-            raise CloudError(
-                safe_text(f"{method} {path.split('?')[0]}: {type(e).__name__}: {e}", self.secrets),
-                outcome="unknown" if mutation else "read-failed",
-            ) from None
-        try:
+            try:
+                response = self.opener.open(request, timeout=timeout)
+            except urllib.error.HTTPError as error:
+                response = error
             with response:
                 status = response.status
                 raw = response.read(MAX_BODY + 1)
-        except OSError as e:
-            raise CloudError(f"{method}: response read failed ({type(e).__name__})", outcome="unknown" if mutation else "read-failed") from None
+        except (OSError, urllib.error.URLError, http.client.HTTPException) as error:
+            cause = error.reason if isinstance(error, urllib.error.URLError) else error
+            # Only these URL-open failures prove that no HTTP request was sent.
+            not_sent = isinstance(error, urllib.error.URLError) and isinstance(cause, (ConnectionRefusedError, socket.gaierror))
+            raise CloudError(
+                safe_text(f"{operation}: {type(cause).__name__}: {cause}", self.secrets)[:1600],
+                outcome="not-sent" if not_sent else outcome,
+                retryable=transient_connection(cause) and (not mutation or not_sent),
+            ) from error
         if len(raw) > MAX_BODY:
-            raise CloudError("HTTP response exceeds 4 MiB", outcome="unknown" if mutation else "read-failed")
+            raise CloudError("HTTP response exceeds 4 MiB", outcome=outcome)
         if binary and 200 <= status < 300:
             return {"bytes": len(raw), "base64": base64.b64encode(raw).decode()}
         try:
-            payload = json.loads(raw) if raw else None
-        except (ValueError, UnicodeError):
-            payload = None
+            payload = json.loads(raw, object_pairs_hook=unique_object) if raw else None
+        except (ValueError, RecursionError, CloudError) as error:
+            if 200 <= status < 300:
+                raise CloudError(f"{operation}: invalid JSON response ({type(error).__name__})", outcome=outcome) from error
+            payload = None  # Preserve HTTP status even when its error body isn't JSON.
         if not 200 <= status < 300:
             details = payload.get("detail", payload.get("message", payload.get("error", ""))) if isinstance(payload, dict) else "non-JSON response"
-            hint = "; use --browser-session with a signed-in same-account ChatGPT tab" if path.startswith("/api/") and status in (401, 403, 404) else ""
+            hint = "; use --browser-session with a signed-in same-account ChatGPT tab" if request.selector.startswith("/api/") and status in (401, 403, 404) else ""
             raise CloudError(
-                safe_text(f"{method} {path.split('?')[0]}: HTTP {status}: {details}", self.secrets)[:1600] + hint,
-                outcome=("unknown" if mutation and status >= 500 else "rejected" if mutation else "read-failed"), code=status,
+                safe_text(f"{operation}: HTTP {status}: {details}", self.secrets)[:1600] + hint,
+                outcome=("unknown" if mutation and (status >= 500 or status == 408 or 300 <= status < 400) else "rejected" if mutation else "read-failed"), code=status,
+                retryable=not mutation and status in TRANSIENT_STATUS,
             )
-        if raw and payload is None:
-            raise CloudError("Expected JSON API response", outcome="unknown" if mutation else "read-failed")
         return payload
 
 
 class Rpc:
-    def __init__(self, socket, *, token="", timeout=30):
+    def __init__(self, socket, *, token="", timeout=30, account=None, deadline=None):
         self.socket, self.token, self.timeout, self.counter = socket, token, timeout, 0
+        self.account, self.deadline = account, deadline
 
     def call(self, method, params, *, mutation=False):
+        timeout = self.timeout if self.deadline is None else min(self.timeout, self.deadline - time.monotonic())
+        reconnect = False
+
+        def attempt(remaining):
+            nonlocal reconnect
+            deadline = time.monotonic() + remaining
+            if reconnect:
+                self.socket.close()
+                self.socket = open_rpc(self.token, self.account, timeout=max(0, deadline - time.monotonic())).socket
+            reconnect = True
+            return self._call(method, params, mutation=mutation, timeout=deadline - time.monotonic())
+
+        if mutation or self.account is None:
+            return self._call(method, params, mutation=mutation, timeout=timeout)
+        return retry(f"RPC {method}", attempt, timeout=timeout)
+
+    def _call(self, method, params, *, mutation=False, timeout=None):
+        from websockets.exceptions import WebSocketException
         self.counter += 1
         ident = self.counter
         message = json.dumps({"id": ident, "method": method, "params": params})
         if len(message.encode()) > MAX_BODY:
             raise CloudError("RPC request exceeds 4 MiB")
-        # A failed send can have delivered bytes; do not retry mutations.
+        deadline = time.monotonic() + (self.timeout if timeout is None else timeout)
+        if deadline <= time.monotonic():
+            raise CloudError(f"RPC {method}: request deadline reached")
+        # Even a failed send can have delivered bytes. Never replay a mutation.
         outcome = "unknown" if mutation else "read-failed"
         try:
             self.socket.send(message)
-            deadline = time.monotonic() + self.timeout
             for _ in range(1000):
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise TimeoutError("RPC deadline exceeded")
-                reply = json.loads(self.socket.recv(timeout=remaining))
+                reply = json.loads(self.socket.recv(timeout=remaining), object_pairs_hook=unique_object)
+                if not isinstance(reply, dict):
+                    raise CloudError(f"RPC {method}: expected response object", outcome=outcome)
                 if reply.get("id") != ident or "method" in reply:
-                    continue  # Do NOT answer server requests or approvals automatically.
+                    continue  # Never answer server requests or approvals automatically.
                 if "error" in reply:
                     error = reply["error"]
+                    if ("result" in reply or not isinstance(error, dict) or not isinstance(error.get("message"), str)
+                            or type(error.get("code")) is not int):
+                        raise CloudError(f"RPC {method}: malformed error response", outcome=outcome)
                     raise CloudError(
-                        safe_text(f"RPC {method}: {error.get('message', 'server error')}", (self.token,))[:1600],
+                        safe_text(f"RPC {method}: {error['message']}", (self.token,))[:1600],
                         outcome="rejected" if mutation else "read-failed", code=error.get("code"),
                     )
-                return reply.get("result", {})
+                if "result" not in reply:
+                    raise CloudError(f"RPC {method}: response missing result/error", outcome=outcome)
+                return reply["result"]
             raise CloudError("Too many unsolicited messages", outcome=outcome)
-        except CloudError:
+        except CloudError as error:
+            if error.outcome == "not-sent":
+                error.outcome = outcome
             raise
-        except Exception as e:
-            # WebSocket exception reprs can include the Authorization subprotocol.
-            if isinstance(e, (TimeoutError, ValueError)):
-                cause = safe_text(str(e), (self.token,))[:400]
-            else:
-                cause = "connection closed/failed; handshake credentials suppressed"
-            raise CloudError(f"RPC {method}: {type(e).__name__}: {cause}", outcome=outcome) from None
+        except (ValueError, RecursionError) as error:
+            raise CloudError(f"RPC {method}: invalid JSON response ({type(error).__name__})", outcome=outcome) from error
+        except (OSError, WebSocketException) as error:
+            cause, transient, code = websocket_failure(error)
+            raise CloudError(f"RPC {method}: {cause}", outcome=outcome, code=code,
+                             retryable=not mutation and transient) from error
+
+
+def open_rpc(token, account, *, timeout):
+    from websockets.exceptions import WebSocketException
+    from websockets.sync.client import connect
+    if timeout <= 0:
+        raise CloudError("Cloud WebSocket connection deadline reached")
+    deadline = time.monotonic() + timeout
+    try:
+        socket = connect(
+            WS_URL, subprotocols=["codex-app-server", "codex-client.browser", "openai-bearer." + token],
+            additional_headers={"ChatGPT-Account-Id": account}, origin=BASE,
+            open_timeout=min(timeout, 30), close_timeout=1, max_size=MAX_BODY,
+        )
+    except (OSError, WebSocketException) as error:
+        cause, transient, code = websocket_failure(error)
+        raise CloudError(f"Cloud WebSocket handshake: {cause}", code=code, retryable=transient) from error
+    rpc = Rpc(socket, token=token, account=account, timeout=timeout)
+    try:
+        rpc._call("initialize", {
+            "clientInfo": {"name": "codex-browser", "title": "Codex Cloud skill", "version": "browser"},
+            "capabilities": {"experimentalApi": True, "requestAttestation": False},
+        }, timeout=deadline - time.monotonic())
+        socket.send(json.dumps({"method": "initialized"}))
+    except (CloudError, OSError, WebSocketException) as error:
+        socket.close()
+        if isinstance(error, CloudError):
+            error.outcome = "not-sent"  # No application request has been sent.
+            raise
+        cause, transient, code = websocket_failure(error)
+        raise CloudError(f"Initialization acknowledgement: {cause}", code=code, retryable=transient) from error
+    return rpc
 
 
 @contextlib.contextmanager
-def connect_rpc(token, account, *, timeout=30):
-    from websockets.sync.client import connect
-    socket = None
+def connect_rpc(token, account, *, timeout=30, deadline=None):
+    budget = timeout if deadline is None else min(timeout, deadline - time.monotonic())
+    rpc = retry("WebSocket connect", lambda remaining: open_rpc(token, account, timeout=remaining), timeout=budget)
+    rpc.timeout, rpc.deadline = timeout, deadline
     try:
-        try:
-            socket = connect(
-                WS_URL, subprotocols=["codex-app-server", "codex-client.browser", "openai-bearer." + token],
-                additional_headers={"ChatGPT-Account-Id": account}, origin=BASE,
-                open_timeout=min(timeout, 30), close_timeout=5, max_size=MAX_BODY,
-            )
-        except Exception as e:
-            raise CloudError(f"Cloud WebSocket handshake failed ({type(e).__name__}; credentials suppressed)") from None
-        rpc = Rpc(socket, token=token, timeout=timeout)
-        rpc.call("initialize", {
-            "clientInfo": {"name": "codex-browser", "title": "Codex Cloud skill", "version": "browser"},
-            "capabilities": {"experimentalApi": True, "requestAttestation": False},
-        })
-        try:
-            socket.send(json.dumps({"method": "initialized"}))
-        except Exception as e:
-            raise CloudError(f"Initialization acknowledgement failed ({type(e).__name__})") from None
         yield rpc
     finally:
-        if socket is not None:
-            socket.close()
+        rpc.socket.close()

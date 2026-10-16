@@ -2,37 +2,43 @@
 import base64
 import http.server
 import json
+import math
 import pathlib
 import secrets
 import subprocess
 import threading
 import time
 
-from transport import CloudError
+from transport import CloudError, unique_object
 
 
 def load_auth(path):
     try:
-        with pathlib.Path(path).expanduser().open() as source:
+        with pathlib.Path(path).expanduser().open(encoding="utf-8") as source:
             text = source.read(65537)
         if len(text.encode()) > 65536:
             raise CloudError("Pi auth record exceeds 64 KiB")
-        record = json.loads(text)["openai-codex"]
-        token = record["access"]
+        record = json.loads(text, object_pairs_hook=unique_object)["openai-codex"]
+        token, account = record["access"], record["accountId"]
+        if not isinstance(token, str) or not isinstance(account, str) or not account:
+            raise CloudError("Pi access token and accountId must be nonempty strings")
         claims = json.loads(base64.urlsafe_b64decode(token.split(".")[1] + "=="))
-        account = record["accountId"]
-        if claims.get("https://api.openai.com/auth", {}).get("chatgpt_account_id") != account:
+        if not isinstance(claims, dict) or not isinstance(claims.get("https://api.openai.com/auth"), dict):
+            raise CloudError("Pi token is missing account claims")
+        if claims["https://api.openai.com/auth"].get("chatgpt_account_id") != account:
             raise CloudError("Pi token and selected account ID disagree")
+        if not isinstance(claims["exp"], (int, float)) or not math.isfinite(claims["exp"]):
+            raise CloudError("Pi token expiry must be a finite number")
         if claims["exp"] <= time.time() + 30:
             raise CloudError("Pi's Codex token is expired; refresh it through Pi first")
         return token, account
     except CloudError:
         raise
     except OSError as e:
-        raise CloudError(f"Cannot open Pi's OAuth store ({type(e).__name__}, errno={e.errno})") from None
-    except (ValueError, KeyError, TypeError, IndexError) as e:
+        raise CloudError(f"Cannot open Pi's OAuth store ({type(e).__name__}, errno={e.errno})") from e
+    except (ValueError, KeyError, TypeError, IndexError, RecursionError) as e:
         field = f"; missing field {e.args[0]}" if isinstance(e, KeyError) else ""
-        raise CloudError(f"Invalid Pi openai-codex OAuth record ({type(e).__name__}{field}); credential contents suppressed") from None
+        raise CloudError(f"Invalid Pi openai-codex OAuth record ({type(e).__name__}{field}); credential contents suppressed") from e
 
 
 def borrow_browser_cookies(session, account):
@@ -57,14 +63,23 @@ def borrow_browser_cookies(session, account):
                 if not 0 < size <= 128 * 1024:
                     raise ValueError()
                 data = json.loads(self.rfile.read(size))
+                if not isinstance(data, dict):
+                    raise ValueError("Expected browser handoff object")
                 if data.get("accountId") != account:
+                    state["error"] = "account mismatch"
                     self.send_error(409)
                     return
+                if not isinstance(data.get("ua"), str) or not isinstance(data.get("cookies"), list) or any(
+                    not isinstance(cookie, dict) or not all(isinstance(cookie.get(key), str) for key in ("name", "value"))
+                    for cookie in data["cookies"]
+                ):
+                    raise ValueError("Invalid browser handoff fields")
                 state.update(data)
                 self.send_response(200)
                 self.end_headers()
                 self.wfile.write(b"{}")
-            except Exception:
+            except (ValueError, TypeError, OSError, RecursionError) as error:
+                state["error"] = type(error).__name__
                 self.send_error(400)
 
     server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
@@ -95,16 +110,16 @@ def borrow_browser_cookies(session, account):
         )
         if result.returncode or "cookies" not in state:
             raise CloudError(
-                "Cannot borrow browser cookies: use an existing session with a signed-in "
-                "ChatGPT tab on the SAME account as Pi"
+                f"Browser cookie handoff failed (exit={result.returncode}, bridge={state.get('error', 'no matching handoff')}); "
+                "use an existing signed-in ChatGPT tab on the SAME account as Pi"
             )
         return {"User-Agent": state["ua"], "Cookie": "; ".join(
             c["name"] + "=" + c["value"] for c in state["cookies"]
         )}
     except OSError as e:
-        raise CloudError(f"Cannot execute playwright-cli ({type(e).__name__}, errno={e.errno})") from None
-    except subprocess.TimeoutExpired:
-        raise CloudError("playwright-cli cookie handoff exceeded 25 seconds") from None
+        raise CloudError(f"Cannot execute playwright-cli ({type(e).__name__}, errno={e.errno})") from e
+    except subprocess.TimeoutExpired as error:
+        raise CloudError("playwright-cli cookie handoff exceeded 25 seconds") from error
     finally:
         server.shutdown()
         server.server_close()

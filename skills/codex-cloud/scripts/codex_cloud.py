@@ -29,6 +29,7 @@ class Context:
     def __init__(self, args):
         self.args, self.token, self.account, self.browser_headers = args, None, None, None
         self.receipt = {}
+        self.deadline = None
 
     def credentials(self):
         if self.token is None:
@@ -43,7 +44,7 @@ class Context:
 
     def rpc(self):
         token, account = self.credentials()
-        return connect_rpc(token, account, timeout=self.args.timeout)
+        return connect_rpc(token, account, timeout=self.args.timeout, deadline=self.deadline)
 
     def guard(self, mutation):
         if mutation and not (self.args.write or self.args.dry_run):
@@ -55,24 +56,98 @@ class Context:
         catalog.validate_rpc(method, params)
         return rpc.call(method, params, mutation=mutation)
 
-    def emit(self, value):
+    def emit(self, value, *, error=False):
         secrets = credential_secrets(self.token or "", self.browser_headers)
-        text = json.dumps(redact(value, secrets, self.args.show_secrets), ensure_ascii=False)
+        value = workflow_output(self.args, redact(value, secrets, self.args.show_secrets))
+        def encode():
+            return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+        text = encode()
         if len(text.encode()) > self.args.max_output_bytes:
-            raise CloudError("Output exceeds --max-output-bytes; request a smaller page or increase the bound", receipt=self.receipt)
+            if not error:
+                raise CloudError("Output exceeds --max-output-bytes; request a smaller page or use the summary view",
+                                 outcome="response-received", receipt=self.receipt)
+            receipt = value.get("receipt")
+            if isinstance(receipt, dict):
+                compact = {key: item for key, item in receipt.items() if key in (
+                    "thread_id", "turn_id", "client_message_id", "stage", "threadId", "turnId",
+                    "clientUserMessageId", "method", "completed_calls",
+                )}
+                if compact and compact != receipt:
+                    value.update(receipt=compact, receipt_compacted=True)
+            text = encode()
+            if len(text.encode()) > self.args.max_output_bytes:
+                value["error"] = value["error"][:400]
+                while len(json.dumps(value["error"], ensure_ascii=False).encode()) > 400:
+                    value["error"] = value["error"][:len(value["error"]) // 2]
+                value["error_truncated"] = True
+                text = encode()
+            if len(text.encode()) > self.args.max_output_bytes:
+                value.update(receipt=None, receipt_omitted=True, output_bound_reason="Reconciliation receipt exceeds --max-output-bytes")
+                text = encode()
         print(text, flush=True)
 
 
-def read_json(spec, default=None):
+def summarize(record, fields):
+    if not isinstance(record, dict):
+        raise CloudError("Expected an object in workflow response", outcome="read-failed")
+    fields = set(fields.split()) | {"id", "status", "error", "code", "outcome", "receipt"}
+    result = {key: value for key, value in record.items()
+              if key in fields or key.endswith(("Id", "_id", "Cursor", "_cursor"))}
+    if len(result) != len(record):
+        result["details_omitted"] = True
+    for key in ("preview", "description", "text", "aggregatedOutput"):
+        if isinstance(result.get(key), str) and len(result[key]) > 800:
+            result[key] = result[key][:800]
+            result.setdefault("truncated_fields", []).append(key)
+    return result
+
+
+def workflow_output(args, value):
+    """Summarize only named workflows; raw APIs, errors and receipts stay intact."""
+    if args.full or args.dry_run or not isinstance(value, dict) or "error" in value:
+        return value
+    group, action = getattr(args, "group", None), getattr(args, "action", None)
+    fields = None
+    if group == "environments" and action in ("list", "show"):
+        fields = "name description scope revision created_at updated_at"
+    elif group == "models":
+        fields = "model displayName description isDefault hidden"
+    elif group == "jobs":
+        if action in ("list", "get", "resume"):
+            fields = "name preview createdAt updatedAt gitInfo source"
+        elif action == "turns" and args.view != "full":
+            fields = "startedAtMs completedAtMs"
+        elif action == "continue" and "result" in value:
+            result = value["result"]
+            return {**value, "result": {**result, "turn": summarize(result["turn"], "")}}
+        elif action == "logs":
+            def item_entry(entry):
+                item = summarize(entry["item"], "type text summary command cwd exitCode aggregatedOutput changes")
+                if "changes" in item:
+                    item["changes"] = [summarize(change, "path kind") for change in item["changes"]]
+                return {**entry, "item": item}
+            if "data" in value:
+                return {**value, "data": [item_entry(entry) for entry in value["data"]]}
+            return item_entry(value) if "item" in value else value
+    if fields is None:
+        return value
+    if "data" in value:
+        return {**value, "data": [summarize(row, fields) for row in value["data"]]}
+    if "thread" in value:
+        return {**value, "thread": summarize(value["thread"], fields)}
+    return summarize(value, fields)
+
+
+def read_json(spec):
     if spec is None:
-        return {} if default is None else default
+        return {}
     try:
         text = read_text(spec[1:]) if spec.startswith("@") else spec
+        if len(text.encode()) > MAX_BODY:
+            raise CloudError("JSON input exceeds 4 MiB")
         return json.loads(text, object_pairs_hook=unique_object)
-    except CloudError:
-        raise
-    except (OSError, ValueError) as e:
-        raise CloudError(f"Cannot parse JSON ({type(e).__name__}); duplicate keys are forbidden") from None
+    except json.JSONDecodeError as error:
+        raise CloudError(f"Invalid JSON: {error.msg} at line {error.lineno}, column {error.colno}") from error
 
 
 
@@ -80,8 +155,11 @@ def read_text(path):
     if path == "-":
         text = sys.stdin.read(MAX_BODY + 1)
     else:
-        with pathlib.Path(path).expanduser().open() as source:
-            text = source.read(MAX_BODY + 1)
+        try:
+            with pathlib.Path(path).expanduser().open(encoding="utf-8") as source:
+                text = source.read(MAX_BODY + 1)
+        except (OSError, UnicodeError) as error:
+            raise CloudError(f"Cannot read input file ({type(error).__name__}, errno={getattr(error, 'errno', None)})") from error
     if len(text.encode()) > MAX_BODY:
         raise CloudError("Input exceeds 4 MiB")
     return text
@@ -97,12 +175,14 @@ def do_rpc(ctx, method, params):
     ctx.guard(plan["mutation"])
     if ctx.args.dry_run:
         return {"dry_run": True, "requests": [plan]}
+    if plan["mutation"]:
+        ctx.receipt = {"method": method, **{key: params[key] for key in ("threadId", "turnId", "clientUserMessageId") if params and key in params}}
     with ctx.rpc() as rpc:
         return ctx.call(rpc, method, params)
 
 
 def do_http(ctx, operation, method, path_params=None, query=None, body=None):
-    entry, path = catalog.http_path(operation, path_params or {}, query or {})
+    entry, path = catalog.http_path(operation, {} if path_params is None else path_params, {} if query is None else query)
     if method not in entry["methods"]:
         raise CloudError(f"{operation} supports only: {', '.join(entry['methods'])}")
     ctx.guard(method != "GET")
@@ -217,7 +297,7 @@ def wait_status(ctx, args):
     if ctx.args.dry_run:
         return {"dry_run": True, "requests": [request_plan("thread/read", {"threadId": args.id, "includeTurns": False}),
                 request_plan("thread/turns/list", {"threadId": args.id, "limit": 10, "itemsView": "notLoaded"})]}
-    deadline = time.monotonic() + args.deadline
+    deadline = ctx.deadline = time.monotonic() + args.deadline
     result = None
     while True:
         if result is not None and time.monotonic() >= deadline:
@@ -239,6 +319,8 @@ def logs(ctx, args):
     if args.follow and ctx.args.dry_run:
         return do_rpc(ctx, "thread/items/list", {"threadId": args.id, "limit": args.limit, "sortDirection": "desc"})
     deadline, seen, last_cursor = time.monotonic() + args.deadline, {}, None
+    if args.follow:
+        ctx.deadline = deadline
     while True:
         if args.follow and time.monotonic() >= deadline:
             return {"follow_ended": "deadline", "job_cancelled": False, "nextCursor": last_cursor}
@@ -310,8 +392,14 @@ def run_jobs(ctx, args):
         ctx.receipt = {"thread_id": args.id, "client_message_id": steps[1]["params"]["clientUserMessageId"]}
         try:
             with ctx.rpc() as rpc:
+                ctx.emit({"receipt": ctx.receipt})
                 for step in steps:
                     result = ctx.call(rpc, step["method"], step["params"])
+                    ctx.receipt["stage"] = step["method"]
+                turn = result.get("turn") if isinstance(result, dict) else None
+                if not isinstance(turn, dict) or not isinstance(turn.get("id"), str) or not turn["id"]:
+                    raise CloudError("turn/start returned no valid turn ID; inspect the known thread before retrying", outcome="unknown")
+                ctx.receipt.update(stage="turn-admitted", turn_id=turn["id"])
             return {"receipt": ctx.receipt, "result": result}
         except CloudError as e:
             e.receipt = ctx.receipt
@@ -343,12 +431,17 @@ def run_api(ctx, args):
             raise CloudError("initialize is managed by the transport; do not initialize twice")
         return do_rpc(ctx, args.method, read_json(args.params))
     if args.action == "http":
+        entry = catalog.WEB["http"].get(args.operation, {})
+        if entry.get("sensitive") and args.body is not None and not args.body.startswith("@") and not args.dry_run:
+            raise CloudError("Sensitive HTTP bodies require @file or @- (stdin), never inline JSON")
         return do_http(ctx, args.operation, args.method, read_json(args.path_params), read_json(args.query),
                        None if args.body is None else read_json(args.body))
     if args.action == "batch":
         requests = read_json(args.requests)
         if not isinstance(requests, list) or not 1 <= len(requests) <= 50:
             raise CloudError("Batch must contain 1..50 {method, params} objects")
+        if any(not isinstance(r, dict) or "method" not in r or set(r) - {"method", "params"} for r in requests):
+            raise CloudError("Each batch request requires method and optional params only")
         plans = [request_plan(r["method"], r.get("params", {})) for r in requests]
         if any(p["method"] == "initialize" for p in plans):
             raise CloudError("initialize is transport-managed")
@@ -393,7 +486,8 @@ def build_parser():
     common.add_argument("--write", action="store_true", help="Permit explicitly user-authorized mutations/compute")
     common.add_argument("--dry-run", action="store_true", help="Offline request construction only")
     common.add_argument("--show-secrets", action="store_true", help="Explicitly permit sensitive vault/identity reads/output")
-    common.add_argument("--timeout", type=positive, default=30, help="Per-RPC/HTTPS timeout (seconds)")
+    common.add_argument("--full", action="store_true", help="Full bounded workflow data instead of summaries; api commands are always raw")
+    common.add_argument("--timeout", type=positive, default=30, help="Per-operation timeout including retries/backoff (seconds)")
     common.add_argument("--max-pages", type=int, choices=range(1, 21), default=5, metavar="1..20")
     common.add_argument("--max-output-bytes", type=int, choices=range(1024, MAX_BODY + 1), default=MAX_BODY, metavar="1024..4194304")
     parser = argparse.ArgumentParser(description=__doc__, parents=[common])
@@ -502,13 +596,14 @@ def main(argv=None):
     except CloudError as e:
         ctx.emit({"error": safe_text(str(e), (ctx.token or "",)), "code": e.code,
                   "outcome": e.outcome, "receipt": e.receipt or ctx.receipt or None,
-                  "retry_automatically": False})
+                  "retry_automatically": False}, error=True)
         return 2 if e.outcome in ("unknown", "still-running") else 1
-    except (OSError, ValueError, KeyError, TypeError) as e:
-        # Local parsing/shape errors: keep the cause type but never echo input/auth contents.
-        ctx.emit({"error": f"Local input/response shape error ({type(e).__name__})", "outcome": "unknown" if ctx.receipt else "not-sent",
-                  "receipt": ctx.receipt or None, "retry_automatically": False})
-        return 1
+    except (OSError, ValueError, KeyError, TypeError, RecursionError) as e:
+        # Preserve safe diagnostics, never arbitrary input values from exception reprs.
+        detail = f", missing field {e.args[0]!r}" if isinstance(e, KeyError) else f", errno={e.errno}" if isinstance(e, OSError) else ""
+        ctx.emit({"error": f"Local input/response error ({type(e).__name__}{detail})", "outcome": "unknown" if ctx.receipt else "not-sent",
+                  "receipt": ctx.receipt or None, "retry_automatically": False}, error=True)
+        return 2 if ctx.receipt else 1
 
 
 if __name__ == "__main__":
