@@ -1,0 +1,100 @@
+"""Bounded bidirectional JSONL driver; no implicit approval or task resumption."""
+import json
+import os
+import select
+import sys
+import time
+
+import catalog
+from transport import MAX_BODY, CloudError, unique_object
+
+
+def validate_message(ctx, message, pending_clients, pending_servers):
+    if not isinstance(message, dict) or "id" not in message or isinstance(message["id"], bool) or not isinstance(message["id"], (str, int)):
+        raise CloudError("Session messages require a string/integer id")
+    ident = message["id"]
+    if "method" in message:
+        if message["method"] == "initialize":
+            raise CloudError("initialize is transport-managed")
+        if ident in pending_clients:
+            raise CloudError("Duplicate pending client request id")
+        if len(pending_clients) >= 50:
+            raise CloudError("At most 50 outstanding client requests")
+        mutation = message["method"] not in catalog.READ_METHODS
+        ctx.guard(mutation)
+        catalog.validate_rpc(message["method"], message.get("params", {}))
+        return "request", mutation
+    if set(message) not in ({"id", "result"}, {"id", "error"}):
+        raise CloudError("Responses require exactly id + result or id + error")
+    if ident not in pending_servers:
+        raise CloudError("Cannot answer an unknown server request id")
+    ctx.guard(True)  # Explicit policy decision, including denial; never automatically answer.
+    return "response", True
+
+
+def run_session(ctx, args):
+    if ctx.args.dry_run:
+        return {"dry_run": True, "session": {"seconds": args.seconds, "max_messages": args.max_messages},
+                "note": "No stdin read, connection, task resume or approval response"}
+    pending_clients, pending_servers = {}, set()
+    deadline, buffer, count, eof = time.monotonic() + args.seconds, b"", 0, False
+    with ctx.rpc() as rpc:
+        socket = rpc.socket
+        while time.monotonic() < deadline and count < args.max_messages:
+            if not eof and select.select([sys.stdin], [], [], 0)[0]:
+                chunk = os.read(sys.stdin.fileno(), 65536)
+                if not chunk:
+                    eof = True
+                    if buffer.strip():
+                        raise CloudError("Session input must end with newline")
+                buffer += chunk
+                if len(buffer) > MAX_BODY:
+                    raise CloudError("JSONL input buffer exceeds 4 MiB")
+            # Drain buffered lines even after EOF; never lose a second line in a read.
+            while b"\n" in buffer and count < args.max_messages:
+                line, buffer = buffer.split(b"\n", 1)
+                if not line.strip():
+                    continue
+                try:
+                    message = json.loads(line, object_pairs_hook=unique_object)
+                except ValueError:
+                    raise CloudError("Invalid JSONL input; values omitted from diagnostic") from None
+                kind, mutation = validate_message(ctx, message, pending_clients, pending_servers)
+                if kind == "request":
+                    pending_clients[message["id"]] = {"method": message["method"], "mutation": mutation}
+                else:
+                    pending_servers.remove(message["id"])
+                try:
+                    socket.send(json.dumps(message))
+                except Exception as e:
+                    raise CloudError(f"Session send failed ({type(e).__name__})", outcome="unknown" if mutation else "read-failed",
+                                     receipt={"pending_requests": pending_clients}) from None
+                count += 1
+            if count >= args.max_messages or (eof and not pending_clients):
+                break
+            try:
+                message = json.loads(socket.recv(timeout=min(.1, max(.001, deadline-time.monotonic()))))
+            except TimeoutError:
+                continue
+            except Exception as e:
+                raise CloudError(f"Session receive failed ({type(e).__name__}; credentials suppressed)",
+                                 outcome="unknown" if any(p["mutation"] for p in pending_clients.values()) else "read-failed",
+                                 receipt={"pending_requests": pending_clients}) from None
+            if "id" in message and "method" in message:
+                if len(pending_servers) >= 50:
+                    raise CloudError("Server request bound reached; no requests answered")
+                pending_servers.add(message["id"])
+                kind = "server-request"
+            elif "id" in message:
+                pending_clients.pop(message["id"], None)
+                kind = "response"
+            else:
+                kind = "notification"
+            ctx.emit({"kind": kind, "message": message})
+            count += 1
+    if pending_clients:
+        raise CloudError("Session ended with pending requests; do not automatically retry writes",
+                         outcome="unknown" if any(p["mutation"] for p in pending_clients.values()) else "read-failed",
+                         receipt={"pending_requests": pending_clients})
+    return {"session_ended": "eof" if eof else "bound", "messages": count,
+            "unanswered_server_requests": list(pending_servers), "task_cancelled": False}
