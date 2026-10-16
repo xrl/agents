@@ -40,6 +40,8 @@ advisory, listed last, never blocks. End with `ACCEPT` or `FIX REQUIRED` on its 
 one page. A suspicion without a line is not a finding; an unearned ACCEPT is worse than a wrong
 finding.
 
+If main moved under this lane, you are reviewing the rebased head: check this step's contract against what landed on main since the lane's base, by name: <OTHER LANES WRITING THE SAME CRATES, WITH PR NUMBERS>.
+
 ## Your task
 
 - Step <HALF> of unit S1a. Worktree `/Users/xavier/code/dekopon/dekopon.wt/04-s1a-2`.
