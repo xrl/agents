@@ -14,6 +14,7 @@ Opinionated engineering guides. **Start with the task, not a full-library read.*
 | Dated experiments and superseded plans | [RUST_CACHE_HISTORY.md](RUST_CACHE_HISTORY.md) |
 | Choosing a delegation engine | [orchestration skill](skills/choose-orchestration/SKILL.md) |
 | Handing work to a cheap pi driver and supervising it | [pi skills snapshot](skills/PI-SKILLS.md): [pi-subagent-plan](skills/pi-subagent-plan/SKILL.md), [pi-drive](skills/pi-drive/SKILL.md) |
+| Current Codex Cloud jobs, environments, logs and API access using Pi OAuth | [codex-cloud](skills/codex-cloud/SKILL.md) |
 | Landing one coupled multi-lane Rust change with a swarm | [rust-feature-swarm](skills/rust-feature-swarm/SKILL.md) |
 
 ## Loading and installation
@@ -32,3 +33,6 @@ Invoke `/skill:choose-orchestration` with a task. Selection does not authorize l
 The Claude Code skills (`skills/campaign/`, `skills/pi-*`, `skills/rust-feature-swarm/`) install
 as symlinks, `ln -s ~/code/xrl/agents/skills/<name> ~/.claude/skills/<name>`, and update with
 `git pull --ff-only` on `main`; [skills/PI-SKILLS.md](skills/PI-SKILLS.md) has their requirements.
+The self-contained `skills/codex-cloud/` skill can instead be copied in full to
+`~/.claude/skills/codex-cloud/`; it needs `uv` and, only for web-session-assisted HTTP calls,
+an existing signed-in `playwright-cli` session. Its API catalog is pinned, not auto-updated.

@@ -1,0 +1,52 @@
+{
+  "sources": {
+    "schema_revision": "6b991972c5b539198dcea9bac4fc14e57559c3af",
+    "schema_sha256": "6b10888f163f569922d42c41e94a98b4261258abc7581c14eca867c3b125dc6f",
+    "schema_url": "https://github.com/openai/codex/tree/6b991972/codex-rs/app-server-protocol/schema/json",
+    "web_rpc": "https://chatgpt.com/cdn/assets/337882.f29c95cee4.js",
+    "web_socket": "https://chatgpt.com/cdn/assets/200429.a47e29271b.js",
+    "web_http": "https://chatgpt.com/cdn/assets/418851.2018f7ed6c.js",
+    "observed_at": "2026-10-16"
+  },
+  "browser_rpc_methods": [
+    "config/batchWrite", "config/read", "configRequirements/read", "command/exec", "model/list", "permissionProfile/list", "thread/archive", "thread/list", "thread/name/set", "thread/read", "thread/queue/add", "thread/queue/list", "thread/queue/update", "thread/queue/delete", "thread/queue/reorder", "thread/realtime/appendAudio", "thread/realtime/appendSpeech", "thread/realtime/appendText", "thread/realtime/listVoices", "thread/realtime/start", "thread/realtime/stop", "thread/resume", "thread/settings/update", "thread/start", "thread/startAeon", "thread/stop", "thread/items/list", "thread/inject_items", "thread/turns/list", "thread/unarchive", "turn/addUserMessage", "turn/interrupt", "turn/start", "turn/steer"
+  ],
+  "browser_emulated_methods": ["config/batchWrite", "config/read", "permissionProfile/list", "configRequirements/read"],
+  "read_rpc_methods": [
+    "thread/list", "thread/read", "thread/turns/list", "thread/items/list", "thread/goal/get", "thread/attachment/list", "thread/attachmentOwner/list", "threadSection/list", "thread/loaded/list", "thread/queue/list", "thread/realtime/listVoices", "model/list", "permissionProfile/list", "skills/list", "hooks/list", "plugin/list", "plugin/installed", "plugin/read", "plugin/skill/read", "plugin/share/list", "app/read", "app/list", "app/installed", "fs/readFile", "fs/getMetadata", "fs/readDirectory", "modelProvider/capabilities/read", "experimentalFeature/list", "mcpServerStatus/list", "config/read", "configRequirements/read", "account/read", "account/rateLimits/read", "account/usage/read", "account/workspaceMessages/read", "externalAgentConfig/import/readHistories"
+  ],
+  "live_verified_rpc": ["initialize", "thread/list", "thread/read", "thread/turns/list", "thread/items/list", "model/list"],
+  "http": {
+    "environment-configs": {"path":"/api/codex-cloud/v1/environment-configs","methods":["GET","POST"],"evidence":"web-source; GET live-verified"},
+    "environment-config": {"path":"/api/codex-cloud/v1/environment-configs/{configId}","methods":["GET","PATCH","DELETE"],"evidence":"web-source"},
+    "environment-draft": {"path":"/api/codex-cloud/v1/environment-configs/{configId}/draft","methods":["PATCH"],"evidence":"web-source"},
+    "environment-drafts": {"path":"/api/codex-cloud/v1/environment-configs/{configId}/drafts","methods":["POST"],"evidence":"web-source"},
+    "environment-named-draft": {"path":"/api/codex-cloud/v1/environment-configs/{configId}/drafts/{draftId}","methods":["GET","PATCH"],"evidence":"web-source"},
+    "environment-approve": {"path":"/api/codex-cloud/v1/environment-configs/{configId}/draft/approve","methods":["POST"],"evidence":"web-source"},
+    "environment-approve-begin": {"path":"/api/codex-cloud/v1/environment-configs/{configId}/draft/approve/begin","methods":["POST"],"evidence":"web-source"},
+    "environment-approve-complete": {"path":"/api/codex-cloud/v1/environment-configs/{configId}/draft/approve/complete","methods":["POST"],"evidence":"web-source"},
+    "environment-named-approve": {"path":"/api/codex-cloud/v1/environment-configs/{configId}/drafts/{draftId}/approve","methods":["POST"],"evidence":"web-source"},
+    "environment-named-approve-begin": {"path":"/api/codex-cloud/v1/environment-configs/{configId}/drafts/{draftId}/approve/begin","methods":["POST"],"evidence":"web-source"},
+    "environment-named-approve-complete": {"path":"/api/codex-cloud/v1/environment-configs/{configId}/drafts/{draftId}/approve/complete","methods":["POST"],"evidence":"web-source"},
+    "environment-vpn": {"path":"/api/codex-cloud/v1/environment-configs/{configId}/vpn","methods":["GET","POST"],"evidence":"web-source"},
+    "environment-operation": {"path":"/api/codex-cloud/v1/environment-operations/{operationId}","methods":["GET"],"evidence":"web-source"},
+    "environment-values": {"path":"/api/codex-cloud/v1/environment-values","methods":["POST"],"sensitive":true,"evidence":"web-source"},
+    "personal-secrets": {"path":"/api/codex-cloud/v1/personal-secrets","methods":["GET","POST","DELETE"],"sensitive":true,"evidence":"web-source"},
+    "personal-environment-variable-value": {"path":"/api/codex-cloud/v1/personal-environment-variables/{id}/value","methods":["GET"],"sensitive":true,"evidence":"web-source"},
+    "environment-outbound-connections": {"path":"/api/codex-cloud/v1/environment-configs/{configId}/outbound-identity-connections","methods":["GET"],"evidence":"web-source"},
+    "outbound-connections": {"path":"/api/codex-cloud/v1/outbound-identity-connections","methods":["POST"],"sensitive":true,"evidence":"web-source"},
+    "outbound-connection": {"path":"/api/codex-cloud/v1/outbound-identity-connections/{connectionId}","methods":["GET","PATCH"],"sensitive":true,"evidence":"web-source"},
+    "cloud-file": {"path":"/codex/app/api/codex/v1/environments/{environmentId}/file","methods":["GET"],"response":"binary","evidence":"web-source"},
+    "legacy-environments": {"path":"/backend-api/wham/environments","methods":["GET"],"evidence":"CLI-source; live-verified empty"},
+    "legacy-environments-by-repo": {"path":"/backend-api/wham/environments/by-repo/github/{owner}/{repo}","methods":["GET"],"evidence":"CLI-source"},
+    "legacy-tasks": {"path":"/backend-api/wham/tasks/list","methods":["GET"],"evidence":"CLI-source; live-verified empty"},
+    "legacy-task-create": {"path":"/backend-api/wham/tasks","methods":["POST"],"evidence":"CLI-source"},
+    "legacy-task": {"path":"/backend-api/wham/tasks/{taskId}","methods":["GET"],"evidence":"CLI-source"},
+    "legacy-sibling-turns": {"path":"/backend-api/wham/tasks/{taskId}/turns/{turnId}/sibling_turns","methods":["GET"],"evidence":"CLI-source"},
+    "legacy-config": {"path":"/backend-api/wham/config/bundle","methods":["GET"],"evidence":"CLI-source"},
+    "legacy-settings": {"path":"/backend-api/wham/settings/user","methods":["GET"],"evidence":"CLI-source"},
+    "legacy-usage": {"path":"/backend-api/wham/usage","methods":["GET"],"evidence":"CLI-source"},
+    "legacy-account": {"path":"/backend-api/wham/accounts/check","methods":["GET"],"evidence":"CLI-source"},
+    "legacy-profile": {"path":"/backend-api/wham/profiles/me","methods":["GET"],"evidence":"CLI-source"}
+  }
+}
