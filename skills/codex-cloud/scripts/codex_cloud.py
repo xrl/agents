@@ -217,17 +217,9 @@ def environment_list(ctx):
     return {"data": list(found.values())}
 
 
-def resolve_environment(ctx, args):
+def environment_id(args):
     ident = args.environment_id
-    if args.environment:
-        if ctx.args.dry_run:
-            raise CloudError("Offline --dry-run needs --environment-id; resolving a name would require network access")
-        rows = environment_list(ctx)["data"]
-        matches = [row for row in rows if row["name"] == args.environment or row["id"] == args.environment]
-        if len(matches) != 1:
-            raise CloudError("Environment name must resolve to exactly one published config")
-        ident = matches[0]["id"]
-    if not ident or not re.fullmatch(r"(?:[A-Za-z0-9_-]+~)?asenvcfg_[A-Za-z0-9_-]+", ident):
+    if not re.fullmatch(r"(?:[A-Za-z0-9_-]+~)?asenvcfg_[A-Za-z0-9_-]+", ident):
         raise CloudError("Expected a current asenvcfg_ environment-config ID, not a legacy environment/version/runtime ID")
     return ident
 
@@ -253,8 +245,8 @@ def creation_requests(args, environment_id):
 
 
 def create_job(ctx, args):
-    ctx.guard(True)  # Refuse before resolving names, loading auth or reading browser cookies.
-    steps = creation_requests(args, resolve_environment(ctx, args))
+    ctx.guard(True)
+    steps = creation_requests(args, environment_id(args))
     if ctx.args.dry_run:
         return {"dry_run": True, "requests": steps, "note": "No task submitted; Cloud creation is source-derived, not live-mutation-verified"}
     ctx.receipt = {"stage": "before-thread-start", "environment_config_id": steps[0]["params"]["environments"][0]["environmentConfigId"],
@@ -495,9 +487,7 @@ def build_parser():
     p.add_argument("--include-children", action="store_true")
     p.add_argument("--limit", type=page_size, default=100)
     p = jobs.add_parser("create")
-    env_arg = p.add_mutually_exclusive_group(required=True)
-    env_arg.add_argument("--environment-id")
-    env_arg.add_argument("--environment", help="Exact published config name; requires web catalog access")
+    p.add_argument("--environment-id", required=True, help="ACCOUNT~asenvcfg_ID supplied by the caller")
     p.add_argument("--prompt-file", required=True, help="UTF-8 prompt file or - for stdin")
     p.add_argument("--model")
     p.add_argument("--title")

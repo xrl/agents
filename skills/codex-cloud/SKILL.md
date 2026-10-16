@@ -1,6 +1,6 @@
 ---
 name: codex-cloud
-description: Use current Codex Cloud with Pi OAuth to discover environments/jobs, dispatch authorized coding tasks, inspect status/logs/diffs, or access cataloged APIs when the legacy CLI misses web jobs.
+description: Use current Codex Cloud with Pi OAuth to dispatch authorized coding tasks to a caller-supplied environment ID, discover jobs, inspect status/logs/diffs, or access cataloged APIs when the legacy CLI misses web jobs.
 ---
 
 # Codex Cloud
@@ -22,14 +22,15 @@ Set `CC="$HOME/.claude/skills/codex-cloud/scripts/codex_cloud.py"` in each shell
 
 ```sh
 uv run "$CC" jobs list
-uv run "$CC" environments list --browser-session dekopon
 ```
 
-Lists default to user-created Cloud jobs; `--include-children` adds child jobs. `--max-pages` caps scans without presenting partial results as complete.
+Lists default to user-created Cloud jobs; `--include-children` adds child jobs. `--max-pages` caps scans without presenting partial results as complete. Jobs need only Pi OAuth.
 
-Jobs need only Pi OAuth; environment discovery required same-account ChatGPT cookies in observed checks. `--browser-session` opts into borrowing them in memory. Known `asenvcfg_` config IDs avoid browser lookup; version/runtime/thread IDs are not substitutes.
+## Environment IDs come from the caller
 
-Run browser commands from scratch space outside source checkouts. Check `playwright-cli list` and ownership; reuse the owner's `dekopon` session. If needed, open a task-owned ChatGPT tab; a human handles login. Never create/delete profiles, copy browser tokens, export cookies or close unrelated tabs. Close only the task-owned tab, recheck `playwright-cli list`, and preserve the shared session/login. HTML/challenges are not empty catalogs.
+Dispatch takes `--environment-id 'ACCOUNT~asenvcfg_ID'` and nothing else: the skill never looks an environment up by name. Read the ID from the target workspace's `AGENTS.md`. Version (`cecfgver_`), runtime (`ccarenv_`) and thread IDs are not substitutes.
+
+No bearer-only API lists current environments (openai/codex#50182). When an ID is missing or an environment is added, ask the owner, or refresh once with `environments list --browser-session dekopon`, which borrows same-account ChatGPT cookies in memory, and record the ID in that `AGENTS.md`. Run browser commands from scratch space outside source checkouts. Check `playwright-cli list` and ownership; reuse the owner's `dekopon` session. If needed, open a task-owned ChatGPT tab; a human handles login. Never create/delete profiles, copy browser tokens, export cookies or close unrelated tabs. Close only the task-owned tab, recheck `playwright-cli list`, and preserve the shared session/login. HTML/challenges are not empty catalogs.
 
 ## Dispatch
 
@@ -61,4 +62,4 @@ Safe reads/pre-effect connections retry transient failures with at most three at
 
 Use `jobs --help` for lifecycle/filters. Read [API.md](references/API.md) before generic RPC/HTTP/batch/session calls; it covers schemas, evidence labels, pagination, limits, error-receipt omission and tests. Catalog/schema presence does not prove hosted support: preserve errors rather than guessing mutations. Unknown RPCs require `--write`.
 
-[Live verification](references/API.md#validation) covered reads only. Mutations are source-derived and fixture-tested, not live-mutation-verified. Never report a fixture/dry run as real dispatch.
+[Live verification](references/API.md#validation) covered reads and one `jobs create` to completion. Other mutations are source-derived and fixture-tested, not live-mutation-verified. Never report a fixture/dry run as real dispatch.

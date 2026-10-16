@@ -215,11 +215,11 @@ class CliTests(unittest.TestCase):
             self.assertNotIn("approvalPolicy", params)
             self.assertEqual(requests[-1]["params"]["input"][0]["text_elements"], [])
 
-    def test_create_rejects_legacy_and_version_ids_offline(self):
+    def test_create_rejects_names_legacy_and_version_ids_offline(self):
         with tempfile.TemporaryDirectory() as temp:
             p = pathlib.Path(temp, "prompt")
             p.write_text("fixture")
-            for ident in ["legacy_env", "cecfgver_version", "ccarenv_runtime"]:
+            for ident in ["legacy_env", "cecfgver_version", "ccarenv_runtime", "dekopon-providers"]:
                 code, _ = execute(["jobs", "create", "--environment-id", ident, "--prompt-file", str(p), "--dry-run"])
                 self.assertEqual(code, 1)
 

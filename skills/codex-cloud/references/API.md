@@ -161,7 +161,7 @@ uv run --with 'websockets>=15,<17' --with 'jsonschema>=4.23,<5' \
 
 Tests use synthetic auth records and real loopback HTTP/WebSocket peers, never the production credential store. They cover Cloud creation envelopes, multi-step receipts, post-send ambiguity/no replay, transient retries and exhaustion, permanent rejection, retry budgets/stderr redaction, compact/full output, minimum-byte error reporting, read/write and protected-input gates, unknown-method policy, initialization, JSONL sessions (including pending-write failures), pagination, canonical item entries, log gaps, terminal-vs-idle status, redaction, schema errors and redirect rejection.
 
-Development live checks were read-only: exact four web environments, exact six Cloud jobs, metadata, completed-turn status, paginated logs and models. No production job creation/continuation/cancellation/config mutation or credential-value read was performed. Creation is source-derived plus fixture-verified, not proven by a live production mutation.
+Development live checks were read-only: exact four web environments, exact six Cloud jobs, metadata, completed-turn status, paginated logs and models. No production continuation/cancellation/config mutation or credential-value read was performed. On 2026-10-16 one `jobs create --write` on a caller-supplied environment ID created a thread, set its name, started a turn and reached a completed turn whose result `jobs logs` returned. Other mutations remain source-derived plus fixture-verified.
 
 ## Upstream attribution
 
