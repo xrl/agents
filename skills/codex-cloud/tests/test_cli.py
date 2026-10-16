@@ -599,6 +599,53 @@ class CliTests(unittest.TestCase):
         self.assertEqual(lines[0]["receipt"]["thread_id"], "known-thread")
         self.assertNotIn("x" * 100, json.dumps(lines))
 
+    def test_terminal_output_failure_is_reported_once_without_sensitive_causes(self):
+        for failure, expected_code in (
+            (None, 1),
+            (transport.CloudError("sanitized operation failure"), 1),
+            (transport.CloudError("sanitized operation failure", outcome="unknown"), 2),
+            (ValueError("private-fixture-local-secret"), 1),
+        ):
+            def dispatch(ctx, args):
+                if failure is not None:
+                    try:
+                        raise RuntimeError("private-fixture-secret")
+                    except RuntimeError as cause:
+                        raise failure from cause
+                return {"receipt": {"thread_id": "fixture"}}
+
+            for output_error in (BrokenPipeError("private-fixture-output-secret"), OSError("private-fixture-output-secret")):
+                for stderr_closed in (False, True):
+                    errors = io.StringIO()
+                    stderr_failure = mock.patch.object(errors, "write", side_effect=BrokenPipeError("private-fixture-stderr-secret")) if stderr_closed else contextlib.nullcontext()
+                    with self.subTest(failure=type(failure).__name__, output=type(output_error).__name__, stderr_closed=stderr_closed):
+                        with mock.patch.object(cli, "dispatch", side_effect=dispatch) as operation, mock.patch.object(cli.Context, "emit", side_effect=output_error) as emit:
+                            with contextlib.redirect_stderr(errors), stderr_failure:
+                                code, lines = execute(["api", "rpc", "thread/start", "--write"])
+                        self.assertEqual(code, expected_code)
+                        self.assertEqual(lines, [])
+                        operation.assert_called_once()
+                        emit.assert_called_once()
+                        self.assertEqual(errors.getvalue(), "" if stderr_closed else
+                                         "codex-cloud: stdout write failed; do not retry mutations automatically\n")
+
+    def test_terminal_output_failure_stops_streaming_before_another_mutation(self):
+        for method in ("write", "flush"):
+            next_mutation = mock.Mock()
+            receipt = {"receipt": {"thread_id": "fixture", "stage": "thread-created"}}
+
+            def dispatch(ctx, args):
+                with mock.patch.object(sys.stdout, method, side_effect=BrokenPipeError("private-fixture-output-secret")):
+                    ctx.emit(receipt)
+                next_mutation()
+
+            with self.subTest(method=method), mock.patch.object(cli, "dispatch", side_effect=dispatch), contextlib.redirect_stderr(io.StringIO()) as errors:
+                code, lines = execute(["api", "rpc", "thread/start", "--write"])
+            self.assertEqual(code, 1)
+            self.assertEqual(lines, [receipt] if method == "flush" else [])
+            next_mutation.assert_not_called()
+            self.assertEqual(errors.getvalue(), "codex-cloud: stdout write failed; do not retry mutations automatically\n")
+
     def test_error_reporting_never_leaks_chained_credentials_at_minimum_output_bound(self):
         for receipt, expected in (
             ({"thread_id": "known-thread", "turn_id": "turn", "client_message_id": "message", "stage": "turn/start", "optional": "x" * 5000}, "receipt_compacted"),

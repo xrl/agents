@@ -25,6 +25,10 @@ import catalog
 from transport import BASE, MAX_BODY, CloudError, Http, connect_rpc, credential_secrets, paged, redact, safe_text, unique_object
 
 
+class _OutputError(Exception):
+    """Stop workflow/error reporting when stdout itself is unusable."""
+
+
 class Context:
     def __init__(self, args):
         self.args, self.token, self.account, self.browser_headers = args, None, None, None
@@ -84,7 +88,10 @@ class Context:
             if len(text.encode()) > self.args.max_output_bytes:
                 value.update(receipt=None, receipt_omitted=True, output_bound_reason="Reconciliation receipt exceeds --max-output-bytes")
                 text = encode()
-        print(text, flush=True)
+        try:
+            print(text, flush=True)
+        except (OSError, ValueError) as error:
+            raise _OutputError from error
 
 
 def summarize(record, fields):
@@ -587,23 +594,37 @@ def main(argv=None):
     args = parser.parse_args(rest)
     vars(args).update(vars(globals_))
     ctx = Context(args)
+    exit_code, emitting = 1, False
     try:
-        result = dispatch(ctx, args)
-        ctx.emit(result)
-        if args.group == "jobs" and args.action == "wait" and result.get("done") and not result.get("successful"):
-            return 1
-        return 0
-    except CloudError as e:
-        ctx.emit({"error": safe_text(str(e), (ctx.token or "",)), "code": e.code,
-                  "outcome": e.outcome, "receipt": e.receipt or ctx.receipt or None,
-                  "retry_automatically": False}, error=True)
-        return 2 if e.outcome in ("unknown", "still-running") else 1
-    except (OSError, ValueError, KeyError, TypeError, RecursionError) as e:
-        # Preserve safe diagnostics, never arbitrary input values from exception reprs.
-        detail = f", missing field {e.args[0]!r}" if isinstance(e, KeyError) else f", errno={e.errno}" if isinstance(e, OSError) else ""
-        ctx.emit({"error": f"Local input/response error ({type(e).__name__}{detail})", "outcome": "unknown" if ctx.receipt else "not-sent",
-                  "receipt": ctx.receipt or None, "retry_automatically": False}, error=True)
-        return 2 if ctx.receipt else 1
+        try:
+            result = dispatch(ctx, args)
+            exit_code = 0
+            if args.group == "jobs" and args.action == "wait" and result.get("done") and not result.get("successful"):
+                exit_code = 1
+            emitting = True
+            ctx.emit(result)
+        except CloudError as e:
+            exit_code = 2 if e.outcome in ("unknown", "still-running") else 1
+            ctx.emit({"error": safe_text(str(e), (ctx.token or "",)), "code": e.code,
+                      "outcome": e.outcome, "receipt": e.receipt or ctx.receipt or None,
+                      "retry_automatically": False}, error=True)
+        except (OSError, ValueError, KeyError, TypeError, RecursionError) as e:
+            if emitting and isinstance(e, OSError):
+                raise  # A failed output channel cannot carry another error record.
+            exit_code = 2 if ctx.receipt else 1
+            # Preserve safe diagnostics, never arbitrary input values from exception reprs.
+            detail = f", missing field {e.args[0]!r}" if isinstance(e, KeyError) else f", errno={e.errno}" if isinstance(e, OSError) else ""
+            ctx.emit({"error": f"Local input/response error ({type(e).__name__}{detail})", "outcome": "unknown" if ctx.receipt else "not-sent",
+                      "receipt": ctx.receipt or None, "retry_automatically": False}, error=True)
+    except (_OutputError, OSError):
+        # Prevent interpreter shutdown from retrying a failed buffered stream.
+        sys.stdout = None
+        try:
+            print("codex-cloud: stdout write failed; do not retry mutations automatically", file=sys.stderr, flush=True)
+        except (OSError, ValueError):
+            sys.stderr = None  # No usable diagnostic channel remains.
+        return exit_code or 1
+    return exit_code
 
 
 if __name__ == "__main__":
