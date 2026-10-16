@@ -74,6 +74,8 @@ Wake only on a completion notice. A supervisor's notice comes at the end of its 
 A fix text names the defect and the behaviour that must hold, never an implementation to delete: "`Tee` needs no `Drop`" made an Opus fixer remove the `Drop` that kept a mid-stream drop's meter record inside the call span, and cost a fix round (2026-10-10, dekopon #525 round 1).
 
 Rulings that recur: a fix re-check that raises new pre-existing defects is not grounds to block; the verifier's number is not the contract, the row is (sub-campaign 4: `null\n` vs `display(Null)` + newline); a test that cannot fail before the fix is kept as a pin when a later step can make the path reachable.
+**A retiring coordinator keeps ruling until its successor is up (owner, 2026-10-16).** Past its handoff cap it launches nothing new: no new step, no new Opus build, no new Fable read. But it still answers a completion notice whose next action is only a ruling: it reads the blockers, writes `coordinator-ruling-N.md` and resumes that lane's supervisor with a two-line prompt. It stops when the RESUME banner carries a newer session's line (the fresh session writes that first) or when a notice needs anything beyond a ruling, and journals each wake it takes as retired. 2026-10-16: Cruciferous Loop 6 retired at 10:23Z, all three supervisors handed back by 10:35Z, and nothing ran until the owner started the next session at 14:56Z.
+
 
 ## Measuring both ways (when a step is worth it)
 
