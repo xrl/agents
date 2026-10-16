@@ -63,3 +63,5 @@ Safe reads/pre-effect connections retry transient failures with at most three at
 Use `jobs --help` for lifecycle/filters. Read [API.md](references/API.md) before generic RPC/HTTP/batch/session calls; it covers schemas, evidence labels, pagination, limits, error-receipt omission and tests. Catalog/schema presence does not prove hosted support: preserve errors rather than guessing mutations. Unknown RPCs require `--write`.
 
 [Live verification](references/API.md#validation) covered reads and one `jobs create` to completion. Other mutations are source-derived and fixture-tested, not live-mutation-verified. Never report a fixture/dry run as real dispatch.
+
+While using this skill, consider whether a static CLI would serve better (cm calling it, a non-Python consumer, `uv` cost, a scraped-API break and its fix time). When one would, append a dated observation to IDEA-0059 in `dekopon-agents/campaign-trail` (`store/ideas/IDEA-0059-codex-cloud-invocations.md`).
