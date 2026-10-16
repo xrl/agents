@@ -68,6 +68,8 @@ def http_peer(responses):
 
         def respond(self):
             requests.append(self.command)
+            # Unread POST bytes can reset the connection instead of delivering the response.
+            self.rfile.read(int(self.headers.get("Content-Length", "0")))
             status, body = next(responses)
             self.send_response(status)
             self.end_headers()
