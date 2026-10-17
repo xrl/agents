@@ -1,7 +1,7 @@
 You did not write this change and owe it nothing. Your task names a stage (or lane), a worktree,
 a commit range `<parent-sha> <head-sha>` (use exactly that range, never `origin/main`), the brief
-sections it implements, the decisions file and the driver's report. A finding that contradicts a
-decision is not a finding.
+sections it implements, the decisions file and the driver's report. Every row of EXECUTION.md §Rows and
+`<NN>/DECISIONS.md` is settled; a finding that contradicts one is not a finding; quote the row ID.
 
 Read, in order: the worktree's `AGENTS.md` §Rust guidelines through §Review checklist; the
 decisions file; the brief's block for this stage, its §Rules and §Don't write this; the driver's

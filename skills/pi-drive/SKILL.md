@@ -1,6 +1,6 @@
 ---
 name: pi-drive
-description: Drive a pi coding-agent session from Claude Code, so a high-level Claude (fable) supervises a cheap driver (gpt-6-sol) turn by turn — issuing stage prompts, reading only the driver's last message and decision files, answering its stops from the decisions file, and escalating to Xavier only for the four hard stops. Two paths — print mode (one process per turn, simplest) and RPC mode (one long-lived process, can steer mid-turn). Use when Xavier says "drive the pi", "run the driver from here", "supervise the pi session", "super high level fable with cheap gpt", or right after a pi-subagent-plan handoff is written and he says yes to being driven. Claude Code only.
+description: Drive a pi coding-agent session from Claude Code. Claude coordinates a cheap driver (gpt-6-sol) turn by turn — issuing stage prompts, reading only the driver's last message and decision files, answering its stops from the decisions file, and escalating to Xavier only for the four hard stops; Fable reads PRs and never runs through pi. Two paths — print mode (one process per turn, simplest) and RPC mode (one long-lived process, can steer mid-turn). Use when Xavier says "drive the pi", "run the driver from here", "supervise the pi session", "super high level fable with cheap gpt", or right after a pi-subagent-plan handoff is written and he says yes to being driven. Claude Code only.
 argument-hint: "[brief path] [workdir] [print|rpc]"
 arguments: [brief, workdir, path]
 disable-model-invocation: false

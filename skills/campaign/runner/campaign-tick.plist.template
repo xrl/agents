@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The campaign tick (DESIGN M1, A7). Fill the @…@ fields (README.md §Install), then the owner
+     loads it at the gate: launchctl bootstrap gui/$(id -u) <this file>. @APPROVED_SHA@ is the plan
+     SHA the owner approved; the tick reads [authority], §Gates and §Train only at it (N1). For the
+     PLANNING phase-2 tick it is the word `planning`. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.xrl.campaign-tick.@EPOCH_NAME@</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/env</string>
+    <string>bash</string>
+    <string>@AGENTS@/skills/campaign/runner/campaign-tick.sh</string>
+    <string>@EPOCH_DIR@</string>
+    <string>@APPROVED_SHA@</string>
+  </array>
+  <key>StartInterval</key>
+  <integer>300</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <!-- Lanes outlive the tick that launched them. -->
+  <key>AbandonProcessGroup</key>
+  <true/>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/opt/homebrew/opt/coreutils/libexec/gnubin:@HOME@/.cargo/bin:@HOME@/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>HOME</key>
+    <string>@HOME@</string>
+    <key>CAMPAIGN_CODE</key>
+    <string>@HOME@/code/dekopon</string>
+    <key>HOMELAB_REPO</key>
+    <string>xrl/rpi-homelab</string>
+    <key>KUBE_CONTEXT</key>
+    <string>rpi</string>
+    <key>SMOKE_COMMANDS</key>
+    <string>@HOME@/.config/campaign/smoke</string>
+    <key>CODEX_ENVS</key>
+    <string>@HOME@/.config/campaign/codex-envs</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>@EPOCH_DIR@/run/launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string>@EPOCH_DIR@/run/launchd.log</string>
+</dict>
+</plist>
