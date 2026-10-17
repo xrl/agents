@@ -122,6 +122,7 @@ The Fable reads ($15) were worth it: they found the design break before the buil
 
 - The classifier refuses destructive git (`reset --hard`, deleting a remote branch). Cut a new worktree and branch instead and leave the old ones for the owner.
 - A smoke read must be small. A broker-limited host refuses a large page outright (`broker HTTP response exceeded its limit`), which reads as a provider failure: `crates.io/api/v1/crates/serde` failed where `crates/<name>/<version>` passed. Name a small, stable read per provider in the smoke packet.
+- A rollout smoke covers every capability whose provider version or credential changed, not one read per provider. Cruciferous Loop 8 smoked gh with `gh auth status` while the new `pr checks` grant was broken (fixed in rpi-homelab #252). After the Skylight credential migration the smoke ran only `skylight frames`, and every `skylight tasks` read returned 422 (IDEA-0071).
 - The driver runs with `-nc`: no global context files. Put the machine's Rust rules in its read list (`~/code/xrl/agents/RUST_AGENT_RULES.md`).
 - A pi turn is found by its pid file, never by `pgrep`.
 - No heartbeat means a hung turn stalls the run until someone looks; none hung in sub-campaign 4.
