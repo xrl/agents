@@ -68,7 +68,8 @@ checks_green() {
 
 # --- 1. sync ---
 git -C "$ROOT" pull -q --rebase --autostash || note "git pull failed"
-cm sync || note "cm sync failed"
+cm sync || note "cm sync exited 1 (a PR closed unmerged, or an observation gh could not make)"
+NEXT=$(cm next --json 2>/dev/null) || NEXT='{}'   # {steps, waiting, tags} (cm 0.3)
 
 # --- 2. launch what cm lists ---
 lane_script() { case $1 in pi) echo pi-lane.sh ;; codex) echo lane-codex.sh ;; claude-cloud) echo lane-claude.sh ;; fable) echo lane-fable.sh ;; opus-fix) echo lane-opus-fix.sh ;; *) return 1 ;; esac; }
@@ -87,15 +88,18 @@ worktree_for() { # <owner/repo> <step>: the step's worktree on branch campaign/<
   git -C "$clone" fetch -q origin || return 1
   git -C "$clone" worktree add -q -b "campaign/$slug" "$wt" "$(git -C "$clone" symbolic-ref --short refs/remotes/origin/HEAD)" && echo "$wt"
 }
-while IFS=$'\t' read -r step lane repo; do
+# A step's repository is the `repo: <owner/name>` line of its kickoff.md (cm records none).
+step_repo() { sed -nE 's/^repo:[[:space:]]*([^[:space:]]+).*/\1/p' "$EPOCH/$1/kickoff.md" 2>/dev/null | head -1; }
+while IFS=$'\t' read -r step lane; do
   [ -n "$step" ] || continue
   case $lane in
     owner) continue ;;
-    fable) cm launch "$step" --worktree "$ROOT" && start_lane "$step" fable "$EPOCH/$step" ;;
-    *) wt=$(worktree_for "$repo" "$step") || { note "no worktree for $step ($repo)"; continue; }
+    fable) cm launch "$step" && start_lane "$step" fable "$EPOCH/$step" ;;
+    *) repo=$(step_repo "$step")
+       wt=$(worktree_for "$repo" "$step") || { note "no worktree for $step (kickoff repo: ${repo:-none})"; continue; }
        cm launch "$step" --worktree "$wt" && start_lane "$step" "$lane" "$EPOCH/$step" "$wt" ;;
   esac
-done < <(cm next --json 2>/dev/null | jq -r '(.next // .steps // .)[] | [.step, .lane, (.repo // "")] | @tsv')
+done < <(jq -r '.steps[]? | [.target, (.lane // "")] | @tsv' <<<"$NEXT")
 
 # --- 3. mechanical acts ---
 
@@ -161,20 +165,24 @@ done | while IFS=$'\t' read -r step url; do
 done
 [ -f "$RUN/acted" ] && { ACTED=1; rm -f "$RUN/acted"; }   # the loop above runs in a subshell
 
-# 3c. Tags: a merged release step names the version; the bump is checked against the last tag
+# 3c. Tags: `cm next` lists each merged release step with its version and the prep merge to tag;
+# the bump is checked against the last tag
 bump_kind() { # <last> <new>
   local a b c x y z; IFS=. read -r a b c <<<"$1"; IFS=. read -r x y z <<<"$2"
   if [ "$x" -gt "$a" ]; then echo major; elif [ "$x" -eq "$a" ] && [ "$y" -gt "$b" ]; then echo minor
   elif [ "$x" -eq "$a" ] && [ "$y" -eq "$b" ] && [ "$z" -gt "$c" ]; then echo patch; else echo none; fi
 }
 in_flight() { grep -lE '"phase": *"(tagged|revert|pinned|merged)"' "$RUN"/deploys/"$1"-*.json >/dev/null 2>&1; }
-cut_release() { # <unit> <version> <merge-sha> <prep-pr>
-  local unit=$1 ver=$2 sha=$3 pr=$4 repo pat tag prefix clone last kind
+cut_release() { # <unit> <version> <merge-sha> <repo cm read from the prep PR> <tag names cm accepts>
+  local unit=$1 ver=$2 sha=$3 pr repo pat tag prefix clone last kind
+  pr=$(jq -r --arg v "$ver" '.steps[$v].evidence.pr // empty' "$EPOCH/00-release/$unit/.cm/state.json")
   repo=$(train "$unit" repo); pat=$(train "$unit" tag); pat=${pat:-v\{version\}}
   [ -n "$repo" ] || { note "no §Train entry for $unit"; return; }
+  [ "$repo" = "$4" ] || { note "refused: $unit prep PR is in ${4:-no repo}, §Train says $repo"; return; }
   auth_has release_repos "$repo" || { note "release of $repo not in [authority]"; return; }
   [[ $ver =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { note "refused: $unit version $ver"; return; }
   tag=${pat//\{version\}/$ver}; prefix=${pat%%\{version\}*}; clone=$CODE/${repo#*/}
+  grep -qxF "$tag" <<<"$5" || { note "refused: tag $tag is not one cm sync recognizes for $unit"; return; }
   [ -f "$RUN/deploys/$unit-$ver.json" ] && return
   in_flight "$unit" && return   # one release of a unit in flight
   git -C "$clone" fetch -q --tags origin || return
@@ -191,12 +199,13 @@ cut_release() { # <unit> <version> <merge-sha> <prep-pr>
   cm journal "Release: $repo $tag at ${sha:0:12} ($last → $ver, $kind)" </dev/null
   ACTED=1
 }
-for f in "$EPOCH"/00-release/*/.cm/state.json; do
-  [ -f "$f" ] && [ -n "$AUTH" ] || continue
-  unit=${f%/.cm/state.json}; unit=${unit##*/}
-  while IFS=$'\t' read -r ver sha pr; do cut_release "$unit" "$ver" "$sha" "$pr"; done < <(
-    jq -r '.steps | to_entries[] | select(.value.state == "merged") | [.key, (.value.evidence.sha // ""), (.value.evidence.pr // "")] | @tsv' "$f")
-done
+if [ -n "$AUTH" ]; then
+  while IFS=$'\t' read -r target repo ver sha names; do
+    [ -n "$target" ] || continue
+    unit=${target#00-release/}; unit=${unit%/*}
+    cut_release "$unit" "$ver" "$sha" "$repo" "$(tr ' ' '\n' <<<"$names")"
+  done < <(jq -r '.tags[]? | [.target, (.repo // ""), .version, (.sha // ""), (.tags | join(" "))] | @tsv' <<<"$NEXT")
+fi
 
 # 3d. Deploys: pin PR → merge on the LAN → Argo Synced/Healthy → LAN smoke → receipt (DESIGN M6, A6)
 rec_get() { jq -r --arg k "$2" '.[$k] // empty' "$1"; }
@@ -244,7 +253,7 @@ smoke() { # <record>: once per provider command list; one receipt line; cm advan
   else
     rec_set "$rec" '.phase = "failed"'
     event "smoke-$unit-$ver" "LAN smoke red after the $unit $ver deploy: $receipt"
-    if grep -qx 'revert-safe: yes' "$EPOCH/00-release/$unit/$ver/step.md" 2>/dev/null; then
+    if grep -qx 'revert-safe: yes' "$EPOCH/00-release/$unit/$ver/kickoff.md" 2>/dev/null; then
       jq -n --arg unit "$unit" --arg ver "revert-$ver" --arg sha "$(rec_get "$rec" merge_sha)" \
         '{unit: $unit, ver: $ver, revert_of: $sha, phase: "revert"}' >"$RUN/deploys/$unit-revert-$ver.json"
     fi
@@ -319,10 +328,11 @@ if [ -n "$EVENTS" ] && ! [ -n "$(find "$RUN/wake-failed" -mmin -30 2>/dev/null)"
   log_cost wake "$OUT"
 fi
 
-# --- 5. card line 1, then push at an act or after 30 minutes unpushed (DESIGN S3c) ---
-CARD="Last tick: $(now) ($([ -n "$AUTH" ] && echo "plan ${SHA:0:12}" || echo planning))${NOTES:+ · $NOTES}"
-R=$EPOCH/RESUME.md
-[ -f "$R" ] && awk -v c="$CARD" 'NR == 1 { print c; if ($0 !~ /^Last tick:/) print; next } 1' "$R" >"$R.tmp" && mv "$R.tmp" "$R"
+# --- 5. the card's tick line, then push at an act or after 30 minutes unpushed (DESIGN S3c) ---
+# cm sync rewrote CARD.md with `Last run: <stamp>` first; the tick's line goes second (N4: "deploys held")
+C=$EPOCH/CARD.md
+TICK="Tick: $([ -n "$AUTH" ] && echo "plan ${SHA:0:12}" || echo planning)${NOTES:+ · $NOTES}"
+[ -f "$C" ] && awk -v t="$TICK" 'NR == 2 && /^Tick: / { next } { print } NR == 1 { print t }' "$C" >"$C.tmp" && mv "$C.tmp" "$C"
 LAST_PUSH=$(cat "$RUN/last-push" 2>/dev/null || echo 0)
 if [ -n "$ACTED" ] || [ $(( $(date +%s) - LAST_PUSH )) -ge 1800 ]; then
   git -C "$ROOT" add -A -- "$EREL"

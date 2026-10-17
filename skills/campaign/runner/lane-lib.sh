@@ -75,7 +75,7 @@ verify_head() {
   local wt=$1 base=$2 head=$3 p="$SR/prompts/verify-${3:0:12}.txt" out="$SR/verify-${3:0:12}.md"
   local nn=${STEP%%/*}
   cat >"$p" <<EOF
-You did not write this change and owe it nothing. Review exactly \`git -C $wt diff $base $head\` (never against origin/main). The brief is $STEP_DIR/step.md.
+You did not write this change and owe it nothing. Review exactly \`git -C $wt diff $base $head\` (never against origin/main). The brief is $STEP_DIR/kickoff.md.
 Every row of $EPOCH/EXECUTION.md §Rows and $EPOCH/$nn/DECISIONS.md is settled; a finding that contradicts one is not a finding; quote the row ID.
 Read the worktree's AGENTS.md review sections, then the diff surface by surface from --stat; grep, never read a large file whole. Your bash is for git, grep, sed and reading logs only: never cargo, and mutate nothing.
 Output: first line exactly \`Reviewed: $head\`. Then ranked findings, each tagged \`contract\`, \`guideline\` or \`taste\`, with file:line, the concrete failure and the exact fix. Tag every contract and guideline finding also \`[hard]\` (a type or trait change across crates, concurrency or ordering, cancellation or shutdown, a credential path) or \`[easy]\` (a test, an exhaustive match, a record field, wording, a deletion); when unsure, \`[hard]\`. Taste never blocks. End with ACCEPT or FIX REQUIRED on its own line.

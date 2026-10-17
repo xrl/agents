@@ -36,7 +36,7 @@ DECISION=$(newest_decision "$SR/decision.used") || true
 if [ -z "$(st_get phase)" ]; then
   run_cloud kickoff "The brief follows verbatim; every row of EXECUTION.md §Rows and the unit's DECISIONS.md it cites is settled.
 
-$(cat "$STEP_DIR/step.md")"
+$(cat "$STEP_DIR/kickoff.md")"
 elif [ -n "$DECISION" ]; then
   touch "$SR/decision.used"; st_set fix_rounds 0; st_set ci_rounds 0
   run_cloud decision "The coordinator's decision, verbatim (your authority for what it says):

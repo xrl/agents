@@ -25,8 +25,8 @@ gate rehearses all of it (A4) before the owner loads the plist.
 - Fable verdicts only from `<epoch>/run/verdicts/<owner_repo>-<pr>-<head>`, which only
   `lane-fable.sh` writes. The wake cannot edit `run/`, so a MERGE written into the ledger by hand
   never merges anything.
-- Tag versions only from cm release steps `00-release/<unit>/<version>` at `merged`, whose evidence
-  must match the merged prep PR, with the bump checked against the last tag and `release_bumps`.
+- Tag versions only from the `tags` that `cm next` lists (release steps `00-release/<unit>/<version>`
+  at `merged`), whose prep PR must be merged at that SHA in the §Train repository, with the bump checked against the last tag and `release_bumps`.
 
 A merge needs every required check named for the repository green at the head (none named is red)
 and a MERGE verdict at that head, then `gh pr merge --squash --match-head-commit`. A pin PR merges
@@ -62,7 +62,7 @@ tag = "dekopon-chart-{version}"
 ```
 
 A unit without `pin_file` (a library, a tool, the chart) is done at its tag. A release step whose
-`step.md` carries the line `revert-safe: yes` has its pin reverted mechanically when the LAN smoke
+`kickoff.md` carries the line `revert-safe: yes` has its pin reverted mechanically when the LAN smoke
 is red; anything else is an incident event for the wake.
 
 ## Lane exit codes (A7)
@@ -76,19 +76,22 @@ wake. The wake answers with `<NN>/DECISIONS.md` rows and a `decision-N.md`, and 
 relaunches the lane with it. Each lane writes only under its step's `run/`; the tick alone runs
 `cm advance`.
 
-## Interfaces it assumes
+## The cm 0.3 interface it uses
 
-cm 0.3 (B1) is built alongside this, so the tick codes against DESIGN M7 and A7:
+cm 0.3.0 (dekopon-agents/cm `3f89bad`, its README):
 
-- `cm next --json` prints the launchable steps as `{"next": [{"step": "<NN-name>/<unit>/<step>",
-  "lane": "pi|codex|claude-cloud|fable|owner", "repo": "<owner/repo>"}]}` (a bare array is accepted);
-- `cm sync` moves steps pr-open → merged → released from GitHub and renders the card;
-- step state is read from `<NN-name>/<unit>/.cm/state.json` (cm schema 1: `steps.<name>.state`,
-  `evidence.pr`, `evidence.sha`);
-- `cm launch <step> --worktree <path>` and `cm advance <step> <state> [--sha --pr --digest --repo]`
-  as in cm 0.2.
-
-The tick writes the card's first line itself (`Last tick: …`), replacing it if cm already wrote one.
+- `cm next --json`: `steps` (`target`, `lane`, `kickoff`) are launched; `tags` (`target`, `repo`,
+  `version`, `sha`, `tags`) are the merged release steps waiting for their tag. A step's
+  repository is the `repo: <owner/name>` line of its `kickoff.md`, which every non-`fable` step
+  carries, release steps included.
+- `cm sync` moves pr-open → merged → released → deployed from GitHub and rewrites `CARD.md`, whose
+  first line is `Last run: <stamp>`. The tick adds a `Tick: …` second line with its notes
+  (`deploys held: off LAN`, refusals).
+- `cm launch <step> [--worktree]`, `cm advance <step> <state> [--sha --pr --digest --repo]` and
+  `cm journal`. The tick reads `<NN-name>/<unit>/.cm/state.json` only for the PRs of `pr-open`
+  steps and a release step's prep PR.
+- The tag the tick pushes must be one of the names `cm next` lists (`v<version>`,
+  `<repo>-<version>`, `<version>`), so `cm sync` records it.
 
 ## Install (owner, at the gate)
 

@@ -20,7 +20,7 @@ pi() { command pi -nc -ne "$@"; }; export -f pi
 BASE=$(st_get base); BRANCH=$(st_get branch)
 REPO=$(cd "$WT" && gh repo view --json nameWithOwner -q .nameWithOwner)
 FRAME="You are the pi driver for campaign step $STEP in worktree $WT (branch $BRANCH, base $BASE), the only writer of that worktree. Do not use pi's process tool, bg_wait or any managed background process. Decide under ambiguity and record it in your report; never end a turn with a question. A correction is a new commit on top, never an amend. Catch up with the base by rebasing, never by merging main."
-GATE_RULE="Then run the gate commands in $STEP_DIR/step.md (copied from CI), and append to $SR/gate.log a line \`HEAD=<git rev-parse HEAD>\` followed by \`GATE_EXIT=<the gate's exit status>\`. Leave the tree clean. Write your report to $SR/report.md and end the turn."
+GATE_RULE="Then run the gate commands in $STEP_DIR/kickoff.md (copied from CI), and append to $SR/gate.log a line \`HEAD=<git rev-parse HEAD>\` followed by \`GATE_EXIT=<the gate's exit status>\`. Leave the tree clean. Write your report to $SR/report.md and end the turn."
 
 prompt() { # name, text → a prompt file for pi-turn.sh
   local f="$SR/prompts/$1.txt"; printf '%s\n\n%s\n' "$FRAME" "$2" >"$f"; echo "$f"
@@ -59,7 +59,7 @@ $GATE_RULE"); touch "$SR/decision.used"
     fi ;;
   *)
     P=$(prompt kickoff "$(steering_line)
-Your brief is $STEP_DIR/step.md: its row, packages, witnesses and gates. Every row of $EPOCH/EXECUTION.md §Rows and of the unit's DECISIONS.md is settled. Read $AGENTS_DIR/RUST_AGENT_RULES.md and the worktree's AGENTS.md. Implement the step and commit, with the Changelog: trailers the repo uses. If it cannot be done without a decision outside the brief, write $SR/handback.md (the question, the options, your recommendation) and stop. $GATE_RULE") ;;
+Your brief is $STEP_DIR/kickoff.md: its row, packages, witnesses and gates. Every row of $EPOCH/EXECUTION.md §Rows and of the unit's DECISIONS.md is settled. Read $AGENTS_DIR/RUST_AGENT_RULES.md and the worktree's AGENTS.md. Implement the step and commit, with the Changelog: trailers the repo uses. If it cannot be done without a decision outside the brief, write $SR/handback.md (the question, the options, your recommendation) and stop. $GATE_RULE") ;;
 esac
 [ "$(st_get phase)" = kickoff ] && st_set phase driver
 

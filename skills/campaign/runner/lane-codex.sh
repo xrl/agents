@@ -58,7 +58,7 @@ if [ -z "$(st_get thread)" ]; then
   send kickoff "$(steering_line)
 You build campaign step $STEP in $REPO from base $BASE. The brief follows verbatim; every row it cites is settled. Implement it, run the gate commands it lists, and commit nothing: this lane turns your file changes into a commit on its own branch. Write the commit message, Changelog: trailers included, to .codex-commit-msg at the repository root. If the brief cannot be met, stop and say exactly why.
 
-$(cat "$STEP_DIR/step.md")"
+$(cat "$STEP_DIR/kickoff.md")"
 elif [ -n "$DECISION" ]; then
   touch "$SR/decision.used"; st_set fix_rounds 0; st_set ci_rounds 0
   send decision "The coordinator's decision, verbatim (your authority for what it says):

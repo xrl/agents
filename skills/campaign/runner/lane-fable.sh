@@ -22,7 +22,7 @@ read_only() { # <cwd> <prompt> <out.json>: one read-only Fable run; prints the r
 
 if [ "${1:-}" != --pr ]; then
   lane_setup "$1"
-  TEXT=$(read_only "${2:-$STEP_DIR}" "You are a fresh Fable reviewer for one read. Your task is $STEP_DIR/step.md; follow it exactly. Every row of $EPOCH/EXECUTION.md §Rows and the unit's DECISIONS.md is settled; a finding that contradicts one is not a finding; quote the row ID. Return your findings as text in your final message." "$SR/fable.json")
+  TEXT=$(read_only "${2:-$STEP_DIR}" "You are a fresh Fable reviewer for one read. Your task is $STEP_DIR/kickoff.md; follow it exactly. Every row of $EPOCH/EXECUTION.md §Rows and the unit's DECISIONS.md is settled; a finding that contradicts one is not a finding; quote the row ID. Return your findings as text in your final message." "$SR/fable.json")
   [ -n "$TEXT" ] || exit 30
   printf '%s\n' "$TEXT" >"$STEP_DIR/FABLE-READ.md"
   exit 0
@@ -38,7 +38,7 @@ git -C "$CLONE" fetch -q origin "pull/$N/head" "$BASE"
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/fable-read.XXXXXX"); trap 'git -C "$CLONE" worktree remove --force "$TMP/wt" 2>/dev/null; rm -rf "$TMP"' EXIT
 git -C "$CLONE" worktree add -q --detach "$TMP/wt" "$H"
 NN=${STEP%%/*}
-TEXT=$(read_only "$TMP/wt" "You are a fresh Fable reviewer doing one whole-PR read of $URL at exactly head $H, base $BASE. Read \`git diff $BASE...$H\` surface by surface from --stat, in this checkout of the head. The brief is $STEP_DIR/step.md. Every row of $EPOCH/EXECUTION.md §Rows and $EPOCH/$NN/DECISIONS.md is settled; a finding that contradicts one is not a finding; quote the row ID. Changelog trailer wording or category is never blocking: note it for the squash message. Return your findings as text, ranked, each with file:line, the failure and the fix. The last line of your reply is exactly MERGE or FIX BEFORE MERGE." "$TMP/fable.json")
+TEXT=$(read_only "$TMP/wt" "You are a fresh Fable reviewer doing one whole-PR read of $URL at exactly head $H, base $BASE. Read \`git diff $BASE...$H\` surface by surface from --stat, in this checkout of the head. The brief is $STEP_DIR/kickoff.md. Every row of $EPOCH/EXECUTION.md §Rows and $EPOCH/$NN/DECISIONS.md is settled; a finding that contradicts one is not a finding; quote the row ID. Changelog trailer wording or category is never blocking: note it for the squash message. Return your findings as text, ranked, each with file:line, the failure and the fix. The last line of your reply is exactly MERGE or FIX BEFORE MERGE." "$TMP/fable.json")
 LAST=$(printf '%s\n' "$TEXT" | sed -E 's/[[:space:]*`]+$//; s/^[[:space:]*`]+//' | grep -v '^$' | tail -1)
 case $LAST in MERGE) V=MERGE ;; "FIX BEFORE MERGE") V=FIX ;; *) log "no verdict line from Fable"; exit 30 ;; esac
 printf '%s\n' "$TEXT" >"$STEP_DIR/FABLE-READ-${H:0:12}.md"
