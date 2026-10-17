@@ -20,13 +20,24 @@ description: Run one sub-campaign of a large multi-step code effort economically
 | Opus | fresh `general-purpose` agent, `model: opus` | one step or one fix | the spine step; `hard` findings as code only | writes tests for its own fix; shares a worktree with a live writer |
 | Fable | fresh `campaign-reviewer` | one read | plan check; whole-PR read (trial: Astra on the PR instead, once) | stays resident |
 | Astra | pi `gpt-6-astra:xhigh` | once | cross-step review of the assembled unit | |
-| Ship | pi sol supervisor + pi driver | once | prep, checks, PR, merge, tag, verify, the deployment rollout end to end once the owner has authorized pi to ship; the owner's ship authorization quoted as authority | |
+| Ship | a release-prep step in a lane | once per release | the repository's release procedure (dekopon README §Maintainer release process), with the prep PR's CI as the matrix; under the runner the tick tags, pins and LAN-smokes it (campaign-trail DESIGN A6) | carries authority of its own (it acts under EPOCH.md §Execution contract and its `LIMITS.toml [authority]` table) |
 
 Routing owner-approved 2026-10-01 after sub-campaign 5 (Claude ≤ $69 of ≤ $82): the brief, the packet, the ship phase and all-easy fix rounds were Opus there and move to pi; expected Claude ≈ $35-40 on a unit that size. Claude keeps the spine, `hard` fixes, the plan check, rulings and landing.
 
 Design-shaping steps (the one where the spine's types are set) may go to one Opus agent instead of the driver: on A2 of sub-campaign 4 the blind judge preferred Opus's spine; pi had the better tests and the better numbers, cost $5.26 of pi and no Claude. Mechanical steps go to pi.
 
 A sub-campaign of independent units (one per provider) runs as one Opus unit agent at a time, launched from a shared brief, and each agent marches its own unit: rule, packet, the pi steps, smoke and landing. The coordinator only launches the agents, rules on what they send up, and re-reads each landing. Each agent pings the coordinator every 30 minutes and at every step boundary, so the coordinator's context stays current without polling. Sub-campaign 10 (2026-10-06) landed five providers and a core/console release that way overnight, ≈ 1.5–2.5 h per provider.
+
+## The runner (an epoch that loads the tick)
+
+From Diaphanous Dilettantes, WORKING has no long-lived coordinator. A launchd tick on the Mac,
+[`runner/campaign-tick.sh`](runner/README.md), syncs state with `cm sync`, launches what `cm next`
+lists into a lane (`pi-lane.sh`, `lane-codex.sh`, `lane-claude.sh`, `lane-fable.sh`), merges
+reviewed green heads, tags, pins and runs the LAN smoke under `[authority]`, and wakes Claude with
+one `claude -p` run only for judgment: a hand-back, a Fable FIX, a red smoke, an answered
+OWNER-QUEUE item. A wake answers with a decision row and `decision-N.md`, commits and ends; it holds
+no publish or deploy right. The pi lane needs no supervisor, so the Coordinator and Supervisor rows
+above and the handoff caps under Spend apply only to attended sessions (Cruciferous and earlier).
 
 ## The folder
 
@@ -43,7 +54,7 @@ navigation does not change the generic folder contract for other campaigns.
 | File | Owner | Holds |
 |---|---|---|
 | `RESUME.md` banner | coordinator | what is running, what to read next |
-| `JOURNAL.md` | coordinator, append only | every launch, ruling, landing and spend line, with the owner's words quoted |
+| `JOURNAL.md` | coordinator, append only | five kinds of entry only: the owner's words, verbatim; contract or plan-row decisions, one line plus the path; lessons; handoffs; one line per release. Push at a landing, a release or a handoff, or after 30 minutes unpushed, never per wake. Generated files go under the step's gitignored `run/`; evidence over 256 KB is linked, not committed |
 | `LIMITS.toml` | owner (coordinator applies measured dials) | runaway ceiling, models, disk floor, timeboxes |
 | `NN-name/BRIEF.md` | written once, rewritten in one voice after the plan check | steps, landing model, routing, stops, hold list |
 | `NN-name/DECISIONS.md` | settled rows D1..Dn + red witnesses | the only thing a stop may be answered from |
@@ -55,7 +66,7 @@ navigation does not change the generic folder contract for other campaigns.
 1. `LIMITS.toml`: not paused, spend under the runaway ceiling, free disk minus kache headroom over the floor, heavy builds under the cap.
 2. A worktree cut from the integration head, upstream unset, fixtures fetched.
 3. The step prompt: the row verbatim, the packages, the witnesses, what the previous step landed in one paragraph, "decide under ambiguity and record it; never end a turn with a question".
-4. The verify template: `verifier-role.md` + the range + the row + the step's specific checks + **every coordinator ruling so far**, stated as "not findings". A ruling missing from the template is re-raised by the next verifier.
+4. The verify template: `verifier-role.md` + the range + the row + the step's specific checks + this sentence, never a copy of the decisions: "Every row of EXECUTION.md §Rows and `<NN>/DECISIONS.md` is settled; a finding that contradicts one is not a finding; quote the row ID." Execution rows are `E…`, unit rows carry their prefix (`09-D21`).
 5. The supervisor packet from `templates/SUPERVISOR.example.md` (pi-drive's template, adapted: the supervisor runs the verifier itself, reads the driver's gate log instead of rerunning it, writes S-numbers in its own file, never in DECISIONS.md).
 6. STATE alive table and a journal line, then `pi() { command pi -ne "$@"; }; export -f pi; pi-turn.sh <step folder> <session> openai-codex/gpt-6-sol:high <log> kickoff.md` with `run_in_background`, every path absolute (`pi-turn.sh` changes into the step folder before it writes the log).
 7. For a release: list every repo that links the changed contract, not only the ones that implement it. A client that embeds the runtime or decodes the wire (an operator console, a CLI) is a fleet member and re-pins and releases with the providers. Leave one out only when the release provably changes no type it decodes, and say so in the plan.
@@ -67,7 +78,7 @@ Wake only on a completion notice. A supervisor's notice comes at the end of its 
 | Event | Do |
 |---|---|
 | Supervisor ends with a report | read `supervisor-state.md` and its decisions log (did it decide anything it should have handed back?); land or queue the next step |
-| Supervisor hands back | read `supervisor-blockers.md` and the verifier file only; rule; write `coordinator-ruling-N.md` with the exact next prompts; relaunch with a two-line resume |
+| Supervisor hands back | read `supervisor-blockers.md` and the verifier file only; decide by appending one row to `<NN>/DECISIONS.md` with its `cause: plan\|env\|code\|new`, and write `decision-N.md`, the lane's exact next prompt (it replaces `coordinator-ruling-N.md` and `resume-N.md`); relaunch with a two-line resume. "Ruling" means an owner answer; the coordinator writes decisions |
 | Third FIX REQUIRED | rule on the finding, not the count. Real and scoped → one fix turn and a **re-check scoped to that finding** (`templates/recheck.example.md`), not a full re-review. Pre-existing or unreachable in this step → carry it to a named step and write the carry into STATE and every later verify template |
 | An Opus agent near 300k context | fresh agent from its `NOTES.md`; below that, resume it with SendMessage |
 
@@ -89,7 +100,7 @@ Coordinator only, on the integration branch: `git merge --squash origin/<branch>
 
 The closing session asks no question: a question at the end means reviving an expensive context to answer it (owner, 2026-10-05). The owner still decides the rules ("We should always strive to improve our rules by asking me", 2026-10-04); the closing step leaves the decisions where he can answer them without Claude:
 
-1. **Lessons become an open PR.** One commit per lesson, each body carrying its receipt, on the skill's or rule file's repo. Leave it unmerged: his merge, edit or partial revert is the vote. Journal-only lessons get lost.
+1. **Lessons become an open PR.** One commit per lesson, each body carrying its receipt, on the skill's or rule file's repo. Leave it unmerged: his merge, edit or partial revert is the vote. Journal-only lessons get lost. Every open lessons PR is merged or closed in one owner batch at the next OPEN → PLANNING kickoff; no skill pin while one is open (owner, 2026-10-17: "Batch vote at kickoff").
 2. **Scope calls take the cheaper default.** Apply the no-spend or smaller option, file the alternative as an issue with a recommendation and its cost, and journal it as applied by default. He vetoes in any later session.
 3. **Anything that cannot default goes in `OWNER-QUEUE.md`,** one item per heading with the recommendation and a line for his answer. He drains it with the coordinator before any new `/loop` (below).
 4. **Ask live only while he is demonstrably present** (he wrote in the last few minutes), batched early, per standing order 2. Never as the last act of a session.
@@ -138,7 +149,7 @@ The Fable reads ($15) were worth it: they found the design break before the buil
 - Deleting a live unit's `target/` forces a cold rebuild. Overlapped with another build, it dipped free disk from 69 to 13 GiB for a minute. Check disk when a build launches, never in the middle of one.
 - When a pilot needs a core fix while a driver owns the core worktree, commit the fix on a side branch cut from the pushed head. The pilot pins to it, and the core step cherry-picks it. That keeps one writer per worktree.
 - Start the PR's Fable read at the pushed head beside the unit's last CI wait, never after it: it needs the local head, not CI. A CI fix commit gets a scoped re-read of its delta, so the merged head is still the reviewed one.
-- Ask for merge authority at kickoff. Approving a sub-campaign authorizes its releases, but the classifier refused the coordinator's next action as "Merge Without Review" right after it merged a reviewed, green core PR. Work stopped until the owner said "merges authorized" (sub-campaign 11, #478). Put the question in the kickoff batch: "merges authorized for this sub-campaign?"
+- Authority is stated once, in EPOCH.md §Execution contract with its `LIMITS.toml [authority]` table, and answered at the gate from the authority ledger; every prompt points to it, quoting it by reference, never restating it. Approving a sub-campaign authorized its releases, but the classifier refused the coordinator's next action as "Merge Without Review" right after it merged a reviewed, green core PR, and work stopped until the owner said "merges authorized" (sub-campaign 11, #478). Under the runner the tick merges in shell, outside the classifier.
 - The classifier refuses `gh pr merge` into a shared workflow repo whose `@main` other repos call. Ask the owner for that merge up front.
 - Start a step when its own dependency lands, not when the whole unit does. 2026-10-03: curl's typed-SDK migration needed only S1b on main but waited for S2, so the testkit defect it found surfaced hours late.
 - Before a push, the driver runs CI's own steps for what it touched: every generated artifact CI byte-compares, every docs check its change triggers, `cargo doc` with `-D warnings`, `cargo deny`. The repo's own list lives in its agent guide. 2026-10-03: four CI reds (a rustdoc link, an advisory, generated bytes, an undocumented event) each cost a fix turn plus a CI cycle.
@@ -148,7 +159,7 @@ The Fable reads ($15) were worth it: they found the design break before the buil
 - `cm close` needs every step at `done` or `blocked:<reason>`, and `done` comes only after `released` (a tag) and `deployed` (a digest). Take the tag from `git tag --contains <merge sha>` in the step's repo; `cm` accepts any tag that resolves, so the closer checks that the tag contains the merge. Take the digest from what the RPi runs: the pod's image ID, or a provider-set pin matched against its registry tag. Pass `--repo` once the worktree is reaped. A step that was released but is not live, docs only, a study, or superseded by a split closes as `blocked:<one-word-reason>` (Cruciferous close, 2026-10-17).
 - A smoke leg's verdict never comes from scraping the console TUI. Bordered echoes, repaint and sidebar text, and a provider printing its own `[exit code: 0]` each fooled a matcher: three verifier rounds in sub-campaign 11 (CONSOLE-DEV, R11-14..16). A leg passes on the broker's record of the call (Succeeded in the leg's window) plus a result line the supervisor quotes from the saved screen. The script only captures.
 - A ruling that changes what a tool or script does names the step that edits it. R11-16 made the smoke script capture-only, but no step owned the edit, so ROLLOUT stopped at the smoke (sub-campaign 11, ROLLOUT ruling 1).
-- dekopon core PR CI takes about 16 minutes: the two Wasmtime optimization jobs run long. An 8-minute watch hands back every core PR. LIMITS has `core_pr_ci_deadline_min = 25` (sub-campaign 11, #478/#479/#480).
+- dekopon core PR CI: p90 9 min; deadline 12 (`core_pr_ci_deadline_min = 12`). An 8-minute watch hands back every core PR (sub-campaign 11, #478/#479/#480; p90 from the 2026-10-16 CI study).
 - Smoke-test probes come from each provider's own `help` or capability list, not from the CLI tool it imitates. The v0.33 gh probe used `--limit` and `--state merged`, which the gh provider does not take.
 - No spans is not a broken exporter. Spans exist only when there is traffic: before calling a telemetry gap a fault, send one known request and look for its span (2026-10-04: a five-hour gap was a quiet evening).
 - Proportion the ceremony. Config chores and small single-repo changes take a sol recon, then a sol supervisor + driver + one sol verifier per commit: no Fable plan check, no dry run. Four chore lanes landed that way on 2026-10-04 (curl grant, console assets, two homelab cleanups); the one fix round the verifier forced closed three real holes.

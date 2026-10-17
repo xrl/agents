@@ -374,6 +374,10 @@ down when the milestone is planned, with who may decide what: the supervisor,
 the called reviewer, the owner. Otherwise a supervisor that finishes overnight
 cannot tag, or decides something that was not its to decide.
 
+Inside a campaign, the authority is EPOCH.md §Execution contract with its
+`LIMITS.toml [authority]` table, and a release train's versions come from its cm
+release steps; point to them rather than restating them.
+
 <a id="56-a-pushed-commit-is-never-amended-a-ci-fix-is-a-new-commit-on-top"></a>
 ### 56. Always fail forward: corrections are new commits, including in a PR.
 
