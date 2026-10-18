@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
-# The `claude-cloud` lane (DESIGN M4, A7): Opus on Claude Code cloud for design-shaped steps. The
-# cloud session clones the step's branch, so the branch is pushed at the base first; it pushes its
-# commits there, opens the PR and comments READY. A fix is a new run on the same branch. A fresh
-# sol verifier reads every head.
-#
-#   lane-claude.sh <step-dir> <worktree> [--resume]
-#
 # `claude --cloud` refuses a non-interactive shell, so it runs under script(1) for a terminal, and
-# --permission-mode precedes --cloud. Exit codes as pi-lane.sh.
+# --permission-mode precedes --cloud.
 set -euo pipefail
 . "$(dirname "$0")/lane-lib.sh"
 lane_setup "$1"

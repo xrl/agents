@@ -1,4 +1,3 @@
-# Shared helpers for campaign-tick.sh and the lane scripts. Source it; it sets no shell options.
 # shellcheck shell=bash disable=SC2034  # the variables are for the scripts that source this
 
 RUNNER=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
@@ -28,8 +27,6 @@ toml_list() { grep -o '"[^"]*"' | tr -d '"'; }               # an array of strin
 fenced_toml() {
   awk -v h="## $1" '/^## / { in_s = (index($0, h) == 1) } in_s && /^```toml/ { f = 1; next } f && /^```/ { f = 0; next } f'
 }
-
-# --- lane state; every lane keeps its files under the step's gitignored run/ (DESIGN S3d) ---
 
 # lane_setup <step-dir>: sets STEP_DIR, SR, STATE, EPOCH, STEP, SLUG and records the exit code
 # in run/exit, which is how the tick learns the lane ended.
