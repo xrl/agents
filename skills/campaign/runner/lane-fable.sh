@@ -1,21 +1,16 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2016  # the sed program strips literal backticks
-# The `fable` lane (DESIGN M1, A7): one fresh, read-only Fable read through `claude -p`, never pi.
-#
-#   lane-fable.sh --pr <pr-url> <head-sha> <step-dir>   whole-PR read at exactly <head-sha>
-#   lane-fable.sh <step-dir> [<worktree>]               a plan check or set pass: the step's own prompt
-#
-# A PR read writes the verdict to <epoch>/run/verdicts/<owner_repo>-<n>-<head> (first line MERGE or
-# FIX; the tick reads verdicts only there, and the wake cannot write run/) and the full text to
-# <step>/FABLE-READ-<head12>.md in the ledger. A step read writes <step>/FABLE-READ.md.
 set -euo pipefail
 . "$(dirname "$0")/lane-lib.sh"
 MODEL=${FABLE_MODEL:-claude-fable-5-1}
 TOOLS="Read Grep Glob Bash(git log:*) Bash(git show:*) Bash(git diff:*) Bash(gh pr view:*) Bash(gh pr diff:*)"
+DENY=("Bash(git * --output*)" "Bash(*>*)")
 
 read_only() { # <cwd> <prompt> <out.json>: one read-only Fable run; prints the reply text
-  (cd "$1" && timeout 2700 claude -p --model "$MODEL" --output-format json --permission-mode dontAsk \
-    --allowedTools "$TOOLS" --add-dir "$EPOCH" "$2" </dev/null >"$3") || { log_cost fable "$3"; exit 30; }
+  (cd "$1" && timeout 2700 claude -p --restricted --strict-mcp-config --tools Read,Grep,Glob,Bash --model "$MODEL" \
+    --output-format json --permission-mode dontAsk --settings "$LANE_SETTINGS" --allowedTools "$TOOLS" --disallowedTools "${DENY[@]}" \
+    --add-dir "$(git -C "$EPOCH" rev-parse --show-toplevel)" \
+    -- "$2" </dev/null >"$3") || { log_cost fable "$3"; exit 30; }
   log_cost fable "$3"
   jq -r '.result // empty' "$3"
 }
@@ -39,7 +34,7 @@ TMP=$(mktemp -d "${TMPDIR:-/tmp}/fable-read.XXXXXX"); trap 'git -C "$CLONE" work
 git -C "$CLONE" worktree add -q --detach "$TMP/wt" "$H"
 NN=${STEP%%/*}
 TEXT=$(read_only "$TMP/wt" "You are a fresh Fable reviewer doing one whole-PR read of $URL at exactly head $H, base $BASE. Read \`git diff $BASE...$H\` surface by surface from --stat, in this checkout of the head. The brief is $STEP_DIR/kickoff.md. Every row of $EPOCH/EXECUTION.md §Rows and $EPOCH/$NN/DECISIONS.md is settled; a finding that contradicts one is not a finding; quote the row ID. Changelog trailer wording or category is never blocking: note it for the squash message. Return your findings as text, ranked, each with file:line, the failure and the fix. The last line of your reply is exactly MERGE or FIX BEFORE MERGE." "$TMP/fable.json")
-LAST=$(printf '%s\n' "$TEXT" | sed -E 's/[[:space:]*`]+$//; s/^[[:space:]*`]+//' | grep -v '^$' | tail -1)
+LAST=$(printf '%s\n' "$TEXT" | sed -E 's/[[:space:]*`]+$//; s/^[[:space:]*`]+//' | grep -v '^$' | tail -1) || true
 case $LAST in MERGE) V=MERGE ;; "FIX BEFORE MERGE") V=FIX ;; *) log "no verdict line from Fable"; exit 30 ;; esac
 printf '%s\n' "$TEXT" >"$STEP_DIR/FABLE-READ-${H:0:12}.md"
 printf '%s\nhead %s\npr %s\nat %s\n' "$V" "$H" "$URL" "$(now)" >"$VERDICT.tmp" && mv "$VERDICT.tmp" "$VERDICT"

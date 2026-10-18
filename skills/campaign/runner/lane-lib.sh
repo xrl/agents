@@ -1,4 +1,3 @@
-# Shared helpers for campaign-tick.sh and the lane scripts. Source it; it sets no shell options.
 # shellcheck shell=bash disable=SC2034  # the variables are for the scripts that source this
 
 RUNNER=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
@@ -6,6 +5,9 @@ AGENTS_DIR=$(cd "$RUNNER/../../.." && pwd -P)
 PI_SCRIPTS=$AGENTS_DIR/skills/pi-drive/scripts
 CODEX_CLOUD=$AGENTS_DIR/skills/codex-cloud/scripts/codex_cloud.py
 CODE=${CAMPAIGN_CODE:-$HOME/code/dekopon}   # repository clones live at $CODE/<name>, worktrees at $CODE/<name>.wt/<slug>
+
+# The --settings of the claude -p lanes: git-guard.sh before every Bash call.
+LANE_SETTINGS=$(jq -cn --arg c "$(printf %q "$RUNNER/git-guard.sh")" '{hooks: {PreToolUse: [{matcher: "Bash", hooks: [{type: "command", command: $c}]}]}}')
 
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 log() { printf '%s %s\n' "$(now)" "$*" >&2; }
@@ -28,8 +30,6 @@ toml_list() { grep -o '"[^"]*"' | tr -d '"'; }               # an array of strin
 fenced_toml() {
   awk -v h="## $1" '/^## / { in_s = (index($0, h) == 1) } in_s && /^```toml/ { f = 1; next } f && /^```/ { f = 0; next } f'
 }
-
-# --- lane state; every lane keeps its files under the step's gitignored run/ (DESIGN S3d) ---
 
 # lane_setup <step-dir>: sets STEP_DIR, SR, STATE, EPOCH, STEP, SLUG and records the exit code
 # in run/exit, which is how the tick learns the lane ended.

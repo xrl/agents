@@ -1,13 +1,4 @@
 #!/usr/bin/env bash
-# The `pi` lane (DESIGN M4, A7): a sol driver turn, the gate-log check, a fresh sol verifier and
-# pi-stage-check.sh, then routing by exit code. It replaces the sol supervisor. Resumable: every
-# phase is recorded in run/lane-state.json, so a killed call picks up where it stopped.
-#
-#   pi-lane.sh <step-dir> <worktree> [--resume | --integrate <opus-fix-sha>]
-#
-# Exit: 0 PR open, checks green at the reviewed head (run/result.json) | 10 hard findings (the
-# tick runs lane-opus-fix.sh) | 20 needs a decision (run/handback.md) | 30 environment or out of
-# time (the tick resumes it) | 40 tripwire twice, failed re-check or 2 red CI rounds.
 set -euo pipefail
 . "$(dirname "$0")/lane-lib.sh"
 lane_setup "$1"
@@ -84,7 +75,7 @@ while :; do
         *) exit 30 ;;   # the verifier produced no verdict: a pi or network failure
       esac ;;
     push)
-      git -C "$WT" push -q --force-with-lease -u origin "HEAD:$BRANCH"   # the lane's own branch (LAWS §56)
+      git -C "$WT" push -q --force-with-lease -u origin "HEAD:$BRANCH"
       PR=$(st_get pr)
       if [ -z "$PR" ]; then
         [ -s "$SR/report.md" ] || echo "Campaign step $STEP." >"$SR/report.md"

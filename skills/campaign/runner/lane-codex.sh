@@ -1,13 +1,4 @@
 #!/usr/bin/env bash
-# The `codex` lane (DESIGN M4, A7): a Codex Cloud job dispatched through codex_cloud.py. Its
-# patches become commits on the step's branch and a draft PR; no build runs on the Mac. Fixes go
-# back to the same job with `jobs continue`. A fresh sol verifier reads every head.
-#
-#   lane-codex.sh <step-dir> <worktree> [--resume]
-#
-# The Codex environment per repository comes from $CODEX_ENVS (default
-# ~/.config/campaign/codex-envs), lines of `<owner/repo> <environment-config-id>`: owner pre-flight.
-# Exit codes as pi-lane.sh; 20 also covers an unknown job-creation outcome, which is never retried.
 set -euo pipefail
 . "$(dirname "$0")/lane-lib.sh"
 lane_setup "$1"

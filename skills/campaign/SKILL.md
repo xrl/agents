@@ -54,7 +54,7 @@ navigation does not change the generic folder contract for other campaigns.
 | File | Owner | Holds |
 |---|---|---|
 | `RESUME.md` banner | coordinator | what is running, what to read next |
-| `JOURNAL.md` | coordinator, append only | five kinds of entry only: the owner's words, verbatim; contract or plan-row decisions, one line plus the path; lessons; handoffs; one line per release. Push at a landing, a release or a handoff, or after 30 minutes unpushed, never per wake. Generated files go under the step's gitignored `run/`; evidence over 256 KB is linked, not committed |
+| `JOURNAL.md` | coordinator, append only | the coordinator writes five kinds of entry only (cm's own launch, advance and sync entries are cm's, not these): the owner's words, verbatim; contract or plan-row decisions, one line plus the path; lessons; handoffs; one line per release. Push at a landing, a release or a handoff, or after 30 minutes unpushed, never per wake. Generated files go under the step's gitignored `run/`; evidence over 256 KB is linked, not committed |
 | `LIMITS.toml` | owner (coordinator applies measured dials) | runaway ceiling, models, disk floor, timeboxes |
 | `NN-name/BRIEF.md` | written once, rewritten in one voice after the plan check | steps, landing model, routing, stops, hold list |
 | `NN-name/DECISIONS.md` | settled rows D1..Dn + red witnesses | the only thing a stop may be answered from |
@@ -85,7 +85,7 @@ Wake only on a completion notice. A supervisor's notice comes at the end of its 
 A fix text names the defect and the behaviour that must hold, never an implementation to delete: "`Tee` needs no `Drop`" made an Opus fixer remove the `Drop` that kept a mid-stream drop's meter record inside the call span, and cost a fix round (2026-10-10, dekopon #525 round 1).
 
 Rulings that recur: a fix re-check that raises new pre-existing defects is not grounds to block; the verifier's number is not the contract, the row is (sub-campaign 4: `null\n` vs `display(Null)` + newline); a test that cannot fail before the fix is kept as a pin when a later step can make the path reachable.
-**A retiring coordinator keeps ruling until its successor is up (owner, 2026-10-16).** Past its handoff cap it launches nothing new: no new step, no new Opus build, no new Fable read. But it still answers a completion notice whose next action is only a ruling: it reads the blockers, writes `coordinator-ruling-N.md` and resumes that lane's supervisor with a two-line prompt. It stops when the RESUME banner carries a newer session's line (the fresh session writes that first) or when a notice needs anything beyond a ruling, and journals each wake it takes as retired. 2026-10-16: Cruciferous Loop 6 retired at 10:23Z, all three supervisors handed back by 10:35Z, and nothing ran until the owner started the next session at 14:56Z.
+**A retiring coordinator keeps deciding until its successor is up (owner, 2026-10-16).** Past its handoff cap it launches nothing new: no new step, no new Opus build, no new Fable read. But it still answers a completion notice whose next action is only a decision: it reads the blockers, writes `decision-N.md` and resumes that lane's supervisor with a two-line prompt. It stops when the RESUME banner carries a newer session's line (the fresh session writes that first) or when a notice needs anything beyond a decision, and journals each wake it takes as retired. 2026-10-16: Cruciferous Loop 6 retired at 10:23Z, all three supervisors handed back by 10:35Z, and nothing ran until the owner started the next session at 14:56Z.
 
 
 ## Measuring both ways (when a step is worth it)
@@ -140,7 +140,7 @@ The Fable reads ($15) were worth it: they found the design break before the buil
 - A subagent's completion notice can arrive before its hand-back message for the same turn; check the PR, not the notice.
 - `gh run view`/`gh pr checks` from a non-repo cwd fail silently: always pass `-R <owner/repo>`.
 - Every correction is a new commit on top, before or after a push and within a PR; no prompt says "amend" (LAWS §56).
-- A driver that runs under DRIVER.md's third-FIX stop refuses a fix unless the prompt quotes the coordinator ruling that authorizes it.
+- A driver that runs under DRIVER.md's third-FIX stop refuses a fix unless the prompt quotes the coordinator decision that authorizes it.
 - A ruling sent to a lane that cannot ask back (Codex through a relay, a cloud session) is checked against the brief, row by row, before it is sent, and it goes to every arm building the same unit. 2026-10-10, T1c bake-off: a relayed scope ruling told Codex that pre-admission refusals record `failed` where the brief said the refusal outcome; both judges' decisive findings against the Codex build were that ruling's.
 - Grepping task output files can pull whole subagent transcripts into the coordinator's context; read only the named output of a Bash task.
 - A Bash background task dies at 2 h. A pi supervisor turn that runs several steps outlives that, and its driver dies with it (the RG supervisor died mid-RG-b, 2026-10-02). Launch one supervisor turn per step.
