@@ -58,6 +58,7 @@ retried next tick; held 40 minutes after the merge, it is an event.
 # §Train: one table per release unit, 00-release/<unit>/<version>
 [train.dekopon]
 repo = "dekopon-agents/dekopon"
+tag = "v{version}"                                  # the `cm init --tag` pattern; the tick tags with the name cm lists
 image = "ghcr.io/dekopon-agents/dekopon:{version}"   # crane digest source
 pin_file = "apps/dekopon.yaml"                      # in the homelab repo
 pin_line = "^            digest: sha256:"          # ERE for the one line whose digest the pin replaces (the 12-space top-level image.digest)
@@ -68,12 +69,13 @@ smoke_agent = "ville-github"
 
 [train.dekopon-chart]                               # D4: one commit, two tags; no pin
 repo = "dekopon-agents/dekopon"
+tag = "dekopon-chart-{version}"
 with = "dekopon"
 ```
 
 A unit without `pin_file` (a library, a tool, the chart) is done at its tag. A unit with
 `with = "<unit>"` is released from that unit's prep PR: declare its release step with `--lane owner`
-(`cm init 00-release/dekopon-chart/<version> --lane owner --tag 'dekopon-chart-{version}'`) and a
+(`cm init 00-release/dekopon-chart/<version> --lane owner --github dekopon-agents/dekopon --tag 'dekopon-chart-{version}'`) and a
 `kickoff.md` carrying the same `repo:`; when the prep lane opens its PR, the tick moves that step to
 `pr-open` on the same PR, and both are tagged at the one prep merge. A release step whose
 `kickoff.md` carries the line `revert-safe: yes` has its pin reverted mechanically when the LAN smoke
@@ -91,9 +93,9 @@ wake. The wake answers with `<NN>/DECISIONS.md` rows and a `decision-N.md`, and 
 relaunches the lane with it. Each lane writes only under its step's `run/`; the tick alone runs
 `cm advance`.
 
-## The cm 0.3 interface it uses
+## The cm 0.3.1 interface it uses
 
-cm 0.3.0 (dekopon-agents/cm `3f89bad`, its README):
+cm 0.3.1 (dekopon-agents/cm `20d35c3`, its README):
 
 - `cm next --json`: `steps` (`target`, `lane`, `kickoff`) are launched; `tags` (`target`, `repo`,
   `version`, `sha`, `tags`) are the merged release steps waiting for their tag. A step's
@@ -105,8 +107,11 @@ cm 0.3.0 (dekopon-agents/cm `3f89bad`, its README):
 - `cm launch <step> [--worktree]`, `cm advance <step> <state> [--sha --pr --digest --repo]` and
   `cm journal`. The tick reads `<NN-name>/<unit>/.cm/state.json` only for the PRs of `pr-open`
   steps and a release step's prep PR.
-- The tag the tick pushes is the one name `cm next` lists for the step (cm 0.3.1:
-  `cm init … --tag <pattern>`, default `v{version}`); with more than one listed (cm 0.3.0) it refuses.
+- Every release step is declared with its repository and tag:
+  `cm init 00-release/<unit>/<version> --lane <lane> --github <owner/name> --tag '<prefix>{version}'`
+  (`--tag` defaults to `v{version}`; without `--github` the prep PR must be in a repository named
+  `<unit>`). The tag the tick pushes is the one name `cm next` lists for the step; with more than
+  one listed (cm 0.3.0) it refuses.
 
 ## Install (owner, at the gate)
 
