@@ -6,6 +6,9 @@ PI_SCRIPTS=$AGENTS_DIR/skills/pi-drive/scripts
 CODEX_CLOUD=$AGENTS_DIR/skills/codex-cloud/scripts/codex_cloud.py
 CODE=${CAMPAIGN_CODE:-$HOME/code/dekopon}   # repository clones live at $CODE/<name>, worktrees at $CODE/<name>.wt/<slug>
 
+# The --settings of the claude -p lanes: git-guard.sh before every Bash call.
+LANE_SETTINGS=$(jq -cn --arg c "$(printf %q "$RUNNER/git-guard.sh")" '{hooks: {PreToolUse: [{matcher: "Bash", hooks: [{type: "command", command: $c}]}]}}')
+
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 log() { printf '%s %s\n' "$(now)" "$*" >&2; }
 

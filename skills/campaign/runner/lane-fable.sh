@@ -8,7 +8,8 @@ DENY=("Bash(git * --output*)" "Bash(*>*)")
 
 read_only() { # <cwd> <prompt> <out.json>: one read-only Fable run; prints the reply text
   (cd "$1" && timeout 2700 claude -p --restricted --strict-mcp-config --tools Read,Grep,Glob,Bash --model "$MODEL" \
-    --output-format json --permission-mode dontAsk --allowedTools "$TOOLS" --disallowedTools "${DENY[@]}" --add-dir "$EPOCH" \
+    --output-format json --permission-mode dontAsk --settings "$LANE_SETTINGS" --allowedTools "$TOOLS" --disallowedTools "${DENY[@]}" \
+    --add-dir "$(git -C "$EPOCH" rev-parse --show-toplevel)" \
     -- "$2" </dev/null >"$3") || { log_cost fable "$3"; exit 30; }
   log_cost fable "$3"
   jq -r '.result // empty' "$3"

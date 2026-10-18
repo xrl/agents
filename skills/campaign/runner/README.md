@@ -12,9 +12,10 @@ gate rehearses all of it (A4) before the owner loads the plist.
 | `lane-codex.sh <step-dir> <worktree> [--resume]` | the `codex` lane: a Codex Cloud job whose patches become a branch and a draft PR |
 | `lane-claude.sh <step-dir> <worktree> [--resume]` | the `claude-cloud` lane: Opus via `claude --cloud` on the step's branch |
 | `lane-fable.sh --pr <url> <head> <step-dir>` or `lane-fable.sh <step-dir>` | the `fable` lane: one read-only Fable read; a PR read writes `run/verdicts/` |
-| `lane-opus-fix.sh <step-dir> <worktree> <verify-file>` | the Opus code-only fix of a pi lane's `[hard]` findings |
+| `lane-opus-fix.sh <step-dir> <worktree> <verify-file>` | the Opus code-only fix of a pi lane's `[hard]` findings; Opus leaves the change uncommitted and the lane commits it |
+| `git-guard.sh` | the PreToolUse hook of both `claude -p` lanes: a `git` command spelled with a quote, backslash, `$`, backtick or `{` is refused, so the `--output` deny sees the literal token |
 | `wake-working.md`, `wake-planning.md` | the A3 wake prompts |
-| `wake.settings.json` | the wake's allowlist: edits inside the epoch but not `LIMITS.toml`, `run/` or `.cm/`; `git`, `cm` and read-only `gh`; no push, tag, merge, `gh api`, `git … --output` or shell redirection. The wake runs `claude -p --restricted --strict-mcp-config --tools Read,Grep,Glob,Edit,Write,Bash`, so no user, project or local settings load and the file tools stay in the epoch |
+| `wake.settings.json` | the wake's allowlist: edits inside the epoch but not `LIMITS.toml`, `run/` or `.cm/`; `git status`, `git add`, `git commit`, `cm` and read-only `gh`; no `git log`/`show`/`diff` (the wake reads with Read and Grep), push, tag, merge, `gh api` or shell redirection. Any `>` in a command is denied, so a commit message or journal title says `to`, not `->`. The wake runs `claude -p --restricted --strict-mcp-config --tools Read,Grep,Glob,Edit,Write,Bash --add-dir <ledger root> <agents>/skills`: no user, project or local settings load, the file tools read the ledger and the skills, and the allow rules write only the epoch |
 | `campaign-tick.plist.template` | the launchd job: every 300 s, RunAtLoad, the approved SHA as an argument |
 | `lane-lib.sh` | shared helpers |
 

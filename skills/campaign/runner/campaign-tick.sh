@@ -100,7 +100,7 @@ while IFS=$'\t' read -r step lane; do
   esac
 done < <(jq -r '.steps[]? | [.target, (.lane // "")] | @tsv' <<<"$NEXT")
 
-# A §Train unit declared `with = "<unit>"` is released from <unit>'s prep PR (D4: one commit, two
+# A §Train unit declared `with = "<unit>"` is released from <unit>'s prep PR (one commit, two
 # tags): its one open release step goes pr-open on that PR with it.
 ride_along() { # <release step> <pr> <head> <worktree>
   local unit=${1#00-release/} u s
@@ -210,7 +210,7 @@ bump_kind() { # <last> <new>
 }
 in_flight() { jq -se --arg u "$1" 'any(.[]; .unit == $u and (.phase | IN("tagged", "revert", "pinned", "merged")))' "$RUN"/deploys/*.json >/dev/null 2>&1; }
 cut_release() { # <unit> <version> <merge-sha> <repo cm read from the prep PR> <tag names cm lists>
-  local unit=$1 ver=$2 sha=$3 pr repo tag more prefix clone last kind
+  local unit=$1 ver=$2 sha=$3 pr repo tag more prefix clone last kind w branch
   pr=$(jq -r --arg v "$ver" '.steps[$v].evidence.pr // empty' "$EPOCH/00-release/$unit/.cm/state.json")
   repo=$(train "$unit" repo)
   [ -n "$repo" ] || { note "no §Train entry for $unit"; return; }
@@ -218,14 +218,18 @@ cut_release() { # <unit> <version> <merge-sha> <repo cm read from the prep PR> <
   auth_has release_repos "$repo" || { note "release of $repo not in [authority]"; return; }
   [[ $ver =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { note "refused: $unit version $ver"; return; }
   read -r tag more <<<"$5"
-  [ -n "$tag" ] && [ -z "$more" ] || { note "refused: cm lists no single tag name for $unit $ver"; return; }
+  if [ -z "$tag" ] || [ -n "$more" ]; then note "refused: cm lists no single tag name for $unit $ver"; return; fi
   prefix=${tag%"$ver"}; clone=$CODE/${repo#*/}
   [ "$prefix$ver" = "$tag" ] || { note "refused: tag $tag does not end in $ver"; return; }
   [ -f "$RUN/deploys/$unit-$ver.json" ] && return
   in_flight "$unit" && return   # one release of a unit in flight
   git -C "$clone" fetch -q --tags origin || return
-  [ "$(pr_repo "$pr")" = "$repo" ] && [ "$(gh pr view "$pr" --json state,mergeCommit -q '.state + " " + .mergeCommit.oid')" = "MERGED $sha" ] ||
-    { note "refused: $unit $ver evidence does not match its prep PR"; return; }
+  branch=campaign/00-release-$unit-$ver; w=$(train "$unit" with)   # the branch worktree_for cut for the prep step
+  [ -z "$w" ] || branch=campaign/00-release-$w-$(jq -r --arg p "$pr" '[.steps | to_entries[] | select(.value.evidence.pr == $p) | .key][0] // empty' "$EPOCH/00-release/$w/.cm/state.json" 2>/dev/null)
+  if [ "$(pr_repo "$pr")" != "$repo" ] ||
+     [ "$(gh pr view "$pr" --json state,mergeCommit,headRefName -q '.state + " " + .mergeCommit.oid + " " + .headRefName')" != "MERGED $sha $branch" ]; then
+    note "refused: $unit $ver evidence does not match its prep PR on $branch"; return
+  fi
   last=$(git -C "$clone" tag -l "${prefix}[0-9]*" --sort=-v:refname | head -1); last=${last#"$prefix"}
   [ -n "$last" ] || { note "refused: $unit has no previous tag"; return; }
   kind=$(bump_kind "$last" "$ver")
@@ -358,7 +362,7 @@ for rec in "$RUN"/deploys/*.json; do
       a=$(kubectl --context="$KCTX" -n argocd get applications.argoproj.io "${app:-dekopon}" -o json 2>/dev/null) || { note "deploys held: off LAN"; continue; }
       if deployed_at "$(rec_get "$rec" merge_sha)" "$a"; then
         [ -n "$(rec_get "$rec" synced_at)" ] ||
-          rec_set "$rec" --arg t "$(jq -r '.status.operationState.finishedAt // empty' <<<"$a")" '.synced_at = $t'
+          rec_set "$rec" --arg t "$(jq -r '.status.operationState.finishedAt // empty' <<<"$a")" '.synced_at = (if $t == "" then (.merged_epoch | todate) else $t end)'
         case $ver in revert-*) cm journal "Reverted $unit ${ver#revert-}: pin $(rec_get "$rec" pr) is Synced and Healthy" </dev/null; rec_set "$rec" '.phase = "done"' ;;
                       *) smoke "$rec" ;; esac
       elif [ $(( $(date +%s) - $(rec_get "$rec" merged_epoch) )) -gt 2400 ]; then
@@ -375,7 +379,7 @@ if [ -f "$QA" ] && grep -vxFf "$QA" "$QA.now" | grep -q .; then
 fi
 mv "$QA.now" "$QA"
 EVENTS=$(find "$RUN/events" -maxdepth 1 -type f | sort)
-if [ -n "$EVENTS" ] && ! [ -n "$(find "$RUN/wake-failed" -mmin -30 2>/dev/null)" ]; then
+if [ -n "$EVENTS" ] && [ -z "$(find "$RUN/wake-failed" -mmin -30 2>/dev/null)" ]; then
   if [ -n "$AUTH" ]; then TPL=$RUNNER/wake-working.md; else TPL=$RUNNER/wake-planning.md; fi
   AUTHORITY=$(awk '/^> \*\*Authorized for/ { f = 1 } f && !/^>/ { exit } f' <<<"$(git -C "$ROOT" show "$SHA:$EREL/EPOCH.md" 2>/dev/null)")
   LIST=$(while IFS= read -r e; do printf -- '- %s\n' "$(cat "$e")"; done <<<"$EVENTS")
@@ -384,9 +388,9 @@ if [ -n "$EVENTS" ] && ! [ -n "$(find "$RUN/wake-failed" -mmin -30 2>/dev/null)"
   cp "$RUNNER/wake.settings.json" "$RUN/wake.settings.json"
   OUT=$RUN/wakes/$(date -u +%Y%m%dT%H%M%SZ).json
   log "wake: $(wc -l <<<"$EVENTS" | tr -d ' ') events"
-  # --restricted: no user, project or local settings; file tools confined to the epoch (and the skills, read-only by the allowlist)
+  # --restricted: no user, project or local settings; the file tools read the ledger and the skills, and write only the epoch (./**)
   if (cd "$EPOCH" && timeout 2700 claude -p --restricted --strict-mcp-config --tools Read,Grep,Glob,Edit,Write,Bash \
-        --add-dir "$AGENTS_DIR/skills" --model "${WAKE_MODEL:-claude-opus-5-5}" --settings "$RUN/wake.settings.json" \
+        --add-dir "$ROOT" "$AGENTS_DIR/skills" --model "${WAKE_MODEL:-claude-opus-5-5}" --settings "$RUN/wake.settings.json" \
         --output-format json -- "$P" </dev/null >"$OUT") && [ "$(jq -r .is_error "$OUT")" = false ]; then
     while IFS= read -r e; do mv "$e" "$RUN/events/done/"; done <<<"$EVENTS"
     ACTED=1
