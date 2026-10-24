@@ -10,7 +10,7 @@ not automatic imports. If a required guide is unavailable, stop that action.
 | Code or API design/review | [CODE_DESIGN_RULES.md](CODE_DESIGN_RULES.md) |
 | Builds, releases, GitOps, worktree conventions, multi-PR and multi-agent campaigns | [LAWS.md](LAWS.md) |
 | Host Cargo, compiler cache, target cleanup | [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md) |
-| Writing a prompt for a GPT executor (pi driver, Codex) | [steering/GPT.md](steering/GPT.md): one line reading it at a pinned SHA, first line quoted back |
+| Writing a prompt for a GPT executor (pi driver, Codex) | [steering/GPT.md](steering/GPT.md): one line reading it at a pinned SHA, first line quoted back; the brief leaves out what it already says |
 | Cache diagnosis, upgrades, verification | Host rules, then [RUST_CACHE_VALIDATION.md](RUST_CACHE_VALIDATION.md) |
 | Worktree/cache architecture | [RUST_WORKTREES.md](RUST_WORKTREES.md) |
 | Measurements or past rollout decisions | [RUST_CACHE_HISTORY.md](RUST_CACHE_HISTORY.md) |
