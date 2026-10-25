@@ -11,7 +11,6 @@ permissions:
 jobs:
   shell-checks:
     name: shell checks
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -134,7 +133,10 @@ jobs:
                   words.pop(0)
               if not words or any(char.isspace() for char in words[0]):
                   raise ValueError("unresolved env command")
-              return os.path.basename(words[0]) in ("sh", "bash")
+              command = os.path.basename(words[0])
+              if command == "env":
+                  raise ValueError("env-wrapped env command")
+              return command in ("sh", "bash")
 
 
           def shell_shebang(line):
