@@ -39,6 +39,7 @@ These hold for every brief that names a base SHA and asks for a PR, unless the b
 
 - Read no credentials, secrets or tokens, and run no `gh secret` or `gh auth`. Create, move and push no tag, not even a local one.
 - Your checkout may be a cached snapshot. Run `git fetch origin --tags`, check out the base SHA before any edit, and branch from it under the name the brief gives. The PR's head is rooted at that SHA.
+- Commit and push your branch after the first passing build and at least hourly after that; a draft PR is fine. No work exists only in your environment.
 - Open one PR against main, filling the repository's PR template headings. When the brief gives a Trust surface paragraph, it is the security section, verbatim.
   - Under the validation heading, add a table: head SHA, toolchain, every gate run with its result, and every gate not run with the reason.
   - The body ends with `Choices I made`.
@@ -58,8 +59,9 @@ These hold for every brief that names a base SHA and asks for a PR, unless the b
 
 A fix round is a brief that continues your thread on an open PR.
 
-- Start from the PR's current head: `git fetch origin <branch> && git checkout -B <branch> FETCH_HEAD`. Before any edit, confirm that `git rev-parse HEAD` prints the head the brief names.
-- Add one new commit, with no `Changelog:` line. Never rebase, amend or force-push. Leave the PR body alone.
+- Start from the PR's current head: `git fetch origin <branch> && git checkout -B <branch> FETCH_HEAD`. Before any edit, confirm that `git rev-parse HEAD` prints the head the brief names, or a descendant whose only new commits are clean merges from the base branch (GitHub's update-branch). Anything else, stop and report.
+- Push as above: after the first passing build and at least hourly.
+- Add commits on top, with no `Changelog:` line. Never rebase, amend or force-push. Leave the PR body alone.
 - Report:
   1. the new head SHA;
   2. one line per item, done or not;
