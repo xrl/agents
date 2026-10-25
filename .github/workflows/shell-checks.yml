@@ -22,12 +22,68 @@ jobs:
         shell: bash
         run: |
           shellcheck --version
-          scripts=()
-          while IFS= read -r -d '' file; do
-            if [[ "$file" == *.sh ]] || head -n 1 -- "$file" | grep -Eq '^#![[:blank:]]*(/[^[:blank:]]*/(ba)?sh|/usr/bin/env[[:blank:]]+(-S[[:blank:]]+)?(ba)?sh)([[:blank:]]|$)'; then
-              scripts+=("$file")
-            fi
-          done < <(git ls-files -z)
+          discovery=$(mktemp)
+          python3 - <<'PYTHON' > "$discovery"
+          import os
+          import shlex
+          import subprocess
+          import sys
+
+
+          def shell_shebang(line):
+              if not line.startswith(b"#!"):
+                  return False
+              try:
+                  words = shlex.split(os.fsdecode(line[2:]))
+              except ValueError:
+                  return False
+              if not words or not words[0].startswith("/"):
+                  return False
+              interpreter = os.path.basename(words.pop(0))
+              if interpreter in ("sh", "bash"):
+                  return True
+              if interpreter != "env":
+                  return False
+              while words:
+                  word = words.pop(0)
+                  if word == "--":
+                      break
+                  if word == "--split-string" or word.startswith(("--split-string=", "-S")):
+                      if word.startswith("--split-string="):
+                    value = word.partition("=")[2]
+                else:
+                    value = word[2:] if word.startswith("-S") else ""
+                      if not value:
+                          if not words:
+                              return False
+                          value = words.pop(0)
+                      try:
+                          words = shlex.split(value) + words
+                      except ValueError:
+                          return False
+                  elif word in ("-u", "--unset", "-C", "--chdir", "-a", "--argv0"):
+                      if not words:
+                          return False
+                      words.pop(0)
+                  elif word.startswith("-") or "=" in word:
+                      continue
+                  else:
+                      return os.path.basename(word) in ("sh", "bash")
+              return bool(words) and os.path.basename(words[0]) in ("sh", "bash")
+
+
+          paths = subprocess.check_output(["git", "ls-files", "-z"]).split(b"\0")
+          for path in filter(None, paths):
+              if path.endswith(b".sh"):
+                  selected = True
+              else:
+                  with open(path, "rb") as source:
+                      selected = shell_shebang(source.readline())
+              if selected:
+                  sys.stdout.buffer.write(path + b"\0")
+          PYTHON
+          mapfile -d '' -t scripts < "$discovery"
+          rm -- "$discovery"
           for file in "${scripts[@]}"; do
             bash -n -- "$file"
           done
