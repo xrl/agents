@@ -1,0 +1,36 @@
+name: shell checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  shell-checks:
+    name: shell checks
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Check tracked shell scripts
+        shell: bash
+        run: |
+          shellcheck --version
+          scripts=()
+          while IFS= read -r -d '' file; do
+            if [[ "$file" == *.sh ]] || head -n 1 -- "$file" | grep -Eq '^#![[:blank:]]*(/[^[:blank:]]*/(ba)?sh|/usr/bin/env[[:blank:]]+(-S[[:blank:]]+)?(ba)?sh)([[:blank:]]|$)'; then
+              scripts+=("$file")
+            fi
+          done < <(git ls-files -z)
+          for file in "${scripts[@]}"; do
+            bash -n -- "$file"
+          done
+          if (( ${#scripts[@]} )); then
+            shellcheck --severity=warning -- "${scripts[@]}"
+          fi
