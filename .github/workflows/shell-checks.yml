@@ -50,9 +50,9 @@ jobs:
                       break
                   if word == "--split-string" or word.startswith(("--split-string=", "-S")):
                       if word.startswith("--split-string="):
-                    value = word.partition("=")[2]
-                else:
-                    value = word[2:] if word.startswith("-S") else ""
+                          value = word.partition("=")[2]
+                      else:
+                          value = word[2:] if word.startswith("-S") else ""
                       if not value:
                           if not words:
                               return False
