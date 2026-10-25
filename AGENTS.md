@@ -29,6 +29,8 @@ not automatic imports. If a required guide is unavailable, stop that action.
 
 ## Authority and upkeep
 
+- The `shell checks` CI job runs `bash -n` and ShellCheck at warning severity or above on every tracked shell script.
+
 - kache is standard. Current host rules outrank historical recipes.
 - Docs do not authorize builds, deployment, delegation, or configuration changes.
 - Preserve safety constraints, named exceptions, rule IDs, and receipt dates.

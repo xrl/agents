@@ -1,0 +1,174 @@
+name: shell checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  shell-checks:
+    name: shell checks
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Check tracked shell scripts
+        shell: bash
+        run: |
+          shellcheck --version
+          discovery=$(mktemp)
+          python3 - <<'PYTHON' > "$discovery"
+          import os
+          import subprocess
+          import sys
+
+
+          def split_env(value):
+              # GNU coreutils 9.4 env.c build_argv: do not apply shell quoting rules.
+              words, current = [], None
+              quote = None
+              i = 0
+              while i < len(value):
+                  char = value[i]
+                  i += 1
+                  if char in "'\"" and quote in (None, char):
+                      quote = char if quote is None else None
+                      current = "" if current is None else current
+                      continue
+                  if char in " \t\n\v\f\r" and quote is None:
+                      if current is not None:
+                          words.append(current)
+                          current = None
+                      continue
+                  if char == "#" and current is None:
+                      break
+                  if char == "\\" and (quote != "'" or value[i:i + 1] in ("\\", "'")):
+                      if i == len(value):
+                          raise ValueError("trailing backslash in env split string")
+                      char = value[i]
+                      i += 1
+                      if char == "c":
+                          if quote == '"':
+                              raise ValueError("env \\c inside double quotes")
+                          break
+                      if char == "_":
+                          if quote != '"':
+                              if current is not None:
+                                  words.append(current)
+                                  current = None
+                              continue
+                          char = " "
+                      elif char in "fnrtv":
+                          char = dict(f="\f", n="\n", r="\r", t="\t", v="\v")[char]
+                      elif char not in "\"#$'\\":
+                          raise ValueError("invalid escape in env split string")
+                  elif char == "$" and quote != "'":
+                      raise ValueError("environment-dependent env split string")
+                  current = ("" if current is None else current) + char
+              else:
+                  if quote is not None:
+                      raise ValueError("unterminated quote in env split string")
+              if current is not None:
+                  words.append(current)
+              return words
+
+
+          def env_shell(raw):
+              # Linux passes the optional shebang argument as one raw string.
+              words = [raw] if raw else []
+              expansions = 0
+              while words:
+                  word = words.pop(0)
+                  if word == "--":
+                      break
+                  if word in ("--ignore-environment", "--debug"):
+                      continue
+                  if word.startswith("--split-string="):
+                      value = word.partition("=")[2]
+                  elif word == "--split-string":
+                      if not words:
+                          raise ValueError("missing env split string")
+                      value = words.pop(0)
+                  elif word.startswith("--"):
+                      option, equal, _ = word.partition("=")
+                      if option in ("--unset", "--chdir", "--argv0"):
+                          if not equal:
+                              if not words:
+                                  raise ValueError("missing env option argument")
+                              words.pop(0)
+                      elif option not in ("--block-signal", "--default-signal", "--ignore-signal", "--list-signal-handling"):
+                          raise ValueError("unrecognized env option: " + option)
+                      continue
+                  elif word.startswith("-") and word != "-":
+                      flags = word[1:]
+                      while flags and flags[0] in "iv":
+                          flags = flags[1:]
+                      if not flags:
+                          continue
+                      option, value = flags[0], flags[1:]
+                      if option not in "SuCa":
+                          raise ValueError("unrecognized env option: -" + option)
+                      if not value:
+                          if not words:
+                              raise ValueError("missing env option argument")
+                          value = words.pop(0)
+                      if option != "S":
+                          continue
+                  else:
+                      words.insert(0, word)
+                      break
+                  expansions += 1
+                  if expansions > 100:
+                      raise ValueError("too many nested env split strings")
+                  words = split_env(value) + words
+              # Operands follow options, even after an explicit -- delimiter.
+              if words and words[0] == "-":
+                  words.pop(0)
+              while words and "=" in words[0]:
+                  words.pop(0)
+              if not words or any(char.isspace() for char in words[0]):
+                  raise ValueError("unresolved env command")
+              return os.path.basename(words[0]) in ("sh", "bash")
+
+
+          def shell_shebang(line):
+              if not line.startswith(b"#!"):
+                  return False
+              parts = os.fsdecode(line[2:]).strip().split(None, 1)
+              if not parts or not parts[0].startswith("/"):
+                  return False
+              interpreter = os.path.basename(parts[0])
+              if interpreter in ("sh", "bash"):
+                  return True
+              if interpreter != "env":
+                  return False
+              return env_shell(parts[1] if len(parts) == 2 else "")
+
+
+          paths = subprocess.check_output(["git", "ls-files", "-z"]).split(b"\0")
+          for path in filter(None, paths):
+              try:
+                  if path.endswith(b".sh"):
+                      selected = True
+                  else:
+                      with open(path, "rb") as source:
+                          selected = shell_shebang(source.readline())
+              except ValueError as error:
+                  sys.exit(f"Shell discovery failed for {os.fsdecode(path)!r}: {error}")
+              if selected:
+                  sys.stdout.buffer.write(path + b"\0")
+          PYTHON
+          mapfile -d '' -t scripts < "$discovery"
+          rm -- "$discovery"
+          for file in "${scripts[@]}"; do
+            bash -n -- "$file"
+          done
+          if (( ${#scripts[@]} )); then
+            shellcheck --severity=warning -- "${scripts[@]}"
+          fi
