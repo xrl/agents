@@ -34,7 +34,7 @@ model (2026-09-29: 24 opus supervisor sessions cost about $70 of a $356 campaign
 So the supervisor is the cheapest tier that has been shown to do it:
 
 1. **A pi sol supervisor for a mechanical unit** (a re-pin, a CI or docs change, a path
-   cleanup). The pilot in §A sol supervisor passed on 2026-09-29.
+   cleanup). The pilot passed on 2026-09-29 (receipts: [HISTORY.md](HISTORY.md)).
 2. **A pi sol supervisor for a code unit too** since sub-campaign 4 (below), and for the ship unit since 2026-10-01. One
    supervisor session per step, resumed from a state file, handed off at 120k tokens. Never `max`:
    a supervisor writes no code.

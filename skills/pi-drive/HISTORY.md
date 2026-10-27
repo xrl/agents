@@ -168,4 +168,3 @@ prices; the GPT side runs on Xavier's subscription, so they are notional.
 - **Worktrees.** `git worktree add <path> -b <branch> origin/main` makes the branch track
   `origin/main`, so a bare `git push` targets main. Run
   `git -C <path> branch --unset-upstream` right after creating it.
-
