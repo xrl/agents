@@ -1,7 +1,7 @@
 # Rust agent rules for this machine
 
 Canonical text. `~/.claude/CLAUDE.md` imports this file; `~/.pi/agent/AGENTS.md` §"Rust worktrees
-and compiler cache" is a verbatim copy. Change all three together. Rationale and measurements:
+and compiler cache" is a verbatim copy. Change all three together. Other local-host rules: [HOST.md](HOST.md). Rationale and measurements:
 [RUST_WORKTREES.md](RUST_WORKTREES.md). Updated 2026-09-28.
 
 ## Machine state
@@ -27,6 +27,7 @@ and compiler cache" is a verbatim copy. Change all three together. Rationale and
    the owner.** Do not bypass the wrapper, do not set `KACHE_FALLBACK`, do not switch to sccache.
    `kache doctor`, `kache why-miss <crate>` and `kache stats` are for diagnosis; report what they
    say.
+   A `/kache/...` path in a rustc diagnostic is the compiler's path remap, not a kache failure.
 3. **Never share a build directory between worktrees.** A shared `CARGO_TARGET_DIR`/`build-dir`
    serializes builds and can serve another worktree's code with tests still passing
    (cargo#17312/#12516, reproduced on dekopon).
@@ -50,7 +51,8 @@ and compiler cache" is a verbatim copy. Change all three together. Rationale and
     purge the store while builds are active. Follow the `free-up-worktree-space` skill rather than
     guessing. Obtain an ownership handoff or quiescence agreement before removal, preventing
     new builds until cleanup completes. Report compiler-store size and worktree-target size
-    separately. Use controlled `df` deltas for reclamation; APFS private size measures only
+    separately. Report these numbers to the coordinator's journal or the owner, never in a PR body.
+    Use controlled `df` deltas for reclamation; APFS private size measures only
     exclusive bytes, not total occupancy. Shared extents can outlive store eviction; do not
     sum private sizes as total usage. `du` counts every clone at full size.
 11. A cache hit is executable code. Cache-key correctness, hidden compile inputs (proc macros
