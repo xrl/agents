@@ -405,4 +405,3 @@ A hand-written pairs workflow ran Sol on
 The sequence that worked: draft, rulings, plan check and dry
 run in parallel, rulings on findings, one-voice rewrite, **one** rehearsal (below), hand off. The files are in
 `~/code/dekopon/effort-tuning-design/execution/rehearsal/`.
-
