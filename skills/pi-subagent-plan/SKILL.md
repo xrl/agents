@@ -13,19 +13,17 @@ The plan, the review and the packet live in a **plan folder**, never under the r
 and never as a PR. For Dekopon the folder is `~/code/dekopon/campaign-trail/store/designs/<effort>-design/`,
 committed and pushed to the private campaign-trail repo as meaningful writes happen, so reviewers
 off the Mac can read it (owner rule, 2026-10-13; its `.gitignore` keeps run logs and binaries out).
-Other projects use a folder sibling to the checkout (`~/code/<project>/<effort>-design/`). Why not
-the product repo: repo docs describe what is implemented, a plan says on line one that it
-is not, its locators rot with every merge, and the execution artifacts beside it cannot be
-committed. The multi-LLM plan was opened as a docs PR (#319) and closed unmerged for this reason;
-what lands in git afterwards is the changelog, the upgrading note, the rewritten implementation
-docs and the commit bodies (the repo squash-merges, so the squash message is the record). The PR
-body is a short summary plus test evidence: no D-numbers, no paths on the driver's machine.
+Other projects use a folder sibling to the checkout (`~/code/<project>/<effort>-design/`). Not the product
+repo: docs there describe what is implemented, and execution artifacts cannot be committed (the
+multi-LLM plan was opened as docs PR #319 and closed unmerged). What lands in git is the changelog,
+the upgrading note, the rewritten implementation docs and the commit bodies (the repo
+squash-merges, so the squash message is the record). The PR body is a short summary plus test
+evidence: no D-numbers, no paths on the driver's machine.
 
 The deliverable is a **folder that travels**: a brief an agent with zero conversation context can
 execute, the pi agent definitions it needs, a flat workflow script, and the one prompt Xavier
 pastes into pi. Templates are in `templates/`. Worked example:
-`~/code/dekopon/asset-design/{HANDOFF.md,pi/}` (2026-09-17), whose first run stopped seven times
-on defects in the brief — every one is a rule below.
+`~/code/dekopon/asset-design/{HANDOFF.md,pi/}` (2026-09-17).
 
 The executor is a **literal, low-judgement orchestrator** that is told to stop rather than
 improvise. That is the right safety posture and it means the brief, not the agent, carries every
@@ -45,32 +43,22 @@ carries the fixed §Rules and §Don't write this blocks; fill in the placeholder
 blocks, never delete those two; `templates/KICKOFF-DRIVER.md` is its turn-1 prompt (`KICKOFF.md`
 is the swarm's); `pi-drive/templates/STAGE-PROMPTS.md` holds the supervisor's turn prompts. A
 brief's "read nothing else first" loses to the repo's own `AGENTS.md` read list, which the
-driver also holds: name the files to skip, or accept the reads. The literal "stop for any decision the table does not answer" posture cost the
-asset run nine stops; the same model decided crate internals fine when allowed to. A swarm (`templates/lanes.workflow.js`) earns its
+driver also holds: name the files to skip, or accept the reads. A swarm (`templates/lanes.workflow.js`) earns its
 orchestration only when every lane is independent at compile time *and* the editors are trusted
-to decide crate internals *and* wall-clock matters more than stops. The asset run stopped seven
-times in three days on the swarm shape (grep gate, container wrapper, contracts, seams, platform,
-stage gating, pi output-path collision) and produced its first 2,100 committed lines only once
-the stage-1 lanes ran; the driver brief (`~/code/dekopon/asset-design/pi/DRIVER.md`) replaced
-it. A driver is slower per PR and has zero seam or orchestration failure modes; the "editors never
-run cargo" rule exists for eight parallel builds, not for one.
+to decide crate internals *and* wall-clock matters more than stops. A driver is slower per PR and
+has no seam or orchestration failure modes; the "editors never run cargo" rule exists for eight
+parallel builds, not for one.
 
 **Many independent repositories (a fleet re-pin, one PR per provider) are N driver sessions from
 one brief template, not one driver with a workflow-script fan-out.** Each session gets the
 template with the repo name, worktree, version and pins filled in, its own session id and log,
-and the supervisor's watch loop checks every log in one pass (`pi-drive`). The 0.18.0 fleet ran
-the first eleven providers through `runs.all` children and lost three of them to the parent's
-turn ending, a transient provider error, and a stop routed through the parent; the four
-providers that ran as parallel sessions (decision F9) lost none. Workflow scripts stay for
+and the supervisor's watch loop checks every log in one pass (`pi-drive`). Workflow scripts stay for
 fan-out *inside one repository* where a gate must merge lanes.
 
 ## 0b. Cost and wall clock (asset run retro, 2026-09-20)
 
-Three days on the asset core PR; the code was about one of them. The rest was stops routed
-through Xavier, one shape reset, infrastructure detours and repeated gates. Quality came from two
-things only: machine-checked contracts before the run (nine stops fell to zero code-level stops)
-and a fresh read-only verifier per stage (every pass returned real contract bugs). Keep those,
-and spend nothing else:
+Quality comes from two things only: machine-checked contracts before the run and a fresh
+read-only verifier per stage. Keep those, and spend nothing else:
 
 1. **Supervised from fable from turn 1** (`pi-drive`). A stop through Xavier is a day; through
    the supervisor it is a turn. The kickoff says so: stops are answered by the supervisor.
@@ -85,34 +73,26 @@ and spend nothing else:
    (`execution/stage-N-verify-P.md`), never appended to a growing file the driver rereads. A
    named survivor is a claim: for every deletion the verifier greps the deleted code's
    distinctive literals (ids, error codes, config keys, secret shapes) into what remains and
-   finds them asserted before accepting. A cheap verifier approved losing the only test of a
-   security property on 2026-09-27.
+   finds them asserted before accepting (2026-09-27: a verifier approved losing the only test of a
+   security property).
 4. **Rebase onto `origin/main` at the start of every stage**, not only before the PR. A
    workspace-wide lint that merges mid-run is ten minutes at stage 2 and a fix pass at the end.
 5. **Independent stages run in parallel.** Measurement (compute) and whole-PR review
    (read-only) do not depend on each other; the supervisor runs one in the background while the
    driver does the other. Say so in the stage list.
-6. **Stages of ≤ ~1k changed lines, enforced.** A 2.3k-line stage produced five findings and a
-   long gate; two halves verify faster, test with `-p`, and fail smaller. #321's brief wrote
-   "about three thousand changed lines" into its own stage 2 and the stages landed at 1.5k–5.1k;
-   the planner splits any stage estimated over 1k, the driver splits one that grows past 1.2k,
-   and the supervisor's `pi-stage-check.sh` refuses the rest. Line estimates run low: driver
-   stages landed at 2.3x and 2.8x their estimates on 2026-09-29. Multiply the planner's
-   estimate by 2.5 before applying the cap. Dollars ran under, because driver tokens are cheap.
+6. **Stages of ≤ ~1k changed lines, enforced.** The
+   planner splits any stage estimated over 1k, the driver splits one that grows past 1.2k,
+   and the supervisor's `pi-stage-check.sh` refuses the rest. Line estimates run low (2.3x and
+   2.8x on 2026-09-29): multiply the planner's estimate by 2.5 before applying the cap.
 7. **The packet is the brief, the decisions file and `contracts/`.** Nothing else in the
-   driver's read order. Design and review documents are fable-written and fable-reviewed, and were
-   the bulk of the token bill; the driver only ever needed the decisions.
+   driver's read order.
 
 Also: the driver does its own build-state cleanup and single-command retries. Spawning a child
 for a one-directory delete costs a round trip and a report nobody needs.
 
-8. **Stops are owner actions and contract surfaces, never a pattern to match.** "A build failure
-   whose output names kache" parked the 0.18.0 fleet on an ordinary compile error whose
-   diagnostics carried the `/kache/...` path remap. Facts like that remap belong in the machine
-   rules file the driver already reads, not in a stop clause; a literal driver will match the
-   words.
-9. **One report file per stage, no per-step receipts.** Left alone, drivers wrote over a hundred
-   evidence JSON/log files for eleven providers. Say: logs for long commands, one report per
+8. **Stops are owner actions and contract surfaces, never a pattern to match.** Facts such as the `/kache/...` diagnostics path remap belong in the machine rules file the
+   driver already reads, not in a stop clause; a literal driver will match the words.
+9. **One report file per stage, no per-step receipts.** Say: logs for long commands, one report per
    stage, nothing else under `execution/`.
 10. **Every stage prompt says: do not end the turn while a subagent or background job is still
     running; wait on it with one blocking command, never repeated status calls.** A print-mode
@@ -120,16 +100,14 @@ for a one-directory delete costs a round trip and a report nobody needs.
     the driver's context where a blocked call costs nothing.
 11. **Nothing reaches the PR unreviewed.** Verifiers and reviewers open with `Reviewed: <sha>`;
     the driver pushes only on `ACCEPT`/`READY` at that SHA, and a commit made after the last
-    review gets its own pass. #321 pushed over two `FIX REQUIRED` reviews and then landed a
-    412-line commit no reviewer saw.
+    review gets its own pass.
 12. **A cross-stage review** (`agents/pr-reviewer.md`) after the midpoint stage of a ≥ 4-stage
     run and again at the end. Its job is what per-stage verifiers cannot see: work that grows
     with the stream, forward compatibility of every wire parser, pinned assumptions about other
     services, code that exists to satisfy a rule literally.
 
-Receipt: #321 (2026-09-22), whose paranoia patterns came from our own rules, is why
 `DRIVER.md` §Don't write this names concrete bans; "don't be paranoid" alone does nothing to a
-literal model.
+literal model (#321, 2026-09-22).
 
 ## 0. Gate: is it ready to hand off?
 
@@ -147,8 +125,7 @@ write one too early.
   seams as signatures, config keys named against the existing struct and its `rename_all`; every
   constant that moves or dies is named with its locator; every consumer of a deleted convention
   is enumerated. A prose interface in a design is pseudocode until it parses: reserved keywords,
-  payload rules and undefined types all surface there — the asset run
-  stopped on all three. Every "a config key for X", "a budget", "a directory" in the design
+  payload rules and undefined types all surface there. Every "a config key for X", "a budget", "a directory" in the design
   becomes a named key with a value and a mandatory/defaulted call.
 - **Cross-lane seams are written, and lanes are staged by what they consume.** If lane C's code
   compiles against types lane A creates, C is stage 2: its editor starts by merging A's branch,
@@ -158,17 +135,13 @@ write one too early.
   stage-2 consumers by construction, so a whole-workspace gate between stages can never pass.
 - **Every seam sketch is fact-checked against the real signatures** before the brief ships: the
   existing return and error types, existing names (collisions), and the platform matrix (a flag
-  that exists only on Linux, a test that needs `/proc`). The planner's sketch of a widened
-  `invoke` changed its error type by accident and collided with a re-export; both stopped the run.
+  that exists only on Linux, a test that needs `/proc`).
 - **A scenario walk closed.** One end-to-end scenario per feature (for assets: upload → edit →
   output → send → edit the output again) walked through every rule in the design by a cheap
-  agent, listing each rule it touches and whether it holds. The asset design's "fresh open by
-  path" and "path-less output" were each fine alone and contradicted on the second edit.
+  agent, listing each rule it touches and whether it holds.
 - **A consequence walk has run on the plan** (pi sol is enough; it needs `bash` for the greps
   and gates, so its prompt says "mutate nothing"). Fact-checkers verify what the
-  plan says; this verifies what the plan's changes do to things it does not mention. The
-  multi-LLM plan (2026-09-22) had zero wrong locators and still yielded ten seam findings at
-  packet time, every one a second-order effect. Before handoff, for every: new dependency edge,
+  plan says; this verifies what the plan's changes do to things it does not mention.  Before handoff, for every: new dependency edge,
   run the repo's dependency-boundary gates; changed public type, grep its serialization and
   `Debug` consumers and the tests that only build under a feature; "keep today's behavior" or
   "verbatim" claim, read what today does per call (deadlines per send, retries, finish reasons),
@@ -179,26 +152,18 @@ write one too early.
   replaced type, list every doc that constructs the old one, not only the docs the feature owns;
   existing record the change makes larger (a journal line, a wire request, a history window),
   name its size limit, what that limit measures (raw or delivered text, decoded or encoded bytes)
-  and which field grows, then bound that field, never the whole record. Chat steering
-  (2026-09-26) folded messages into three records and found each limit one review round at a
-  time; a supervisor cap on the whole journal line regressed long answers.
+  and which field grows, then bound that field, never the whole record.
 - **Other clients were read before a provider semantic became a failure.** Any decision that binds,
   pins or refuses on another service's behaviour (bind a continuation to the upstream that served
   it, fail on an event type the docs don't list) cites what two other integrations of the same API
-  do, from their source. #321's D34 bound OpenRouter continuations to the upstream provider; no
-  other client (Vercel's provider, pydantic-ai, Zed, LiteLLM, Cline) does, and multi-step tool
-  turns failed at random under default load balancing. They forward `reasoning_details` and send
-  `session_id` for sticky routing. The recon agent does this lookup.
+  do, from their source. The recon agent does this lookup (#321's D34 bound
+  OpenRouter continuations to the upstream provider; no other client does, and multi-step tool
+  turns failed at random).
 - **Wire formats are forward compatible by default.** The decisions say it once: unknown events,
-  items and fields from an external service are ignored; only a malformed known shape errors. A
-  contract line like "reject unknown required semantic events" is how #321 made Codex's unknown
-  events fatal, with the driver's own test asserting the regression.
+  items and fields from an external service are ignored; only a malformed known shape errors.
 - **Every test a decision asks for fails on the code being fixed.** Say what the test must
-  observe that the old code does not produce. The cwasm fix's decision read "the load fails and
-  the error names the path": the bug already did exactly that, one implementation wrote the test
-  to the letter, and it passed on the old code (2026-09-29). Where a decision turns on a check
-  ("if the object exists"), say what a failed check means; two implementations of one decisions
-  file diverged on `exists()` against `try_exists()`.
+  observe that the old code does not produce. Where a decision turns on a check
+  ("if the object exists"), say what a failed check means (`exists()` against `try_exists()`).
 - **Every stage is estimated at ≤ ~1k changed lines** (§0b.6); split the rest before handoff.
 - **The invention audit is empty** (§5).
 - **The verifier's agent file fits the repo.** `templates/agents/lane-verifier.md` assumes Rust
@@ -210,10 +175,8 @@ write one too early.
   itself; the brief's stop rule names only contract surfaces. Mechanical rules are workspace lints,
   not verifier reading.
 - **The baseline is stated**: which PRs are assumed merged, which SHA, which measurements to beat.
-  **Re-verify every base ref at launch**, not only at recon: refs moved under three packets in one
-  afternoon on 2026-10-03, and one move (a branch becoming an ancestor of `main` through another
-  session's ours-merge) turned a planned merge into a silent no-op that would have deleted the
-  feature. `git merge-base --is-ancestor` and `git merge-tree` on the real refs, the hour you launch.
+  **Re-verify every base ref at launch**, not only at recon (2026-10-03: a branch became an ancestor of `main`
+  through another session's ours-merge, turning a planned merge into a silent no-op). `git merge-base --is-ancestor` and `git merge-tree` on the real refs, the hour you launch.
 - **Known flakes are in the decisions file before launch.** List each test that fails under
   concurrent heavy builds (with its issue) and the rule: one scoped rerun at the unchanged head,
   green counts. Parallel units on one Mac make these certain; without the row, every one is a
@@ -221,15 +184,13 @@ write one too early.
 - **A dependency move has been diffed, not just named.** When the work re-pins a published crate
   (SDK 0.15 → 0.18), the recon diffs the two published manifests' features and dependencies
   (`cargo info`, or the registry `Cargo.toml`s under `~/.cargo/registry/src/`) and the brief
-  names what changed. A dropped compile-cache feature was visible there and cost one consumer
-  3.5 hours of release-job timeouts because nobody looked.
+  names what changed.
 - **What stays with the owner is explicit**: releases, tags, published packages, private-repo
   commits, paid or real external calls, merges. Agents open PRs; they never merge or approve. Say
   the other half too: version fields edited inside a PR are ordinary work — "chart bump" read
   literally is a stop condition. **The auto-mode classifier enforces this on the coordinator
-  too:** merging a PR that only a sol verifier read ("Merge Without Review") and pushing a
-  release tag ("Create Public Surface") were refused on 2026-10-03; PRs with a Fable review merged.
-  A release plan names each merge and tag as one owner command to paste, written out in full, or
+  too** (2026-10-03: it refused a merge of a PR only a sol verifier read, and a release tag; PRs
+  with a Fable review merged). A release plan names each merge and tag as one owner command to paste, written out in full, or
   asks once up front for a permission rule.
 - **The rehearsal (§5) passed** with no stops.
 
@@ -263,8 +224,7 @@ Sections, in this order. Keep it under ~400 lines; link, don't paste, the design
    `attached` field), with the look-alikes that legitimately survive listed beside them. A
    numeric target names the unit it counts ("a behaviour is a contract a user, operator or peer
    relies on"), the expected result per unit, and the rule for the shortfall (anything under the
-   bar is justified item by item). "When unsure, keep it" over a fuzzy unit returned a 1.7% cut
-   against a ~30% target; the per-unit version returned 12× more (2026-09-27).
+   bar is justified item by item). A fuzzy unit ("when unsure, keep it") returned a 1.7% cut against a ~30% target (2026-09-27).
 8. **Stop and report** — the conditions under which the agent stops instead of working around.
    Every noun here must mean the same thing it means in §5 ("bump", "release", "wrapper").
 9. **Not in scope**, and the hold list: everything in flight the run must not touch, the
@@ -383,23 +343,23 @@ subscription, so its dollars are notional and Claude's are not.
 
 | Step | Tier | Why |
 |---|---|---|
-| Recon, inventories, release-path lookup | pi sol at medium, fresh, read-only | lookup and extraction. First graded run 2026-09-29: the model-card recon, 235 rows through a headed browser for $1.29, every one of seven spot-checked numbers right. Grade two more; sonnet `Agent` is the measured fallback |
+| Recon, inventories, release-path lookup | pi sol at medium, fresh, read-only | lookup and extraction. Sonnet `Agent` is the measured fallback |
 | First draft of the briefs, agent files and kickoff, from the recon and a decided plan | pi sol | large, well-specified prose |
 | Dry-run rehearsal of a brief (§5), invention audit, scenario walk, consequence walk | pi sol at high (`pi-dry-run.sh`) and sonnet `Agent` in parallel on the same prompt (owner 2026-10-08, reversing 2026-09-30's sol only); sonnet alone when pi's login is down | a dry run simulates the executor, so sol runs on the executor's model; sonnet misses a different quarter (§5) |
 | Prelaunch brief check | pi sol high, fresh, read-only | check settled decisions; scope below |
-| **Consequential architectural challenge** | fable max, fresh | Xavier's engineering-taste preference. 2026-09-29: critical error in each of three plans, about $3 each |
+| **Consequential architectural challenge** | fable max, fresh | Xavier's engineering-taste preference. |
 | Rewriting the brief in one voice after the plan check and dry run | the coordinator session or pi sol, then a sol rehearsal of the rewrite (owner 2026-09-30: no Fable rewrite) | a Fable rewrite cost more than it found; the rehearsal after it catches what the rewrite breaks |
-| **Interfaces on a contract surface** (interface definitions, wire format, config keys, a public SDK or plugin trait) | opus drafts the sketch, naming the states it makes unrepresentable; a fresh fable walks one real scenario through it; Xavier decides | opus's API sketches graded A on 2026-09-28; fable's design reviews found the P1s. The designer never reviews its own sketch |
-| Types and signatures inside a crate, behind a fixed entry point | the pi sol driver, by `DRIVER.md` §Order of work | the eval scored exactly this: the order of work added 1.4 points for 4 cents, a Claude-written sketch plus shape review added 0.25 for 6 to 10 times the run cost. No per-stage sketch |
+| **Interfaces on a contract surface** (interface definitions, wire format, config keys, a public SDK or plugin trait) | opus drafts the sketch, naming the states it makes unrepresentable; a fresh fable walks one real scenario through it; Xavier decides | the designer never reviews its own sketch |
+| Types and signatures inside a crate, behind a fixed entry point | the pi sol driver, by `DRIVER.md` §Order of work | the order of work added 1.4 points for 4 cents; a Claude-written sketch plus shape review added 0.25 for 6 to 10 times the run cost. No per-stage sketch |
 | Editing, building, PRs, releases, watching CI | pi driver (`openai-codex/gpt-6-sol`, medium, recipe A) | the volume; the owner's dial of 2026-09-30 |
-| **The step that sets a spine's shape** (the types the later steps extend) | one Opus agent building directly, then the verifier | sub-campaign 4's A2 built both ways: the blind Fable judge landed Opus's spine; pi kept the old plumbing with pipes bolted on |
-| A step's fix round | split by the verifier's `hard`/`easy` tags: Opus fixes the hard findings (code only), the pi driver witnesses them and does the easy list; all-easy rounds stay in pi; a failed re-check goes to Opus (`pi-drive` §Fix rounds split by difficulty) | sub-campaign 5 sent every second round to Opus: five Opus fix agents, mostly writing tests, two rounds with no hard finding (owner, 2026-10-01) |
+| **The step that sets a spine's shape** (the types the later steps extend) | one Opus agent building directly, then the verifier | sub-campaign 4's A2, built both ways: the blind Fable judge landed Opus's spine |
+| A step's fix round | split by the verifier's `hard`/`easy` tags: Opus fixes the hard findings (code only), the pi driver witnesses them and does the easy list; all-easy rounds stay in pi; a failed re-check goes to Opus (`pi-drive` §Fix rounds split by difficulty) | owner, 2026-10-01 |
 | Per-stage verifier | pi sol (`lane-verifier`, fresh) | cheap and it finds real contract bugs |
 | **Cross-stage and whole-design review** | fresh fable in Claude for consequential review; pi astra (`pr-reviewer`, xhigh) for small bounded review | routing preference, not universal ranking. Astra, 2026-09-28: about $6, nine majors, none overlapping Fable's |
 | Re-check of a fix against the finding it answers | pi sol verifier, fresh | "did this commit do what the Fix line says" is mechanical. A second fable pass only when the fix moved a contract surface or answered a P1 |
 | The watch loop: liveness, relaunches, read-only checks, stage prompts, routing findings | pi sol supervisor for mechanical and code units (`pi-drive` §A sol supervisor: piloted 2026-09-29, passed on sub-campaign 4's A2-A13 with zero decisions of its own); releases and rollouts too (campaign §Who does what: Ship) | mechanical; it was the largest Claude line on 2026-09-29 |
 | **Ruling on each review finding** (fix, accepted trade-off, ignore) | fable or the session | this is where scope stays proportionate |
-| **A stop the decisions file does not answer** | fable | four or five per day decided the outcome on 2026-09-20: the false kache stop, the python timeout cause, the fan-out shape reset |
+| **A stop the decisions file does not answer** | fable | these decide the outcome |
 | **Adversarial review of the landed PR (§5b)** | fable, fresh | two gpt reviews passed #305 with a 44 GB hole in it |
 | Site or docs copy in Xavier's voice | opus writes, fable reviews once | voice rules are judgment |
 
@@ -410,8 +370,6 @@ file as the whole context.
 
 Two checks are not run again: a sonnet adversary hunting counterexamples (0 confirmed in 126
 attempts) and a Claude shape review after every stage (+0.25 points for 6 to 10 times a run).
-Receipt, 2026-09-29: Claude $240 against pi $116; Opus supervisors ($70) cost more than the
-drivers that wrote the code ($60); the reviews and plan checks found every real defect.
 
 ### Plan checking versus full review
 
@@ -454,20 +412,14 @@ smaller lever: fewer turns and smaller briefs save more than a lower setting.
 | Small bounded cross-stage reviewer | astra `xhigh` |
 | Consequential whole-design challenge, final adversarial PR review | fable `max`, fresh through Claude |
 
-Receipts: 2026-09-29, the cards put `gpt-6-sol`'s knee at `high`, the steering eval
-(`~/code/dekopon/steering-eval/REPORT.md`) found `medium` held; dry runs went up from low to high
-(sol's factual error rate 11.4% low, 5.1% high). 2026-09-30, the owner moved the driver from
-`gpt-6.1-sol` to `gpt-6-sol` at `medium`: same hidden pass rate and cost, 1.85x faster, 1.5 lower
-blind on pipe-type shape (so a spine step goes to Opus). As drivers, `gpt-6-astra` ended two of
-four runs with a question and no code; Opus scored highest blind at twice the cost.
+Dry runs run at high, not low: sol's factual error rate is 11.4% at low and 5.1% at high
+(2026-09-29). A spine step goes to Opus (2026-09-30 driver-model change).
 
 ## 3b. Offer to drive it
 
 After the kickoff and rehearsal, **offer to drive the pi session from Claude Code** with the
 `pi-drive` skill: a supervisor issuing one stage per turn and answering non-hard stops
-from the decisions file (which tier supervises is §3a's watch-loop row), gpt-6-sol at medium as the driver. Xavier wants this pairing ("super high level
-fable with super cheap gpt"); the alternative is him pasting prompts and each stop costing a day.
-Say which path (print or RPC) and why in one line.
+from the decisions file (which tier supervises is §3a's watch-loop row), gpt-6-sol at medium as the driver. Say which path (print or RPC) and why in one line.
 
 ## 3b2. Runtime windows: boot-check before touching shared state (2026-09-26)
 
@@ -475,9 +427,7 @@ When a stage stops or repoints a shared service (a container, a shared database,
 the branch's build, its first step is a read-only boot check of **everything the window will
 use**: every host and route it will open answers (login page 200, not 500 or "blocked host"),
 pending migrations are listed, required env/host settings exist. Only then stop the shared
-service. One capture run stopped a shared app container first and then found, one turn at a
-time, a pending-migration 500 and a refused host: two round trips and a longer outage of the
-shared container. Repo-specific checks (which command lists migrations, which env var
+service. Repo-specific checks (which command lists migrations, which env var
 admits a host) belong in that repo's agent guide, and the brief points at it.
 
 **Screenshot clips.** A capture of an element that opens a popup (listbox, menu, modal) clips to
@@ -491,17 +441,14 @@ When a run ends with images to judge (before/after pairs, "is this capture blank
 classifiers are their own lanes, and they are cheap only if you keep them small:
 
 - **Rubric, not skill.** Each child gets a ≤1 KB rubric (the verdict labels, what each means,
-  the one fact the pair must show) plus absolute image paths. All 21 pair children of one
-  run read a 15 KB browser skill first, about 370 KB of context spent on nothing.
-- **Cheap pass, then Sol.** Luna shortlists and classifies. Sol re-reviews every unclear or
-  disagreeing pair before a verdict reaches a PR. Luna picks images well and calls verdicts
-  generously (`agent-routing` has the numbers).
-- **Schema-capped output.** `outputSchema` with one verdict + a one-line reason per pair. One
-  eval child returned 106 KB of text.
+  the one fact the pair must show) plus absolute image paths.
+- **Cheap pass, then Sol.** Luna shortlists and classifies; Sol re-reviews every unclear or
+  disagreeing pair before a verdict reaches a PR (`agent-routing` has the numbers).
+- **Schema-capped output.** `outputSchema` with one verdict + a one-line reason per pair.
 - **The capture driver never opens a PNG.** It asserts DOM `facts` with `expect` and writes
-  screenshots as evidence only. That held on 2026-09-23: 174 calls, zero image reads.
-- **Model ids come from the registry, not memory.** A hand-written pairs workflow ran Sol on
-  the retired `gpt-5.6-sol`; grep the script for `gpt-5.6` before launch.
+  screenshots as evidence only.
+- **Model ids come from the registry, not memory.** Grep a hand-written workflow for retired ids
+  (`gpt-5.6`) before launch.
 
 ## 4. Kickoff prompt
 
@@ -523,23 +470,15 @@ and sonnet (`Agent`, `model: sonnet`), because another family misses different t
 of their findings goes through one ruling pass. Not at low: sol's factual error rate is about twice as high there (§3a Effort).
 `pi-drive/scripts/pi-dry-run.sh <workdir> <prompt-file> <out.md>` does it with no write, edit
 or bash tool, so read-only is enforced; pass `bash` as the fifth argument only when the walk
-must check git refs or installed tools. A packet rehearsal cost $0.10 at low on 2026-09-29. When pi's login is down, sonnet
-runs alone. **Sol against sonnet, one frozen brief, same prompt (2026-09-29).** Sol at high: 119 s, 39 tool
-calls, $0.40. Sonnet: 144 s, 12 tool calls. Of 27 real findings, 13 were found by both, 7 by
-sol only and 7 by sonnet only, so each alone caught about three quarters. Neither was the
-better one: sol alone found that a failed cell and a model mismatch pass silently; sonnet alone
-found that the batch script ran two at a time, which would have broken the pairing the decision
-rule rested on, and that nothing checked the effort actually applied. They miss different
-things, so both run on every brief (owner, 2026-10-08, gauntlet R1; reverses the 2026-09-30
-"sol only" cut). **Rehearse again after
-the one-voice rewrite** (sub-campaign 4: a $0.30 sol rehearsal caught a rewrite telling a `-ne`
-driver to spawn its own verifier). The sequence that worked: draft, rulings, plan check and dry
-run in parallel, rulings on findings, one-voice rewrite, **one** rehearsal (below), hand off. The files are in
-`~/code/dekopon/effort-tuning-design/execution/rehearsal/`.
+must check git refs or installed tools. When pi's login is down, sonnet
+runs alone. They miss different things (of 27 real findings on one frozen brief, 13
+were found by both, 7 by each alone, 2026-09-29), so both run on every brief (owner,
+2026-10-08, gauntlet R1; reverses the 2026-09-30 "sol only" cut). **Rehearse again after
+the one-voice rewrite**. Sequence: draft, rulings, plan check and dry run in
+parallel, rulings on findings, one-voice rewrite, **one** rehearsal (below), hand off.
 The passes are the **ops rehearsal** below, the **invention audit** and the **scenario walk**. The rehearsal runs
 **after** any adversarial pass and re-verifies each amendment that pass applied against the
-source: amendments are claims, not facts. Once an adversarial reviewer declared a real
-helper nonexistent and rewrote a decision around it; the rehearsal found it in the source.
+source: amendments are claims, not facts.
 
 **Invention audit** — per lane, an agent given only that lane's brief and the design sections it
 cites answers: "list every name, type, value, path, default, error shape, ordering and
@@ -550,9 +489,7 @@ every call site in that lane that reaches a crate another lane owns, or "none". 
 means a seam signature in the brief and a stage boundary between the two lanes. Every item goes
 into the decisions table with a value, or
 becomes an explicit "editor's choice within these bounds" line, or moves the lane to a later
-stage. The audit is done when a rerun returns nothing. This is where the asset run's three
-stops (an undefined interface type, an unnamed config key, an A↔C seam) would have surfaced for a
-few cents instead of a stalled run.
+stage. The audit is done when a rerun returns nothing.
 
 **Scenario walk** — §0's end-to-end scenario against the design: which rule each step touches,
 whether the rules compose, with `file:line`.
@@ -589,9 +526,7 @@ gates, not findings. **Don't pre-chew:** writing the command for a driver's call
 author what the driver should derive. Spell a command out only where a literal mistake is
 irreversible or public (tag push, production delete, secret read) or the step is the only strict
 gate; otherwise give outcome plus constraints. Re-rehearse only the changed files, and only if a
-fix touched an irreversible or public step; then hand off. (Sub-campaign 2 re-plan, 2026-10-05:
-rehearsal patches hand-wrote the import and smoke commands, and the next rehearsal found `jq .id`
-where the API returns `sessionId`, a bug a driver reading `openapi.yaml` would not have made.)
+fix touched an irreversible or public step; then hand off.
 
 Checklist the rehearsal must confirm:
 
@@ -619,9 +554,7 @@ design's limits table and the guidelines checklist; never the stage reports, ver
 measurements. It is told what a finding must contain (file:line, concrete scenario, wrong
 outcome) and to write unprovable worries into a five-item list, which is what keeps a fable pass
 from returning twenty "considers". Output is one file under `execution/`, verdict first, and the
-final message is the verdict line plus counts. First run: PR #305, 15 minutes, ~240k tokens,
-one high (a per-request ceiling the design stated and no per-stage verifier had checked) and
-four lows, after a gpt verifier per stage and a gpt whole-PR reviewer had both passed it.
+final message is the verdict line plus counts.
 Cross-stage limits are exactly what per-stage review cannot see; so is the shape of live state
 (existing volumes, data, permissions) that a fresh fixture never has. This review is the one
 cost never cut: on 2026-09-27 every real gap across a multi-PR campaign came from it. The
@@ -630,108 +563,19 @@ gets the fix set via `pi-drive`'s `templates/FIX-BRIEF.md`.
 
 ## 6. Traps, each seen once
 
-- (2026-09-29) Plan-check findings appended to the brief as "Amendments from the plan check". A
-  reader going top down acts on the superseded text first; a rehearsal caught a would-be merge
-  to main. After a plan check, rewrite the brief in one voice and delete what it replaced.
-- (2026-09-29) An eval's judges cost more than its subjects: $58 of Claude scoring and review
-  against about $29 of pi runs, and $52 went to protocol design before any run. Fix the judging
-  budget first, and give the scoring to a second family so a Claude subject is not judged only
-  by Claude.
-- Handing off a *design* instead of a brief: the implementer invents the protocol fields, the
-  interface, the release order — differently from what was decided.
-- "Additive" claims that aren't: changing an existing interface function's types re-pins every consumer.
-- Editors that run cargo: eight overlapping builds took the disk to zero once. Only the
-  gate-runner builds; editors' bash is for git/grep.
-- The lane that skipped verification held all the must-fixes. Every lane gets a fresh verifier,
-  and nothing relaxes it later: it is the cheap part, and trust shows up as fewer FIX REQUIRED.
-- Six of nine questions at one stop were sound proposals the editor was forbidden to act on. The
-  stop rule must name contract surfaces; everything inside a crate is the editor's.
-- Paraphrased failures: the gate-runner returns the verbatim tail and names the lane, or says
-  `unknown` and throws — the orchestrator routes by hand.
-- Whole-file reads of multi-thousand-line files, Python-heredoc edits, and parking a big context
-  through a multi-hour CI wait are the three ways a run burned 100M+ tokens.
-- "Fetch fixtures in the PR worktree" came before "create the PR worktree" — the run stopped.
-- The kickoff never said its cwd; from the brief's own directory every path failed.
-- "Chart bump" was both a lane task and a stop condition — the run stopped.
-- The brief said sccache; the machine said kache — the run stopped. Point, don't restate.
-- The wrapper example in the brief was the exact env var the machine rule forbids — contradiction
-  inside one sentence.
-- The host wrapper does not exist inside a Linux container — say containers build plain.
-- "Run the harness" needed a rebase first (an edit, which the orchestrator may not do), and the
-  patch carried a hunk from another repo.
-- The acceptance grep for a common word matched the brief's own new field and a third party's API.
-- The reviewer's prompt allowed spawning; its frontmatter didn't.
-- Provider ids: `openai-codex/gpt-6-sol`, not `openai/…`. Read them, don't guess.
-- An expired Anthropic login killed a gpt run because two agent files still said Anthropic.
-- Editors forbidden cargo cannot update `Cargo.lock`; the first `--locked` check on the merged
-  branch refuses. The assembler owns the minimal lock update (`cargo check -p` without
-  `--locked`, diff must be additions only), never `generate-lockfile`.
-- pi-subagents `resume` inherits the original child's `output` path; a resumed fix step in a
-  workflow collides with its editor's artifact. Give every resumed step its own `output`.
-- Seven stops on one swarm: each was a different category, and each fix was a patch on the
-  previous patch. After the third stop, change the shape, not the brief.
-- The design's interface used reserved keywords and an invalid variant; nobody had run its
-  parser on it. Parse the contract before the brief exists.
-- "A config key for the path" and "one byte budget" — no key names, no values, no
-  mandatory/defaulted call. The editor proposed; the run stopped. Name every key.
-- Lanes A (protocol types) and C/D (their consumers) started in parallel from the same base; C
-  asked for "one published seam" and stopped. Stage by consumption, write the seam.
-- "Fresh open by path" and "path-less output" were each correct and contradicted on the second
-  edit of the same asset. A scenario walk finds it; a per-rule review does not.
-- The measurement stage ran with a lock regenerated broadly and upgraded unrelated crates; the
-  accepted baseline had to be redone from the base lock with a minimal update. Say "restore the
-  base lock, let cargo add only the harness's entries, diff versions against base" in the brief.
-- (#321) Codex unknown events and items became fatal where `main` ignored them; the contract said
-  "reject unknown required semantic events" and the driver's own test asserted the regression.
-- (#321) The SSE framer rescanned and memmoved the partial line on every chunk; Codex
-  `response.completed` carries the whole output on one growing line, so it was quadratic in task
-  length. Per-item linear scans in the reducers did the same. Three verify/review passes missed
-  both; only a cross-stage read follows one long stream end to end.
-- (#321) The example's loopback mode could fall back to the real credential file.
-- (#321) Redaction that blanked the whole body on any control char or at the read cap, byte
-  budgets on error excerpts, `Option<i64>` token counts "so invalid values join semantic
-  problems", and production JSON keys sorted so a golden survived `serde_json/preserve_order`
-  arriving through a dependency's feature unification. Each is a row in §Don't write this.
-- (#321) Timing assertions in tests flake on CI runners and slow hosts; assert structure and order.
-- (#321) CHANGELOG `Fixed` entries for bugs the same PR introduced; `Fixed` is for released code.
-- `$SHA:crates/...` in zsh: `:c` is a modifier and eats the path. Use `${SHA}:path`.
-- The planner's seam sketch said `Result<_, ProtocolError>` where the real client returns
-  `ClientError` with execution-uncertainty semantics, and named a type that already existed as a
-  re-export. Fact-check seams; never write a signature from memory.
-- A brief mandated a platform-only flag unconditionally and the run stopped on the other
-  platform. State the platform matrix per mechanism.
-- Stage-1 whole-workspace gate on a change that widens a signature consumed by stage 2: red by
-  construction. Scope stage gates to the stage's crates.
-- A cheap invention audit after a fable design + fable review + planner pass still found ~50
-  choices and two planner errors. It is the cheapest check in the pipeline; never skip it.
-- `cargo package --workspace` run locally at two heads of the same unreleased version: Cargo's
-  tmp-registry fingerprint stays Fresh across re-extraction and the verify step compiles against
-  the old rlib. Delete `target/debug/.fingerprint/<crate>-<hash>` (the tmp-registry unit's hash)
-  and `target/package/`; not a kache fault though the diagnostics print `/kache/...`. Better:
-  don't run packaging locally before the last stage (D19 in the asset packet).
-- `#303` (workspace-wide `deny(unwrap_used)`) merged mid-run under ~9k unrebased lines. Rebase
-  per stage.
-- A 1200 s foreground tool deadline killed the driver mid-stage-2; the recovery cost a turn and a
-  tarball of partial state. Background + log file for anything over a few minutes.
-- (2026-09-20 fleet) A bare `curl` to crates.io returns 403 from the edge; a verification step
-  written that way reports a successful publish as broken. Send a descriptive `-A` User-Agent.
-- `pgrep -fl 'cargo|rustc'` as a "no foreign builds" gate matches any process whose environment
-  holds `.cargo/bin` in `PATH`. Use `pgrep -x`.
-- A bare `gh pr create` prompts for the body and hangs a non-interactive driver; always
-  `--title … --body-file …`.
-- A re-pin brief must name every pinned crate, dev-dependencies included; one that names only
-  the obvious family leaves the rest behind and the tests fail to compile against the new API.
-- A build script that pins hashes of contract files panics on drift. Put "read `build.rs` if
-  present" in a refresh child's read list.
-- A release job with a fixed timeout cannot absorb tests that recompile a component per test.
-  Fix the tests (one compile cache per test binary), not the timeout.
-- (2026-10-03) A consumer's adversarial review found its dependency's defect: the consumer's review
-  showed the dependency logging every clock read, which the consumer's per-row clock use turned
-  into millions of records per query. No core-only review could see it. When a
-  unit consumes another unit's new API, its adversarial review reads the dependency's diff too,
-  and the dependency's release waits for it.
-- (2026-10-03) A local build that differs from CI by platform (a Mac toolchain quirk CI on Linux
-  never hits) belongs in the packet's `gate.sh`, copied from the repo's agent guide.
-- (2026-10-03) A sol supervisor ran driver turns in the foreground; the bash tool's 3600 s timeout
-  cut one off and cost a continue turn. The launch-and-wait block in `SUPERVISOR.md` is the pattern;
-  for a unit whose gate builds a large component, the turn tripwire goes to 120 minutes.
+The full list with its receipts is in [HISTORY.md](HISTORY.md). The ones not covered above:
+
+- Plan-check findings appended to the brief as "Amendments" are acted on top down, superseded text first. After a plan check, rewrite the brief in one voice and delete what it replaced.
+- Editors forbidden cargo cannot update `Cargo.lock`; the first `--locked` check on the merged branch refuses. The assembler owns the minimal lock update (`cargo check -p` without `--locked`, diff must be additions only), never `generate-lockfile`. A measurement stage restores the base lock and lets cargo add only the harness's entries.
+- pi-subagents `resume` inherits the original child's `output` path; give every resumed step its own `output`.
+- After the third stop on one swarm, change the shape, not the brief.
+- `cargo package --workspace` at two heads of one unreleased version compiles against the old rlib: delete `target/debug/.fingerprint/<crate>-<hash>` and `target/package/` (not a kache fault though diagnostics print `/kache/...`). Better: no local packaging before the last stage.
+- Anything over a few minutes runs in the background to a log file: a 1200 s foreground deadline killed a driver mid-stage.
+- A bare `curl` to crates.io returns 403: send a descriptive `-A` User-Agent. `pgrep -fl 'cargo|rustc'` as a "no foreign builds" gate matches any process with `.cargo/bin` in `PATH`: use `pgrep -x`. A bare `gh pr create` hangs a non-interactive driver: always `--title … --body-file …`. In zsh `$SHA:crates/...` eats the path: use `${SHA}:path`.
+- A re-pin brief names every pinned crate, dev-dependencies included. A build script that pins contract hashes panics on drift: put "read `build.rs` if present" in a refresh child's read list.
+- A release job with a fixed timeout cannot absorb tests that recompile a component per test: fix the tests (one compile cache per test binary), not the timeout.
+- When a unit consumes another unit's new API, its adversarial review reads the dependency's diff too, and the dependency's release waits for it.
+- A local build that differs from CI by platform belongs in the packet's `gate.sh`, copied from the repo's agent guide.
+- A sol supervisor's foreground driver turn is cut off by the bash tool's 3600 s timeout; use the launch-and-wait block in `SUPERVISOR.md`, and for a large-component gate raise the turn tripwire to 120 minutes.
+- Fact-check seams; never write a signature from memory. State the platform matrix per mechanism. Scope stage gates to the stage's crates.
+- Never skip the invention audit: after a fable design, fable review and planner pass it still found ~50 choices and two planner errors.

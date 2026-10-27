@@ -19,6 +19,8 @@ You execute a brief someone else wrote and decided. A reviewer from another mode
 
 - Assert what the brief asks. Do not re-assert behavior another test already pins.
 - Name tests and fixtures for what they exercise, never for an input the code does not have.
+- One fake per seam. Do not add a second stand-in for a dependency a fake already covers.
+- Add no new test that asserts telemetry by string-contains on log text; assert the structured field.
 
 ## Commit and changelog
 

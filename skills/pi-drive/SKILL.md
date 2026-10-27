@@ -1,6 +1,6 @@
 ---
 name: pi-drive
-description: Drive a pi coding-agent session from Claude Code. Claude coordinates a cheap driver (gpt-6-sol) turn by turn — issuing stage prompts, reading only the driver's last message and decision files, answering its stops from the decisions file, and escalating to Xavier only for the four hard stops; Fable reads PRs and never runs through pi. Two paths — print mode (one process per turn, simplest) and RPC mode (one long-lived process, can steer mid-turn). Use when Xavier says "drive the pi", "run the driver from here", "supervise the pi session", "super high level fable with cheap gpt", or right after a pi-subagent-plan handoff is written and he says yes to being driven. Claude Code only.
+description: Drive a pi coding-agent session from Claude Code. Claude coordinates a cheap driver (gpt-6-sol) turn by turn, reads only its last message and decision files, answers its stops from the decisions file, and escalates to Xavier only for the four hard stops; Fable reads PRs and never runs through pi. Print mode (default) or RPC mode. Use when Xavier says "drive the pi", "run the driver from here", "supervise the pi session", or right after a pi-subagent-plan handoff when he says yes to being driven. Claude Code only.
 argument-hint: "[brief path] [workdir] [print|rpc]"
 arguments: [brief, workdir, path]
 disable-model-invocation: false
@@ -17,30 +17,19 @@ files, answer what it stopped on from the brief's decisions file, and ask Xavier
 four hard stops (forking or patching a dependency, moving a contract away from the decisions
 file, reversing a keep/delete, owner-only actions). Everything else you decide and record.
 
-Why: nine stops on the asset run each cost a day because the loop ran through Xavier. Through
-this skill a non-hard stop costs minutes, and fable's context stays small because it reads
-tails, never transcripts.
-
 ## Which model drives
 
 `openai-codex/gpt-6-sol` at `medium`, by the owner's decision of 2026-09-30 ("switch to gpt-6-sol
-if it really is similar quality"): on the steering eval's effort block it matched `gpt-6.1-sol` at
-`medium` on hidden tests and cost ($0.19 a run) and was 1.85 times faster; its blind score was
-1.5 lower, all of it on pipe-type shape. Sub-campaign 4 ran A3-A13 on it (≈ 8,000 lines). Where a
-step sets a spine's shape, an Opus agent builds it instead (§A sol supervisor, sub-campaign 4).
+if it really is similar quality"):. Where a step sets a spine's shape, an Opus agent builds it instead.
 - Use `gpt-6-sol:high` for stage verification, fact-checking, supervision, dry runs and brief checks.
 - Keep implementation on Sol medium: Xavier reaffirms equivalent work/token use, ~30% faster.
-  Do not conflate that observation with the 1.85x receipt above or infer universal speed gains.
   Do not switch to 6.1 merely because it is newer.
 
 ## Which model supervises
 
 Claude decides and reviews; sol does and watches. The watch loop, relaunches, read-only
 verifications and stage prompts are mechanical and the rules live in the prompt, not in the
-model. On 2026-09-29 that loop was the largest Claude line of a $356 campaign: 24 opus
-supervisor sessions cost about $70, against about $60 of pi for the drivers that wrote the
-production code. D took three supervisors and C, J, T and V two each, and every handoff re-read
-the same briefs.
+model (2026-09-29: 24 opus supervisor sessions cost about $70 of a $356 campaign).
 
 So the supervisor is the cheapest tier that has been shown to do it:
 
@@ -55,9 +44,7 @@ So the supervisor is the cheapest tier that has been shown to do it:
    adversarial PR review. Use fresh Sol high for bounded brief checks and post-rewrite rehearsals.
 
 The split that works: cheap driver and cheap verifier per stage, one expensive fresh reviewer
-per PR before merge; that review is never cut for cost (2026-09-27: $97 of pi for −2,250 lines,
-and every real gap came from the fable reviewer; 2026-09-29: 19 fable reviews and plan checks
-for about $50 found every P1). What is cut: a Claude shape review after every stage and a
+per PR before merge; that review is never cut for cost. What is cut: a Claude shape review after every stage and a
 counterexample adversary, neither of which paid in the steering eval. A fix is re-checked by a
 fresh pi sol verifier against the finding's Fix line; it gets a second fable pass only when it
 moved a contract surface or answered a P1. Say in the first message which tier is supervising,
@@ -105,11 +92,6 @@ an opus supervisor's cost.
   reaches past the decision it cites. Prompts that carry a coordinator ruling quote the ruling
   file, or the driver refuses the fix for lack of authority.
 
-Receipts: 2026-09-29 pilot 1 passed (two stages, $0.40 supervisor); pilot 2 failed (a scope
-question answered instead of handed back, because the gate leaked scope, and a driver launched
-with the `process` tool died); pilot 3 passed on the rewritten template. 2026-09-30 sub-campaign
-4 (A2-A13, 9,400 lines) passed with zero decisions of the supervisors' own; a session carried
-across five resumes grew to $7.
 - **Fix rounds split by difficulty (owner, 2026-10-01).** The verifier tags every blocking
   finding `hard` or `easy`. **hard:** a type or trait change across crates, concurrency or
   ordering, cancellation or shutdown, a credential path. **easy:** a missing or weak test, an
@@ -125,26 +107,20 @@ across five resumes grew to $7.
      wrong is a stop and a hand-back. Then one re-check scoped to both commits.
   3. That re-check `FIX REQUIRED` → hand back; the coordinator routes it to an Opus fix agent.
   One writer at a time in a worktree, always: the next writer starts only after the previous
-  writer's commit exists and its process has exited. Why: in sub-campaign 5 every pi step failed
-  its first verify, and sending every second round to Opus put five Opus fix agents on what were
-  mostly missing tests; two of the five rounds had no hard finding at all. A mis-tag costs one pi
-  turn, because the re-check catches it and step 3 routes it to Opus.
+  writer's commit exists and its process has exited. A mis-tag costs one pi turn, because the
+  re-check catches it and step 3 routes it to Opus.
 - **Keep scope out of the packet's machinery.** A gate or acceptance check that names which
   files a PR may touch answers scope questions for the supervisor. Put scope in the decisions
   file, where an answer has to be quoted.
 - **Waiting on the supervisor, from Claude Code.** The background task's own completion notice
   is the wake-up. A `pgrep` started right after launch matches nothing and fires early.
-- **A dry run does not see the tool environment.** Neither dry run caught the `process` tool or
-  the leaked scope: both live in what pi loads and what the gate implies, not in the brief's
-  steps.
 - **Verdict lines.** pi-subagents appends `Mission: <id> (completed)` to a child's returned
   text, so a verify file saved verbatim does not end with its verdict. The verdict is the last
   line that is exactly `ACCEPT`, `READY` or `FIX REQUIRED`; `pi-stage-check.sh` reads it that
   way and refuses a head whose newest review says `FIX REQUIRED` (it used to check only the
   `Reviewed:` SHA).
-- **Worktrees.** `git worktree add <path> -b <branch> origin/main` makes the branch track
-  `origin/main`, so a bare `git push` targets main. Run
-  `git -C <path> branch --unset-upstream` right after creating it.
+- **Worktrees.** `git worktree add <path> -b <branch> origin/main` tracks `origin/main`: run
+  `git -C <path> branch --unset-upstream` right after, or a bare `git push` targets main.
 
 ## Before the first turn
 
@@ -172,14 +148,12 @@ scripts/pi-turn.sh <workdir> <session-id> openai-codex/gpt-6-sol:medium <log.jso
 
 Run it with the Bash tool, `run_in_background: true`, timeout at the maximum — **never `nohup … &`
 from a Bash call**: only the harness's background runner notifies you on exit, and a `nohup`
-launch leaves the exit to the next watch tick (four relaunches on the 0.18.0 fleet each waited a
-full 15-minute tick for that reason). Turn 1's prompt is the brief's kickoff verbatim
+launch leaves the exit to the next watch tick. Turn 1's prompt is the brief's kickoff verbatim
 (`DRIVER.md`). When it exits, read
 `scripts/pi-tail.sh <log.jsonl> [N=3] [chars=700]`: the last N prose messages, each preceded by
 the tool calls the driver issued before it (name + short arg summary), fenced code collapsed to
 `[code: N lines]`, the middle of anything over the cap elided. Start with N=3 at 700 and widen
-only when a message's elision hides the decision. `scripts/pi-last.sh <log.jsonl>` is the blunt
-form (tool tally + final text up to 6k) for when one message is all there is. Then:
+only when a message's elision hides the decision. `scripts/pi-last.sh <log.jsonl>` is the blunt form. Then:
 
 - **It finished the stage** → next prompt: "Stage N accepted. Continue with stage N+1 of the
   brief." Keep prompts to two sentences; the brief carries the content.
@@ -195,15 +169,13 @@ form (tool tally + final text up to 6k) for when one message is all there is. Th
   the stage's changed lines against the ~1.2k cap and whether HEAD is the SHA the newest
   verifier/reviewer file names on its `Reviewed:` line; `verdict=NOT OK` is not accepted (send
   the "Unreviewed or oversize head" prompt from `templates/STAGE-PROMPTS.md`). A driver's report
-  is a claim, not a receipt. #321 shipped a 412-line commit after its last review and pushed over
-  two `FIX REQUIRED` verdicts; this check would have caught both.
+  is a claim, not a receipt.
 - **It met the letter but missed the target** (a 2% cut against a ~30% brief; survivors kept
   "when unsure") → redo the stage on the same branch with the per-unit expectation spelled out
   (`pi-subagent-plan` §1.7). A timid PR is never merged as progress.
 
 Same `--session-id` every turn keeps its context; the first turn logs `No project session found
-… creating` to stderr, which is expected. Verified 2026-09-19: print smoke turn returned the text
-and `agent_settled`; RPC `get_state` round-tripped. Session files live under `~/.pi/agent/sessions/`;
+… creating` to stderr, which is expected. Session files live under `~/.pi/agent/sessions/`;
 never read them whole. Print mode cannot steer mid-turn; if you must, `kill $(lsof -t <log.jsonl>)`
 ends the turn and the next prompt says what changed. A running pi shows in the process list as
 `pi` with no arguments, so `pgrep -f` or `pkill -f` on its session id matches nothing (checked
@@ -224,8 +196,7 @@ scripts/pi-rpc-stop.sh  <state-dir>
 
 Wake-up: the `Monitor` tool on `<state-dir>/events.jsonl` for a line containing
 `"type":"agent_settled"` (not `agent_end`, which can be followed by a retry or a queued
-continuation). Read with `scripts/pi-last.sh <state-dir>/events.jsonl`. Startup emits
-`extension_ui_request` lines with `method: setWidget`; those need no answer. A `select`, `confirm`
+continuation). Read with `scripts/pi-last.sh <state-dir>/events.jsonl`. A `select`, `confirm`
 or `input` request does (`pi-rpc-send.sh <state-dir> ui <request-id> <value|confirm|deny>`), or
 it times out and resolves to nothing, which usually means the driver proceeds without it. Use RPC when you expect
 to redirect a running stage (a wrong assumption you can see in the tool tally), or when turn
@@ -240,8 +211,7 @@ remember to stop; `pi-rpc-stop.sh` at the end of the session.
 - **A print-mode turn ends the moment the driver stops generating, even if an async `subagent`
   child or a background gate it launched is still running.** The child is orphaned (a child that
   was polling CI simply stops polling), the process exits, and you get a "turn ended" with no
-  report and no question. Seen five times on the 0.18.0 fleet (file, gpt-image, asset, python
-  twice). Two defences, both mandatory: every stage prompt carries the line *"do not end your
+  report and no question. Two defences, both mandatory: every stage prompt carries the line *"do not end your
   turn while a subagent or background job is still running: wait on it with one blocking command
   that returns when it finishes, never repeated status calls"* (a blocked call is free; every
   poll is a full read of the driver's context), and a turn that ends mid-stage is relaunched at once with *"your previous turn
@@ -277,17 +247,13 @@ remember to stop; `pi-rpc-stop.sh` at the end of the session.
   batching).
 - **Many independent repos = many pi sessions, not one driver with a workflow script.** One
   brief template with the repo name filled in, one session id per repo, one log per repo, the
-  watch loop checks each log in one `for` loop. The 0.18.0 fleet's workflow-script fan-out lost
-  children three different ways (parent turn ended, a transient Codex error, a stop routed
-  through the parent); the four parallel sessions that replaced it (F9) had none of those.
+  watch loop checks each log in one `for` loop.
 - A turn that writes no `session` event within seconds is blocked on stdin: pi waits on an
   inherited socket. `pi-turn.sh` redirects `< /dev/null` (added 2026-09-20 after a 22-minute
   stall); if you launch pi by hand, do the same. Check with `jq -r .type <log> | head -3`.
 - **Prompts go by file, never inline in argv.** Write every stage prompt to a file and pass its
   path; `pi-turn.sh` hands pi `@<abs path>` (changed 2026-09-23), which pi expands into a
-  `<file>` block. Long command lines are fragile under the sandbox (a capture run hit it;
-  the 100/300/600-byte ladder did not reproduce a hard limit), and the file block caches:
-  one test turn read 17,920 tokens from cache for 1,272 fresh ones. By hand:
+  `<file>` block. Long command lines are fragile under the sandbox, and the file block caches. By hand:
   `pi … -- "@/abs/prompt.md"`. Short literal text still works for one-liners.
 - Auth: an expired OpenAI login shows as an immediate exit with an error in `<log>.err`.
   Tell Xavier; do not switch models.
@@ -295,16 +261,13 @@ remember to stop; `pi-rpc-stop.sh` at the end of the session.
   `stopReason: error` and `WebSocket closed 1011`, then (on pi's auto-retry) `Incorrect API key
   provided: sk-svcac…`, is an OpenAI Codex outage, not our credential: pi never sends an `sk-` key
   on `openai-codex`, and `pi auth check` still says `ready`. Do not tell Xavier to log in again.
-  Read it with `jq -c 'select(.type=="message_end" and .message.role=="assistant") |
-  .message | {stopReason, errorMessage}' <log>`. Relaunch the same prompt once; if the second try
+  Relaunch the same prompt once; if the second try
   shows the same pair, check `https://status.openai.com/api/v2/summary.json` and **pause the run**:
   launch nothing until the Codex incident is gone from that feed for 5 minutes. Poll it in a
   background loop, not per turn. No smoke test before ordinary turns.
-- **A new model on its launch day runs slow and retries (2026-09-29).** Two of eight
-  `gpt-6.1-sol` runs auto-retried on `Codex SSE response headers timed out after 300000ms`,
-  `upstream connect error … connection timeout` and a Cloudflare 504 page; one turn took 708 s
-  where its neighbours took about 310 s. pi's retry succeeded each time, so this is not a stall
-  and not an outage: leave the turn alone. Count them with
+- **A new model on its launch day runs slow and retries (2026-09-29).** Auto-retries on
+  `Codex SSE response headers timed out`, `upstream connect error` or a Cloudflare 504 are not a
+  stall or an outage: leave the turn alone. Count them with
   `grep -c '"type":"auto_retry_start"' <log>`, and drop runs that retried from any wall-clock
   comparison.
 - **Say "back" conservatively.** One good reply during an incident means nothing: on 2026-09-25 a
@@ -325,37 +288,30 @@ remember to stop; `pi-rpc-stop.sh` at the end of the session.
 `scripts/pi-usage.sh <worktree>...` (or `--prefix <path>` for every worktree of one repo, plus
 `--since YYYY-MM-DD`) prints per-worktree driver sessions, input, cache-read and output tokens,
 driver cost, child count and child cost, and a total. It reads `~/.pi/agent/sessions/<slug>/`:
-the parent `*.jsonl` (assistant `usage.cost.total`) plus every pi-subagents child's
-`subagent-artifacts/*_meta.json` (`usage.cost`). Children are separate processes and never appear in the
-driver's own log, so summing the driver log alone undercounts; on the vm-runner core run the
-verifiers were ~14% of the total. It still works after `git worktree remove`, so reap freely.
-`--prefix` matches on the slug, so `~/code/proj/proj` would also catch
-`proj-plugin-*`: name worktrees exactly when repos share a stem. `ccusage pi daily` is
-right for whole-machine daily totals but groups children by filename (`lane-verifier_transcript`,
-`session`) across projects, so it cannot attribute them to one effort. Claude-side spend (fable
-reviews, sonnet rehearsals) is not in these files: that is `ccusage claude session`.
+the parent `*.jsonl` plus every pi-subagents child's `subagent-artifacts/*_meta.json`. Children
+never appear in the driver's own log, so summing the driver log alone undercounts. It still works
+after `git worktree remove`, so reap freely. `--prefix` matches on the slug: name worktrees
+exactly when repos share a stem. `ccusage pi daily` suits whole-machine totals but cannot
+attribute children to one effort. Claude-side spend is not in these files: that is
+`ccusage claude session`.
 
 A dry run through `pi-dry-run.sh` runs with `--no-session`, so `pi-usage.sh` never sees it: its
 cost is the `cost_usd=` on the line the script prints.
 
 **pi's dollars are only as good as its registry.** A model id the installed pi does not list is
 priced at the provider default: on `openai-codex` that was `gpt-5.5` ($5 / $0.50 cached / $30),
-so the `gpt-6.1-sol` eval logged $0.66 a run for $0.21 of tokens and would have fired every
-tripwire three times early. Before trusting a number for a new model, check
-`pi --list-models <id>` and reprice the logged tokens at the published rates
-(`~/code/dekopon/steering-eval/bin/reprice.py` does it from `log.jsonl`). pi prices are list
-prices; the GPT side runs on Xavier's subscription, so they are notional.
+so a new model's runs log inflated cost. Before trusting a number for a new model, check
+`pi --list-models <id>` and reprice the tokens (`~/code/dekopon/steering-eval/bin/reprice.py`).
+pi prices are list prices; the GPT side runs on Xavier's subscription, so they are notional.
 
 **Report Claude spend by role, not only by model.** A per-model total hides where it went.
 Group the day's transcripts under `~/.claude/projects/<project>/` by each subagent's
 `meta.json` (`agentType`, `description`), deduplicate usage by message id, and scale to the
-ccusage totals. On 2026-09-29 that showed supervisors at 29% of Claude spend and the coordinator
-session at 17%, where the handoff had said the coordinator "stayed small".
+ccusage totals.
 
 Run it between stages, unasked, and read it beside the diff: spend out of line with diff size,
 or a tool tally that is mostly polling, means the driver is stuck on a chokepoint, not working
-([LAWS.md](../../LAWS.md) §44–51 has the between-wave checks). The 2026-09-27
-supervisor did not look until Xavier asked.
+([LAWS.md](../../LAWS.md) §44–51 has the between-wave checks).
 
 ## Unattended: the watch loop (2026-09-20)
 
@@ -402,14 +358,11 @@ Send the driver the verbatim error line, never a paraphrase.
 
 Things a literal driver stops on that are not stops (answer from these, record, continue):
 `/kache/...` in a rustc source-location note is the compiler-diagnostics path remap, never a
-kache failure (the 0.18.0 fleet parked on it once); a `Codex error: Unable to verify … access`
+kache failure; a `Codex error: Unable to verify … access`
 is transient, resume or respawn the child on the same model; an attestation 404 is a stop only after the repo's release docs say which artifact is attested; a red local test after a fixture
 bump in a fresh worktree is a stale gitignored fixture until CI disagrees: refetch, then compare.
 
-## Receipt: the 0.18.0 release and fleet drive (2026-09-20)
-
-Core, site and fifteen providers in one ~9 h day, under three of it code; drivers wrote 100+
-per-step evidence files. Ask for one report per stage and no per-step receipts.
+Ask for one report per stage and no per-step receipts.
 
 ## One-turn fix session (fresh pi, review-driven)
 
@@ -424,8 +377,7 @@ keys, dependencies → blocker file instead; no shims, no ignored tests); the §
 patterns and forward-compat default from `pi-subagent-plan/templates/DRIVER.md`; scoped tests
 while iterating, one full gate in the background to a log under `execution/`; one conventional
 commit whose body says why (no D-numbers, no local paths), one fresh verifier, push only on
-`ACCEPT`, `gh pr checks --watch`, at most two CI rounds; the report fields. First use: PR #305's
-`fable-review-2026-09-20.md`, session `fable-fix-2026-09-20`.
+`ACCEPT`, `gh pr checks --watch`, at most two CI rounds; the report fields.
 
 ## Offer it
 
