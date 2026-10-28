@@ -243,11 +243,23 @@ def check_effort(ctx, model, effort):
     """Refuse an effort the model does not advertise; the server silently accepts any value."""
     if effort is None or ctx.args.dry_run:
         return
-    rows = do_rpc(ctx, "model/list", {"limit": 100}).get("data", [])
+    def malformed(field):
+        return CloudError(f"model/list returned an invalid {field}; cannot check --effort", outcome="read-failed")
+    result = do_rpc(ctx, "model/list", {"limit": 100})
+    rows = result.get("data") if isinstance(result, dict) else None
+    if not isinstance(rows, list):
+        raise malformed("data array")
+    if not all(isinstance(r, dict) for r in rows):
+        raise malformed("model object")
     row = next((r for r in rows if (r.get("model") == model if model else r.get("isDefault"))), None)
     if row is None:
         raise CloudError(f"model/list has no {'model ' + repr(model) if model else 'default model'} to check --effort against")
-    supported = [o if isinstance(o, str) else o.get("reasoningEffort") for o in row.get("supportedReasoningEfforts", [])]
+    options = row.get("supportedReasoningEfforts")
+    if not isinstance(options, list):
+        raise malformed("supportedReasoningEfforts array")
+    supported = [o.get("reasoningEffort") if isinstance(o, dict) else o for o in options]
+    if not all(isinstance(o, str) for o in supported):
+        raise malformed("supportedReasoningEfforts entry")
     if effort not in supported:
         raise CloudError(f"--effort {effort!r} is not supported by {row.get('model')}; supported: {', '.join(map(str, supported))}")
 
@@ -303,7 +315,7 @@ def create_job(ctx, args):
                 result = ctx.call(rpc, step["method"], params)
                 if step["method"] == "turn/start":
                     turn = result.get("turn") if isinstance(result, dict) else None
-                    if not isinstance(turn, dict) or not isinstance(turn.get("id"), str):
+                    if not isinstance(turn, dict) or not isinstance(turn.get("id"), str) or not turn["id"]:
                         raise CloudError("turn/start returned no valid turn ID; inspect the known thread before retrying", outcome="unknown")
                     ctx.receipt.update(stage="turn-admitted", turn_id=turn["id"])
             return {"receipt": ctx.receipt, "note": "Admission is not successful completion; poll this thread ID"}

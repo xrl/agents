@@ -191,15 +191,17 @@ class CliTests(unittest.TestCase):
             self.assertNotIn("approvalPolicy", params)
             self.assertEqual(requests[-1]["params"]["input"][0]["text_elements"], [])
 
-    def _effort_peer(self, echo, efforts=("low", "medium", "xhigh")):
+    def _effort_peer(self, echo, efforts=("low", "medium", "xhigh"), models=..., turn=None):
         def reply(req):
             if req["method"] == "initialize":
                 return {"result": {}}
             if req["method"] == "model/list":
+                if models is not ...:
+                    return {"result": models}
                 return {"result": {"data": [{"model": "fixture-model", "isDefault": True, "supportedReasoningEfforts": list(efforts)}]}}
             if req["method"] == "thread/start":
                 return {"result": {"thread": {"id": "created-thread", "model": "fixture-model", "reasoningEffort": echo}}}
-            return {"result": {"turn": {"id": "turn-1"}}}
+            return {"result": {"turn": {"id": "turn-1"} if turn is None else turn}}
         return SocketPeer(reply)
 
     def _create_with_effort(self, peer, effort, *flags):
@@ -234,6 +236,25 @@ class CliTests(unittest.TestCase):
         code, lines, methods = self._create_with_effort(peer, "xhigh", "--write")
         self.assertEqual(code, 1)
         self.assertNotIn("turn/start", methods)
+        self.assertEqual(lines[-1]["receipt"]["thread_id"], "created-thread")
+        self.assertIn("reasoningEffort None", lines[-1]["error"])
+        self.assertIn("requested 'xhigh'", lines[-1]["error"])
+
+    def test_malformed_model_list_is_a_structured_refusal_with_no_write(self):
+        shapes = [None, {"data": None}, {"data": [None]}, {"data": [{"isDefault": True}]},
+                  {"data": [{"isDefault": True, "supportedReasoningEfforts": [None]}]}]
+        for shape in shapes:
+            with self.subTest(shape=shape):
+                code, lines, methods = self._create_with_effort(self._effort_peer("xhigh", models=shape), "xhigh", "--write")
+                self.assertEqual(code, 1)
+                self.assertIn("model/list returned an invalid", lines[-1]["error"])
+                self.assertEqual(lines[-1]["outcome"], "read-failed")
+                self.assertNotIn("thread/start", methods)
+
+    def test_empty_turn_id_after_create_is_unknown_outcome_with_thread_receipt(self):
+        code, lines, _ = self._create_with_effort(self._effort_peer("xhigh", turn={"id": ""}), "xhigh", "--write")
+        self.assertEqual(code, 2)
+        self.assertEqual(lines[-1]["outcome"], "unknown")
         self.assertEqual(lines[-1]["receipt"]["thread_id"], "created-thread")
 
     def test_echoed_effort_is_recorded_in_the_create_receipt(self):
