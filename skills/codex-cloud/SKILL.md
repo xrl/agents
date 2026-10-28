@@ -46,11 +46,13 @@ Put the prompt in a UTF-8 file: repo/ref, task, constraints and completion evide
 ```sh
 # Offline; use a config ID, not a name requiring catalog lookup.
 uv run "$CC" jobs create --environment-id 'ACCOUNT~asenvcfg_ID' \
-  --prompt-file /absolute/path/prompt.txt --title 'Specific task' --dry-run
+  --prompt-file /absolute/path/prompt.txt --title 'Specific task' --effort xhigh --dry-run
 
 # Only after authorization for this continuation:
-uv run "$CC" jobs continue THREAD_ID --prompt-file /absolute/path/followup.txt --write
+uv run "$CC" jobs continue THREAD_ID --prompt-file /absolute/path/followup.txt --effort xhigh --write
 ```
+
+Without `--effort` the model default applies (astra: `medium`); the campaign default for code builds is `xhigh`. Create checks the echo and refuses a mismatch before the turn; continue's effort is turn-only and unechoed.
 
 For an authorized creation, replace `--dry-run` with `--write`. To resolve a published config by name, replace `--environment-id ...` with `--environment 'my-project' --browser-session dekopon`.
 

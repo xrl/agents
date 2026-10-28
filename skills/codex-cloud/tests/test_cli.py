@@ -191,6 +191,58 @@ class CliTests(unittest.TestCase):
             self.assertNotIn("approvalPolicy", params)
             self.assertEqual(requests[-1]["params"]["input"][0]["text_elements"], [])
 
+    def _effort_peer(self, echo, efforts=("low", "medium", "xhigh")):
+        def reply(req):
+            if req["method"] == "initialize":
+                return {"result": {}}
+            if req["method"] == "model/list":
+                return {"result": {"data": [{"model": "fixture-model", "isDefault": True, "supportedReasoningEfforts": list(efforts)}]}}
+            if req["method"] == "thread/start":
+                return {"result": {"thread": {"id": "created-thread", "model": "fixture-model", "reasoningEffort": echo}}}
+            return {"result": {"turn": {"id": "turn-1"}}}
+        return SocketPeer(reply)
+
+    def _create_with_effort(self, peer, effort, *flags):
+        with tempfile.TemporaryDirectory() as temp:
+            p = pathlib.Path(temp, "prompt")
+            p.write_text("fixture")
+            with peer, mock.patch.object(cli.auth, "load_auth", return_value=("fixture-token", "fixture-account")):
+                code, lines = execute(["jobs", "create", "--environment-id", "asenvcfg_fixture", "--prompt-file", str(p), "--effort", effort, *flags])
+        return code, lines, [r["method"] for r in peer.requests]
+
+    def test_effort_dry_run_carries_thread_config_and_turn_effort_offline(self):
+        with tempfile.TemporaryDirectory() as temp:
+            p = pathlib.Path(temp, "prompt")
+            p.write_text("fixture")
+            with mock.patch.object(cli.auth, "load_auth", side_effect=AssertionError("no auth")):
+                code, lines = execute(["jobs", "create", "--environment-id", "asenvcfg_fixture", "--prompt-file", str(p), "--effort", "xhigh", "--dry-run"])
+                _, continued = execute(["jobs", "continue", "thread-1", "--prompt-file", str(p), "--effort", "xhigh", "--dry-run"])
+        requests = lines[0]["requests"]
+        self.assertEqual(requests[0]["params"]["config"], {"model_reasoning_effort": "xhigh"})
+        self.assertEqual(requests[-1]["params"]["effort"], "xhigh")
+        self.assertEqual(continued[0]["requests"][-1]["params"]["effort"], "xhigh")
+
+    def test_unsupported_effort_is_refused_before_any_write(self):
+        peer = self._effort_peer("turbo")
+        code, lines, methods = self._create_with_effort(peer, "turbo", "--write")
+        self.assertEqual(code, 1)
+        self.assertIn("low, medium, xhigh", lines[-1]["error"])
+        self.assertNotIn("thread/start", methods)
+
+    def test_null_effort_echo_is_refused_before_turn_start_and_keeps_thread_id(self):
+        peer = self._effort_peer(None)
+        code, lines, methods = self._create_with_effort(peer, "xhigh", "--write")
+        self.assertEqual(code, 1)
+        self.assertNotIn("turn/start", methods)
+        self.assertEqual(lines[-1]["receipt"]["thread_id"], "created-thread")
+
+    def test_echoed_effort_is_recorded_in_the_create_receipt(self):
+        peer = self._effort_peer("xhigh")
+        code, lines, methods = self._create_with_effort(peer, "xhigh", "--write")
+        self.assertEqual(code, 0)
+        self.assertEqual(lines[-1]["receipt"]["reasoning_effort"], "xhigh")
+        self.assertIn("turn/start", methods)
+
     def test_create_rejects_legacy_and_version_ids_offline(self):
         with tempfile.TemporaryDirectory() as temp:
             p = pathlib.Path(temp, "prompt")
