@@ -191,7 +191,7 @@ class CliTests(unittest.TestCase):
             self.assertNotIn("approvalPolicy", params)
             self.assertEqual(requests[-1]["params"]["input"][0]["text_elements"], [])
 
-    def _effort_peer(self, echo, efforts=("low", "medium", "xhigh"), models=..., turn=None):
+    def _effort_peer(self, echo, efforts=("low", "medium", "xhigh"), models=..., turn=None, persisted_model="fixture-model"):
         def reply(req):
             if req["method"] == "initialize":
                 return {"result": {}}
@@ -200,7 +200,9 @@ class CliTests(unittest.TestCase):
                     return {"result": models}
                 return {"result": {"data": [{"model": "fixture-model", "isDefault": True, "supportedReasoningEfforts": list(efforts)}]}}
             if req["method"] == "thread/start":
-                return {"result": {"thread": {"id": "created-thread", "model": "fixture-model", "reasoningEffort": echo}}}
+                return {"result": {"thread": {"id": "created-thread"}}}
+            if req["method"] == "thread/read":
+                return {"result": {"thread": {"id": "created-thread", "model": persisted_model, "reasoningEffort": echo}}}
             return {"result": {"turn": {"id": "turn-1"} if turn is None else turn}}
         return SocketPeer(reply)
 
@@ -237,7 +239,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertNotIn("turn/start", methods)
         self.assertEqual(lines[-1]["receipt"]["thread_id"], "created-thread")
-        self.assertIn("reasoningEffort None", lines[-1]["error"])
+        self.assertIn("thread/read echoed reasoningEffort None", lines[-1]["error"])
         self.assertIn("requested 'xhigh'", lines[-1]["error"])
 
     def test_malformed_model_list_is_a_structured_refusal_with_no_write(self):
@@ -281,12 +283,20 @@ class CliTests(unittest.TestCase):
                     self.assertIn("--effort", lines[-1]["error"])
                     self.assertEqual(peer.requests, [])
 
-    def _continue(self, argv, thread_model="thread-model", thread_efforts=("low", "max")):
+    def test_create_refuses_a_persisted_model_that_differs_before_turn_start(self):
+        code, lines, methods = self._create_with_effort(self._effort_peer("low", persisted_model="other-model"), "low", "--write")
+        self.assertEqual(code, 1)
+        self.assertIn("thread/read echoed model 'other-model'", lines[-1]["error"])
+        self.assertNotIn("turn/start", methods)
+        self.assertEqual(lines[-1]["receipt"]["thread_id"], "created-thread")
+        self.assertEqual(lines[-1]["receipt"]["model"], "other-model")
+
+    def _continue(self, argv, thread_model="thread-model", thread_efforts=("low", "max"), read=None):
         def reply(req):
             if req["method"] == "initialize":
                 return {"result": {}}
             if req["method"] == "thread/read":
-                return {"result": {"thread": {"id": "t1", "model": thread_model, "reasoningEffort": "low"}}}
+                return {"result": read if read is not None else {"thread": {"id": "t1", "model": thread_model, "reasoningEffort": "low"}}}
             if req["method"] == "model/list":
                 return {"result": {"data": [
                     {"model": "fixture-model", "isDefault": True, "supportedReasoningEfforts": ["low", "medium"]},
@@ -301,7 +311,7 @@ class CliTests(unittest.TestCase):
         return code, lines, [r["method"] for r in peer.requests]
 
     def test_continue_checks_effort_against_the_threads_model_not_the_default(self):
-        code, lines, methods = self._continue(["--effort", "max"])  # unsupported by the default model, supported by the thread's
+        code, lines, methods = self._continue(["--effort", "max"])
         self.assertEqual(code, 0)
         self.assertLess(methods.index("thread/read"), methods.index("turn/start"))
         receipt = lines[-1]["receipt"]
@@ -320,6 +330,22 @@ class CliTests(unittest.TestCase):
         self.assertNotIn("turn/start", methods)
         code, _, _ = self._continue(["--model", "thread-model", "--effort", "low"])
         self.assertEqual(code, 0)
+
+    def test_continue_refuses_an_empty_model_before_any_write(self):
+        code, lines, methods = self._continue(["--model", "", "--effort", "low"])
+        self.assertEqual(code, 1)
+        self.assertIn("cannot change model", lines[-1]["error"])
+        self.assertNotIn("turn/start", methods)
+
+    def test_continue_malformed_thread_read_is_a_structured_refusal_before_any_write(self):
+        for shape in ([1], "invalid", 1, {"thread": [1]}):
+            with self.subTest(shape=shape):
+                code, lines, methods = self._continue(["--effort", "low"], read=shape)
+                self.assertEqual(code, 1)
+                self.assertIn("thread/read", lines[-1]["error"])
+                self.assertEqual(lines[-1]["outcome"], "read-failed")
+                self.assertNotIn("thread/resume", methods)
+                self.assertNotIn("turn/start", methods)
 
     def test_create_rejects_legacy_and_version_ids_offline(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -422,6 +448,8 @@ class CliTests(unittest.TestCase):
             if req["method"] == "model/list":
                 return {"result": {"data": [{"model": "m", "supportedReasoningEfforts": ["low"]}]}}
             if req["method"] == "thread/start":
+                return {"result": {"thread": {"id": "created-thread"}}}
+            if req["method"] == "thread/read":
                 return {"result": {"thread": {"id": "created-thread", "model": "m", "reasoningEffort": "low"}}}
             return "disconnect"
         with tempfile.TemporaryDirectory() as temp:

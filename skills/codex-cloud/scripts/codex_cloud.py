@@ -306,13 +306,17 @@ def create_job(ctx, args):
             thread_id = thread.get("id") if isinstance(thread, dict) else None
             if not isinstance(thread_id, str) or not thread_id:
                 raise CloudError("thread/start returned no valid thread ID", outcome="unknown")
-            ctx.receipt.update(thread_id=thread_id, stage="thread-created", url=BASE + "/local/" + thread_id,
-                               model=thread.get("model"), reasoning_effort=thread.get("reasoningEffort"))
+            ctx.receipt.update(thread_id=thread_id, stage="thread-created", url=BASE + "/local/" + thread_id)
             ctx.emit({"receipt": ctx.receipt})  # Durable receipt before a second side effect.
-            for field, wanted, echoed in (("model", args.model, thread.get("model")),
-                                          ("reasoningEffort", args.effort, thread.get("reasoningEffort"))):
-                if wanted and echoed != wanted:
-                    raise CloudError(f"thread/start echoed {field} {echoed!r}, requested {wanted!r}; no turn sent, thread {thread_id} kept")
+            read = ctx.call(rpc, "thread/read", {"threadId": thread_id, "includeTurns": False})
+            persisted = read.get("thread") if isinstance(read, dict) else None
+            if not isinstance(persisted, dict):
+                raise CloudError(f"thread/read returned no thread object; no turn sent, thread {thread_id} kept", outcome="unknown")
+            ctx.receipt.update(model=persisted.get("model"), reasoning_effort=persisted.get("reasoningEffort"))
+            for field, wanted, echoed in (("model", args.model, persisted.get("model")),
+                                          ("reasoningEffort", args.effort, persisted.get("reasoningEffort"))):
+                if echoed != wanted:
+                    raise CloudError(f"thread/read echoed {field} {echoed!r}, requested {wanted!r}; no turn sent, thread {thread_id} kept")
             for step in steps[1:]:
                 params = {**step["params"], "threadId": thread_id}
                 if step["method"] == "turn/start":
@@ -441,12 +445,15 @@ def run_jobs(ctx, args):
             turn["effort"] = args.effort
         thread_model = thread_effort = None
         if not ctx.args.dry_run:  # --dry-run stays offline: no thread/read, no model/list.
-            thread = (do_rpc(ctx, "thread/read", {"threadId": args.id, "includeTurns": False}) or {}).get("thread")
-            thread_model = thread.get("model") if isinstance(thread, dict) else None
+            read = do_rpc(ctx, "thread/read", {"threadId": args.id, "includeTurns": False})
+            thread = read.get("thread") if isinstance(read, dict) else None
+            if not isinstance(thread, dict):
+                raise CloudError("thread/read returned no thread object; cannot check the continuation", outcome="read-failed")
+            thread_model = thread.get("model")
             if not isinstance(thread_model, str) or not thread_model:
                 raise CloudError("thread/read returned no model; cannot check the continuation", outcome="read-failed")
             thread_effort = thread.get("reasoningEffort")
-            if args.model and args.model != thread_model:
+            if args.model is not None and args.model != thread_model:
                 raise CloudError(f"--model {args.model!r} differs from the thread's model {thread_model!r}; a continuation cannot change model")
             check_effort(ctx, thread_model, args.effort)
         steps = [request_plan("thread/resume", {"threadId": args.id, "excludeTurns": True}), request_plan("turn/start", turn)]
