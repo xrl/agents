@@ -179,7 +179,7 @@ class CliTests(unittest.TestCase):
             prompt.write_text("Implement the authorized change")
             with mock.patch.object(cli.auth, "load_auth", side_effect=AssertionError("no auth")), mock.patch.object(cli.auth, "borrow_browser_cookies", side_effect=AssertionError("no browser")):
                 code, lines = execute(["jobs", "create", "--environment-id", "account~asenvcfg_fixture",
-                                      "--prompt-file", str(prompt), "--title", "fixture", "--dry-run"])
+                                      "--prompt-file", str(prompt), "--title", "fixture", "--model", "fixture-model", "--effort", "low", "--dry-run"])
             self.assertEqual(code, 0)
             requests = lines[0]["requests"]
             self.assertEqual([r["method"] for r in requests], ["thread/start", "thread/name/set", "turn/start"])
@@ -209,7 +209,7 @@ class CliTests(unittest.TestCase):
             p = pathlib.Path(temp, "prompt")
             p.write_text("fixture")
             with peer, mock.patch.object(cli.auth, "load_auth", return_value=("fixture-token", "fixture-account")):
-                code, lines = execute(["jobs", "create", "--environment-id", "asenvcfg_fixture", "--prompt-file", str(p), "--effort", effort, *flags])
+                code, lines = execute(["jobs", "create", "--environment-id", "asenvcfg_fixture", "--prompt-file", str(p), "--model", "fixture-model", "--effort", effort, *flags])
         return code, lines, [r["method"] for r in peer.requests]
 
     def test_effort_dry_run_carries_thread_config_and_turn_effort_offline(self):
@@ -217,7 +217,7 @@ class CliTests(unittest.TestCase):
             p = pathlib.Path(temp, "prompt")
             p.write_text("fixture")
             with mock.patch.object(cli.auth, "load_auth", side_effect=AssertionError("no auth")):
-                code, lines = execute(["jobs", "create", "--environment-id", "asenvcfg_fixture", "--prompt-file", str(p), "--effort", "xhigh", "--dry-run"])
+                code, lines = execute(["jobs", "create", "--environment-id", "asenvcfg_fixture", "--prompt-file", str(p), "--model", "fixture-model", "--effort", "xhigh", "--dry-run"])
                 _, continued = execute(["jobs", "continue", "thread-1", "--prompt-file", str(p), "--effort", "xhigh", "--dry-run"])
         requests = lines[0]["requests"]
         self.assertEqual(requests[0]["params"]["config"], {"model_reasoning_effort": "xhigh"})
@@ -241,8 +241,8 @@ class CliTests(unittest.TestCase):
         self.assertIn("requested 'xhigh'", lines[-1]["error"])
 
     def test_malformed_model_list_is_a_structured_refusal_with_no_write(self):
-        shapes = [None, {"data": None}, {"data": [None]}, {"data": [{"isDefault": True}]},
-                  {"data": [{"isDefault": True, "supportedReasoningEfforts": [None]}]}]
+        shapes = [None, {"data": None}, {"data": [None]}, {"data": [{"model": "fixture-model"}]},
+                  {"data": [{"model": "fixture-model", "supportedReasoningEfforts": [None]}]}]
         for shape in shapes:
             with self.subTest(shape=shape):
                 code, lines, methods = self._create_with_effort(self._effort_peer("xhigh", models=shape), "xhigh", "--write")
@@ -256,20 +256,77 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertEqual(lines[-1]["outcome"], "unknown")
         self.assertEqual(lines[-1]["receipt"]["thread_id"], "created-thread")
+        self.assertIn("turn/start", lines[-1]["error"])
+        self.assertIn("no valid turn ID ''", lines[-1]["error"])
 
     def test_echoed_effort_is_recorded_in_the_create_receipt(self):
         peer = self._effort_peer("xhigh")
         code, lines, methods = self._create_with_effort(peer, "xhigh", "--write")
         self.assertEqual(code, 0)
         self.assertEqual(lines[-1]["receipt"]["reasoning_effort"], "xhigh")
+        self.assertEqual(lines[-1]["receipt"]["model"], "fixture-model")
         self.assertIn("turn/start", methods)
+
+    def test_create_without_model_or_effort_sends_nothing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            p = pathlib.Path(temp, "prompt")
+            p.write_text("fixture")
+            for missing, flags in (("--model", ["--effort", "low"]), ("--effort", ["--model", "fixture-model"]), ("both", [])):
+                with self.subTest(missing=missing):
+                    peer = self._effort_peer("low")
+                    with peer, mock.patch.object(cli.auth, "load_auth", side_effect=AssertionError("no auth")):
+                        code, lines = execute(["jobs", "create", "--environment-id", "asenvcfg_fixture", "--prompt-file", str(p), *flags, "--write"])
+                    self.assertEqual(code, 1)
+                    self.assertIn("--model", lines[-1]["error"])
+                    self.assertIn("--effort", lines[-1]["error"])
+                    self.assertEqual(peer.requests, [])
+
+    def _continue(self, argv, thread_model="thread-model", thread_efforts=("low", "max")):
+        def reply(req):
+            if req["method"] == "initialize":
+                return {"result": {}}
+            if req["method"] == "thread/read":
+                return {"result": {"thread": {"id": "t1", "model": thread_model, "reasoningEffort": "low"}}}
+            if req["method"] == "model/list":
+                return {"result": {"data": [
+                    {"model": "fixture-model", "isDefault": True, "supportedReasoningEfforts": ["low", "medium"]},
+                    {"model": "thread-model", "supportedReasoningEfforts": list(thread_efforts)}]}}
+            return {"result": {"turn": {"id": "turn-1"}}}
+        peer = SocketPeer(reply)
+        with tempfile.TemporaryDirectory() as temp:
+            p = pathlib.Path(temp, "prompt")
+            p.write_text("fixture")
+            with peer, mock.patch.object(cli.auth, "load_auth", return_value=("fixture-token", "fixture-account")):
+                code, lines = execute(["jobs", "continue", "t1", "--prompt-file", str(p), *argv, "--write"])
+        return code, lines, [r["method"] for r in peer.requests]
+
+    def test_continue_checks_effort_against_the_threads_model_not_the_default(self):
+        code, lines, methods = self._continue(["--effort", "max"])  # unsupported by the default model, supported by the thread's
+        self.assertEqual(code, 0)
+        self.assertLess(methods.index("thread/read"), methods.index("turn/start"))
+        receipt = lines[-1]["receipt"]
+        self.assertEqual((receipt["model"], receipt["reasoning_effort"]), ("thread-model", "max"))
+        self.assertIn("turn-only", receipt["reasoning_effort_scope"])
+        code, lines, methods = self._continue(["--effort", "max"], thread_efforts=("low",))
+        self.assertEqual(code, 1)
+        self.assertIn("thread-model", lines[-1]["error"])
+        self.assertNotIn("turn/start", methods)
+
+    def test_continue_refuses_a_model_that_differs_from_the_thread_before_any_write(self):
+        code, lines, methods = self._continue(["--model", "fixture-model", "--effort", "low"])
+        self.assertEqual(code, 1)
+        self.assertIn("cannot change model", lines[-1]["error"])
+        self.assertNotIn("thread/resume", methods)
+        self.assertNotIn("turn/start", methods)
+        code, _, _ = self._continue(["--model", "thread-model", "--effort", "low"])
+        self.assertEqual(code, 0)
 
     def test_create_rejects_legacy_and_version_ids_offline(self):
         with tempfile.TemporaryDirectory() as temp:
             p = pathlib.Path(temp, "prompt")
             p.write_text("fixture")
             for ident in ["legacy_env", "cecfgver_version", "ccarenv_runtime"]:
-                code, _ = execute(["jobs", "create", "--environment-id", ident, "--prompt-file", str(p), "--dry-run"])
+                code, _ = execute(["jobs", "create", "--environment-id", ident, "--prompt-file", str(p), "--model", "m", "--effort", "low", "--dry-run"])
                 self.assertEqual(code, 1)
 
     def test_short_and_empty_pages_follow_cursor(self):
@@ -362,14 +419,16 @@ class CliTests(unittest.TestCase):
         def reply(req):
             if req["method"] == "initialize":
                 return {"result": {}}
+            if req["method"] == "model/list":
+                return {"result": {"data": [{"model": "m", "supportedReasoningEfforts": ["low"]}]}}
             if req["method"] == "thread/start":
-                return {"result": {"thread": {"id": "created-thread"}}}
+                return {"result": {"thread": {"id": "created-thread", "model": "m", "reasoningEffort": "low"}}}
             return "disconnect"
         with tempfile.TemporaryDirectory() as temp:
             p = pathlib.Path(temp, "prompt")
             p.write_text("fixture")
             with SocketPeer(reply), mock.patch.object(cli.auth, "load_auth", return_value=("fixture-token", "fixture-account")):
-                code, lines = execute(["jobs", "create", "--environment-id", "asenvcfg_fixture", "--prompt-file", str(p), "--write"])
+                code, lines = execute(["jobs", "create", "--environment-id", "asenvcfg_fixture", "--prompt-file", str(p), "--model", "m", "--effort", "low", "--write"])
             self.assertEqual(code, 2)
             self.assertEqual(lines[-1]["outcome"], "unknown")
             self.assertEqual(lines[-1]["receipt"]["thread_id"], "created-thread")
