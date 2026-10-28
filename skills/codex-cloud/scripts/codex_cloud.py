@@ -235,6 +235,35 @@ def resolve_environment(ctx, args):
     return ident
 
 
+EFFORT_HELP = ("Reasoning effort, checked against model/list before any write (omitted: the model default). "
+               "--dry-run shows the params and stays offline: it does not call model/list.")
+
+
+def check_effort(ctx, model, effort):
+    """Refuse an effort the model does not advertise; the server silently accepts any value."""
+    if effort is None or ctx.args.dry_run:
+        return
+    def malformed(field):
+        return CloudError(f"model/list returned an invalid {field}; cannot check --effort", outcome="read-failed")
+    result = do_rpc(ctx, "model/list", {"limit": 100})
+    rows = result.get("data") if isinstance(result, dict) else None
+    if not isinstance(rows, list):
+        raise malformed("data array")
+    if not all(isinstance(r, dict) for r in rows):
+        raise malformed("model object")
+    row = next((r for r in rows if (r.get("model") == model if model else r.get("isDefault"))), None)
+    if row is None:
+        raise CloudError(f"model/list has no {'model ' + repr(model) if model else 'default model'} to check --effort against")
+    options = row.get("supportedReasoningEfforts")
+    if not isinstance(options, list):
+        raise malformed("supportedReasoningEfforts array")
+    supported = [o.get("reasoningEffort") if isinstance(o, dict) else o for o in options]
+    if not all(isinstance(o, str) for o in supported):
+        raise malformed("supportedReasoningEfforts entry")
+    if effort not in supported:
+        raise CloudError(f"--effort {effort!r} is not supported by {row.get('model')}; supported: {', '.join(map(str, supported))}")
+
+
 def creation_requests(args, environment_id):
     prompt = read_text(args.prompt_file)
     if not prompt.strip():
@@ -243,11 +272,15 @@ def creation_requests(args, environment_id):
              "deferredEnvironment": True, "pluginsMcp": {"productSku": "codex"}}
     if args.model:
         start["model"] = args.model
+    if args.effort:
+        start["config"] = {"model_reasoning_effort": args.effort}
     steps = [request_plan("thread/start", start)]
     if args.title:
         steps.append(request_plan("thread/name/set", {"threadId": "$thread.id", "name": args.title}))
     turn = {"threadId": "$thread.id", "input": [{"type": "text", "text": prompt, "text_elements": []}],
             "clientUserMessageId": args.client_message_id or str(uuid.uuid4())}
+    if args.effort:
+        turn["effort"] = args.effort
     steps.append(request_plan("turn/start", turn))
     return steps
 
@@ -255,6 +288,7 @@ def creation_requests(args, environment_id):
 def create_job(ctx, args):
     ctx.guard(True)  # Refuse before resolving names, loading auth or reading browser cookies.
     steps = creation_requests(args, resolve_environment(ctx, args))
+    check_effort(ctx, args.model, args.effort)
     if ctx.args.dry_run:
         return {"dry_run": True, "requests": steps, "note": "No task submitted; Cloud creation is source-derived, not live-mutation-verified"}
     ctx.receipt = {"stage": "before-thread-start", "environment_config_id": steps[0]["params"]["environments"][0]["environmentConfigId"],
@@ -267,8 +301,13 @@ def create_job(ctx, args):
             thread_id = thread.get("id") if isinstance(thread, dict) else None
             if not isinstance(thread_id, str) or not thread_id:
                 raise CloudError("thread/start returned no valid thread ID", outcome="unknown")
-            ctx.receipt.update(thread_id=thread_id, stage="thread-created", url=BASE + "/local/" + thread_id)
+            ctx.receipt.update(thread_id=thread_id, stage="thread-created", url=BASE + "/local/" + thread_id,
+                               reasoning_effort=thread.get("reasoningEffort"))
             ctx.emit({"receipt": ctx.receipt})  # Durable receipt before a second side effect.
+            for field, wanted, echoed in (("model", args.model, thread.get("model")),
+                                          ("reasoningEffort", args.effort, thread.get("reasoningEffort"))):
+                if wanted and echoed != wanted:
+                    raise CloudError(f"thread/start echoed {field} {echoed!r}, requested {wanted!r}; no turn sent, thread {thread_id} kept")
             for step in steps[1:]:
                 params = {**step["params"], "threadId": thread_id}
                 if step["method"] == "turn/start":
@@ -276,7 +315,7 @@ def create_job(ctx, args):
                 result = ctx.call(rpc, step["method"], params)
                 if step["method"] == "turn/start":
                     turn = result.get("turn") if isinstance(result, dict) else None
-                    if not isinstance(turn, dict) or not isinstance(turn.get("id"), str):
+                    if not isinstance(turn, dict) or not isinstance(turn.get("id"), str) or not turn["id"]:
                         raise CloudError("turn/start returned no valid turn ID; inspect the known thread before retrying", outcome="unknown")
                     ctx.receipt.update(stage="turn-admitted", turn_id=turn["id"])
             return {"receipt": ctx.receipt, "note": "Admission is not successful completion; poll this thread ID"}
@@ -391,12 +430,17 @@ def run_jobs(ctx, args):
         prompt = read_text(args.prompt_file)
         if not prompt.strip():
             raise CloudError("Prompt must not be empty")
-        steps = [request_plan("thread/resume", {"threadId": args.id, "excludeTurns": True}),
-                 request_plan("turn/start", {"threadId": args.id, "input": [{"type": "text", "text": prompt, "text_elements": []}],
-                              "clientUserMessageId": args.client_message_id or str(uuid.uuid4())})]
+        turn = {"threadId": args.id, "input": [{"type": "text", "text": prompt, "text_elements": []}],
+                "clientUserMessageId": args.client_message_id or str(uuid.uuid4())}
+        if args.effort:
+            turn["effort"] = args.effort
+        check_effort(ctx, None, args.effort)
+        steps = [request_plan("thread/resume", {"threadId": args.id, "excludeTurns": True}), request_plan("turn/start", turn)]
         if ctx.args.dry_run:
             return {"dry_run": True, "requests": steps}
         ctx.receipt = {"thread_id": args.id, "client_message_id": steps[1]["params"]["clientUserMessageId"]}
+        if args.effort:
+            ctx.receipt.update(reasoning_effort=args.effort, reasoning_effort_scope="turn-only, not echoed by the server")
         try:
             with ctx.rpc() as rpc:
                 ctx.emit({"receipt": ctx.receipt})
@@ -518,6 +562,7 @@ def build_parser():
     env_arg.add_argument("--environment", help="Exact published config name; requires web catalog access")
     p.add_argument("--prompt-file", required=True, help="UTF-8 prompt file or - for stdin")
     p.add_argument("--model")
+    p.add_argument("--effort", help=EFFORT_HELP)
     p.add_argument("--title")
     p.add_argument("--client-message-id")
     for action in ("get", "status", "wait", "logs", "turns", "diff", "archive", "unarchive", "rename", "resume", "stop", "cancel", "delete", "continue"):
@@ -541,6 +586,7 @@ def build_parser():
             p.add_argument("--turn-id", required=True)
         if action == "continue":
             p.add_argument("--prompt-file", required=True)
+            p.add_argument("--effort", help=EFFORT_HELP + " Continue checks the default model; the effort applies to this turn only.")
             p.add_argument("--client-message-id")
     groups.add_parser("models")
     groups.add_parser("diagnose")
