@@ -42,16 +42,18 @@ The wrapper validates known RPC inputs against the pinned public JSON Schema. Cl
     "threadSource": "user",
     "environments": [{"environmentConfigId": "ACCOUNT~asenvcfg_ID"}],
     "deferredEnvironment": true,
-    "pluginsMcp": {"productSku": "codex"}
+    "pluginsMcp": {"productSku": "codex"},
+    "model": "MODEL",
+    "config": {"model_reasoning_effort": "EFFORT"}
   }
 }
 ```
 
-An optional model is passed without replacing backend policy defaults. Then optional `thread/name/set`, then `turn/start` with text input and a client-generated message UUID. No model, sandbox mode, approval policy or reviewer is silently widened/defaulted by this wrapper.
+`--model` and `--effort` are both required: an omitted model is the account default at its own default effort. The effort is checked against `model/list` before any write. After `thread/start` the wrapper reads the thread with `thread/read` and refuses to send the turn unless the persisted model and effort match the request; the receipt carries those values. Then optional `thread/name/set`, then `turn/start` (carrying the effort) with text input and a client-generated message UUID. No sandbox mode, approval policy or reviewer is silently widened/defaulted by this wrapper.
 
 Creation is multi-step, not atomic. JSONL receipts record the environment and message ID before starting and the real thread ID immediately after creation. If name-setting or turn-start fails, the known thread is preserved. The caller must inspect it before considering another operation. A stable message UUID can aid reconciliation of a turn; it does not make thread creation idempotent.
 
-`jobs continue` explicitly resumes the supplied thread with `excludeTurns=true` before starting its new turn. This is a write, unlike history reads.
+`jobs continue` first reads the thread, checks `--effort` against the thread's own model and refuses a `--model` that differs, then explicitly resumes the supplied thread with `excludeTurns=true` before starting its new turn. This is a write, unlike history reads.
 
 ### Persisted history and status
 

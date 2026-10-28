@@ -16,9 +16,10 @@ send() { # <name> <text>: create the job, or continue it; the outcome of a sent 
   if [ -z "$thread" ]; then
     local env; env=$(awk -v r="$REPO" '$1 == r { print $2 }' "${CODEX_ENVS:-$HOME/.config/campaign/codex-envs}")
     [ -n "$env" ] || exit 30
-    cc jobs create --environment-id "$env" --prompt-file "$f" --title "$SLUG" --write >"$SR/codex-create.json" ||
+    [ -n "${CODEX_MODEL:-}" ] && [ -n "${CODEX_EFFORT:-}" ] || handback "Codex job creation for $STEP needs CODEX_MODEL and CODEX_EFFORT from the dispatcher."
+    cc jobs create --environment-id "$env" --prompt-file "$f" --title "$SLUG" --model "$CODEX_MODEL" --effort "$CODEX_EFFORT" --write >"$SR/codex-create.json" ||
       handback "Codex job creation for $STEP ended with an unknown outcome; inspect $SR/codex-create.json before any retry."
-    thread=$(jq -r '.thread_id // .receipt.thread_id // empty' "$SR/codex-create.json")
+    thread=$(jq -rs '[.[] | .thread_id // .receipt.thread_id // empty] | unique | if length == 1 then .[0] else empty end' "$SR/codex-create.json")
     [ -n "$thread" ] || handback "Codex job creation for $STEP returned no thread id; see $SR/codex-create.json."
     st_set thread "$thread"
   else
