@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ${NAME}
+  namespace: rx-pr-${PR}
+  labels:
+    app: ${NAME}
+    org.rx-pr-site/purpose: loader
+spec:
+  restartPolicy: Never
+  serviceAccountName: rx-pr-${PR}-rx-reveal
+  terminationGracePeriodSeconds: 5
+  activeDeadlineSeconds: 21600
+  containers:
+  - name: loader
+    image: ${IMAGE}
+    command: ["sleep", "21600"]
+    resources:
+      requests: {cpu: "250m", memory: "512Mi"}
+      limits: {memory: "2Gi"}
+    env:
+    - {name: PGSSLMODE, value: require}
+    - name: PGHOST
+      valueFrom: {secretKeyRef: {name: rx-pr-postgres-direct-secret, key: POSTGRES_HOST}}
+    - name: PGPORT
+      valueFrom: {secretKeyRef: {name: rx-pr-postgres-direct-secret, key: POSTGRES_PORT}}
+    - name: PGDATABASE
+      valueFrom: {secretKeyRef: {name: rx-pr-postgres-direct-secret, key: POSTGRES_DB}}
+    - name: PGUSER
+      valueFrom: {secretKeyRef: {name: rx-pr-postgres-direct-secret, key: POSTGRES_USER}}
+    - name: PGPASSWORD
+      valueFrom: {secretKeyRef: {name: rx-pr-postgres-direct-secret, key: POSTGRES_PASSWORD}}
+    - name: RT_HOST
+      valueFrom: {secretKeyRef: {name: rx-reveal-transform-postgres-direct-secret, key: POSTGRES_HOST}}
+    - name: RT_USER
+      valueFrom: {secretKeyRef: {name: rx-reveal-transform-postgres-direct-secret, key: POSTGRES_USER}}
+    - name: RT_PASSWORD
+      valueFrom: {secretKeyRef: {name: rx-reveal-transform-postgres-direct-secret, key: POSTGRES_PASSWORD}}

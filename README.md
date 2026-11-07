@@ -17,6 +17,7 @@ Opinionated engineering guides. **Start with the task, not a full-library read.*
 | Running a campaign's WORKING phase from a launchd tick, with scripted lanes | [campaign runner](skills/campaign/runner/README.md) |
 | Current Codex Cloud jobs, environments, logs and API access using Pi OAuth | [codex-cloud](skills/codex-cloud/SKILL.md) |
 | Landing one coupled multi-lane Rust change with a swarm | [rust-feature-swarm](skills/rust-feature-swarm/SKILL.md) |
+| Standing up and proving a change on an rx `run-in-k3` PR site (prod clone) | [rx-pr-site](skills/rx-pr-site/SKILL.md) |
 
 ## Loading and installation
 
@@ -31,7 +32,7 @@ host file and both adapters synchronized when host policy changes.
 To install the skill, copy the complete `skills/choose-orchestration/` directory
 into `~/.pi/agent/skills/`, reviewing any existing copy first, then run `/reload`.
 Invoke `/skill:choose-orchestration` with a task. Selection does not authorize launch.
-The Claude Code skills (`skills/campaign/`, `skills/pi-*`, `skills/rust-feature-swarm/`) install
+The Claude Code skills (`skills/campaign/`, `skills/pi-*`, `skills/rust-feature-swarm/`, `skills/rx-pr-site/`) install
 as symlinks, `ln -s ~/code/xrl/agents/skills/<name> ~/.claude/skills/<name>`, and update with
 `git pull --ff-only` on `main`; [skills/PI-SKILLS.md](skills/PI-SKILLS.md) has their requirements.
 The self-contained `skills/codex-cloud/` skill can instead be copied in full to
