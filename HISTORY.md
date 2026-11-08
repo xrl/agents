@@ -2,27 +2,6 @@
 
 Evidence and one-off recipes for rules in [LAWS.md](LAWS.md), moved verbatim with their dates. Rule text stays in LAWS.md. Not standing rules; no entry point tells an agent to read this first.
 
-### 59. Keep your eye on the ball: write the pivot line.
-
-- **Receipt, Dekopon PDF retrospective, 2026-11-08:** the urgent-fix question
-  was answered in about one hour, then widened into roughly $2,000 over eight
-  days, about 30 amendments and at least 59 formal owner questions. Locally
-  reasonable pivots displaced the original question; most stops came from our
-  own machinery. The owner adopted the pivot line in the coordinator adoption
-  plan. Evidence: private
-  [campaign-trail/store/designs/whatsapp-pdf-retrospective-20261101-design/START-HERE.md](https://github.com/dekopon-agents/campaign-trail/blob/a3acb99bb/store/designs/whatsapp-pdf-retrospective-20261101-design/START-HERE.md).
-
-### 60. Separate judgement from mechanics.
-
-- **Receipt, Dekopon PDF retrospective, 2026-11-08:** copy checks, background
-  wake races, browser overlays, launch receipts and a mergeability race stopped
-  otherwise working arms. Production coordinators also drifted on reviewer
-  placement: Coordinator 5 sent five reviewer launches to the wrong environment;
-  Coordinator 6 ran seven reviews as in-session subagents. The proposed agent
-  driver owns these mechanics; models retain code, review and scope judgements.
-  Evidence: the private START-HERE above and
-  [campaign-trail/store/designs/cloud-sandbox-mcp-design/AGENT-DRIVER-FACADE-BRIEF-FROM-PDF-RETRO-20261108.md](https://github.com/dekopon-agents/campaign-trail/blob/a3acb99bb/store/designs/cloud-sandbox-mcp-design/AGENT-DRIVER-FACADE-BRIEF-FROM-PDF-RETRO-20261108.md).
-
 ### 1. Build natively per arch. Stitch with a manifest.
 
 - **Receipts:** `cheminee/.github/workflows/build_docker_images.yml:14-20,118-143`
@@ -137,6 +116,27 @@ Evidence and one-off recipes for rules in [LAWS.md](LAWS.md), moved verbatim wit
 
 - **Receipt, 2026-09-30:** a supervisor's push prompt said "amend"; the driver's
   push was rejected and the step waited on a ruling.
+
+### 59. Keep your eye on the ball: write the pivot line.
+
+- **Receipt, Dekopon PDF retrospective, 2026-11-08:** the urgent-fix question
+  was answered in about one hour, then widened into roughly $2,000 over eight
+  days, 22 amendments and at least 59 formal owner questions. Locally
+  reasonable pivots displaced the original question; most stops came from our
+  own machinery. The owner adopted the pivot line in the coordinator adoption
+  plan. Evidence: private
+  [campaign-trail/store/designs/whatsapp-pdf-retrospective-20261101-design/START-HERE.md](https://github.com/dekopon-agents/campaign-trail/blob/a3acb99bb/store/designs/whatsapp-pdf-retrospective-20261101-design/START-HERE.md).
+
+### 60. Separate judgement from mechanics.
+
+- **Receipt, Dekopon PDF retrospective, 2026-11-08:** copy checks, background
+  wake races, browser overlays, launch receipts and a mergeability race stopped
+  otherwise working arms. Production coordinators also drifted on reviewer
+  placement: Coordinator 5 sent five reviewer launches to the wrong environment;
+  Coordinator 6 ran seven reviews as in-session subagents. The proposed agent
+  driver owns these mechanics; models retain code, review and scope judgements.
+  Evidence: the private START-HERE above and
+  [campaign-trail/store/designs/cloud-sandbox-mcp-design/AGENT-DRIVER-FACADE-BRIEF-FROM-PDF-RETRO-20261108.md](https://github.com/dekopon-agents/campaign-trail/blob/a3acb99bb/store/designs/cloud-sandbox-mcp-design/AGENT-DRIVER-FACADE-BRIEF-FROM-PDF-RETRO-20261108.md).
 
 ### 33. Publish crates from CI over OIDC. Stored registry tokens are bootstrap credentials, not operating credentials.
 
