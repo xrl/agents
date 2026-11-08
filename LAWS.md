@@ -309,6 +309,24 @@ directory and report nothing when there is none, so a watcher looks idle while
 the job it watches finishes. 2026-09-30: the v0.29.0 image watcher ran from a
 plain folder and never saw the run.
 
+### 59. Keep your eye on the ball: write the pivot line.
+
+Before a pivot, write: "the original question was X; this answers Y; Y matters
+because Z". If Z does not trace back to X, ask the owner whether Y is the new
+question before pursuing it. Keep the original outcome visible through local
+fixes, experiments and machinery changes; a useful side result does not by
+itself answer the question that paid for it.
+
+### 60. Separate judgement from mechanics.
+
+Put launches, waits, retries, receipts, placement checks and merges in tested
+code: an agent-driver facade and replayable state machines. Give models typed
+judgement calls and consume their typed answers. Copy errors, wake races, UI
+overlays, receipt and merge races, and placement drift are mechanical failure
+classes to fix in that code, rather than new judgement calls for the owner.
+Reuse the smallest adequate tool; build more machinery only when the measured
+failure earns it.
+
 <a id="the-service--api-rules"></a>
 <a id="the-code--api-design-rules"></a>
 <a id="9-one-authoritative-api-contract-poem-openapi-for-implementation-first-rust-services"></a>
