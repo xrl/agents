@@ -142,3 +142,16 @@ model/effort pin. [Disposition F173](https://github.com/dekopon-agents/campaign-
 forward and warns that this audit does not validate the earlier window-only
 hypothesis. Existing LAWS §49 already covers context lifetime; no duplicate
 cost law or model routing table is introduced.
+
+### 6. Owner decisions happen in the session
+
+[Overseer lesson 6](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) requires a batched question-tool walk in a session,
+with the notification banner serving as an alert, not the decision surface.
+The [journal drawdown](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L7294) records a tutorial/question-tool walk;
+[later drawdowns](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L8012-L8134) also record cases settled directly by the
+owner's words during the tutorial. Already explicit owner decisions need no
+repeat question. The Markdown queue remains the durable record; requiring
+its file to be opened is not a substitute for presenting decisions. This
+clarifies Closing's old “asks no question” wording while preserving the dated
+owner constraint against a question as the last act and the live-only timing
+rule. No notification delivery or click-through success rate is claimed.
