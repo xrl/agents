@@ -94,3 +94,11 @@ successful add or notification as proof of authority. This is a concrete
 campaign failure mode, not a measured frequency. [Dispositions F131/F178](https://github.com/dekopon-agents/campaign-trail/blob/ecec4880fd98e8a9f2646f70aef22c7a36218231/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md#L141)
 record that answer/edit commands shipped in cm 0.9.0; those commands do not
 remove the caller's obligation to verify the stored answer.
+
+### 2. Codex backlog steering
+
+[Overseer lesson 2](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) reports FIFO delivery of one queued message per turn:
+a stale backlog can execute superseded instructions. The skill asks for an
+explicit current-state steer, not a replay of the backlog. This describes the
+campaign's observed queue behavior, not a throughput benchmark or a claim about
+every Codex interface. It adds no second queue or scheduler.

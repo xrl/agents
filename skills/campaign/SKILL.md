@@ -75,7 +75,9 @@ navigation does not change the generic folder contract for other campaigns.
 
 ## The coordinator loop
 
-Wake only on a completion notice. A supervisor's notice comes at the end of its turn, up to 100 minutes, so a merge or a deploy inside the turn is invisible until then. Every status to the owner says when it was read ("as of 19:19Z") and what may have happened since; when the owner asks about a running lane, re-read its state file and the live artifacts before answering. On each notice:
+Wake only on a completion notice. A supervisor's notice comes at the end of its turn, up to 100 minutes, so a merge or a deploy inside the turn is invisible until then. Every status to the owner says when it was read ("as of 19:19Z") and what may have happened since; when the owner asks about a running lane, re-read its state file and the live artifacts before answering. For a Codex queue backlog, send an authoritative current-state steer that names
+which earlier instructions it supersedes. Do not replay obsolete work from the
+backlog. On each notice:
 
 | Event | Do |
 |---|---|
