@@ -72,17 +72,23 @@ The complete former "Things that bite" section of [SKILL.md](SKILL.md), all 66 b
 
 ## Diaphanous closing lessons (2026-11-09)
 
-Concise authorized lessons from the [overseer brief](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132), before MAC87 corpus
-tables exist. These are campaign receipts, not a transcript publication or a
+Concise authorized lessons from the [overseer brief](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132), with the MAC87 derived snapshot linked below. These are campaign receipts, not a transcript publication or a
 second rule home. Standing instructions remain in [SKILL.md](SKILL.md) and
 [LAWS.md](../../LAWS.md). Source links point to private campaign records.
 
-### Corpus-table evidence — PENDING MAC87
+### Corpus-table evidence — MAC87 derived snapshot
 
-Placeholder only. After MAC87 tables are complete, add their pinned source,
-coverage and measured qualifications here, then reconcile the lessons below.
-No corpus-table statistics or quantitative conclusions are asserted by this draft.
-The lessons PR remains withheld until that evidence is filled.
+The [private campaign PR](https://github.com/dekopon-agents/campaign-trail/pull/29) and [immutable tables/source pin](https://github.com/dekopon-agents/campaign-trail/blob/840c0bfb62c4ff2d96b7d0b46ecbda8c0e8003c3/store/history/corpus/diaphanous-dilettantes/tables.md) supply bounded evidence for the drafted Diaphanous closing lessons. The frozen interval is **2026-10-15T04:05:06Z ≤ timestamp < 2026-11-09T16:36:18.206Z**: **2,247 sessions/captures, 195,950 ledger rows, 2,600 cards and 1,229 unit narratives**. Individual lesson receipts remain unchanged.
+
+Retained sources comprise trail **1,032**, pi-home **57**, local Claude **54**, Codex **282**, and cloud **822** sessions/captures. These follow documented timestamp, workspace, mtime and dedup filters, rather than an all-files inventory. Captures can overlap across systems; there is no universal cross-source event union. Trail-header precedence suppresses pi-home twins even when a twin is more complete; cloud selection uses maximum parsed manifest capture time.
+
+Codex metadata marks **169/282 sessions (59.9%)** as guardian assessments; **113** retain agent role. Assessments can concern other work and do not establish product implementation. All source-role labels reflect parser/metadata provenance, not an independent semantic role census.
+
+Historical recorded/allocated dollars are **$629.81 trail, $562.17 pi-home, $2,132.06 local Claude and $9,602.26 cloud**. Pi records message costs; local Claude allocates cost-state by price-shaped token weight; cloud uses weighted manifest costs. Codex subscription dollars are unknown, not zero. These fields are neither corpus-build charges nor a complete campaign bill. Separately, subscription analysis used **2,600 map**, **1 merge-ID**, and **1,247 unit-stage** successful invocations, all at low effort; unit calls include intermediate summaries. Build dollars remain unmetered. This documents execution, not model/effort routing guidance.
+
+Context and coordination measurements include **10,175 local Claude coordinator-labelled messages**, with **3,229M tokens** at table precision, and **20,240 read calls**, including **2,452 repeats**. These are parser-labelled repeats within ten minutes; they can include rereads, polling or retries and are not a count of waste. Historical tokens include cache reads; repeated tokens do not measure unique work. Seven oversized units required bounded intermediate summaries, introducing another compression layer that can omit detail. These measurements provide context for the lessons, without establishing causal costs or universal efficiency gains.
+
+Finally, **673 of 885 indexed PR references** receive the alive classification through merge ancestry/file survival, not behavioral testing. Cards remain model analysis: 164 selected excerpts and 25 distinct model PR references are flagged in the corpus checks. Unknown references remain unknown, and withdrawn watches are not passes. Separate feedback dispositions are not corpus-inferred fixes. The tables support qualified historical observations, not a new law.
 
 ### 1. Persisted owner answers
 
@@ -214,5 +220,4 @@ is not a fix; a next-epoch recommendation is not admitted scope. Repetitive
 [FOLLOW-UPS](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/FOLLOW-UPS.md) entries about inherited findings, flaky checks, stale live
 versions, unavailable grants, missing receipts and moved work fit existing
 review, authority and evidence homes. They do not authorize more retries,
-new grants or another scheduler. The corpus-table placeholder above remains
-pending; none of these source counts comes from MAC87 tables.
+new grants or another scheduler. The corpus-table evidence above is separate from these contemporaneous source receipts; it does not independently validate the historical watch or audit outcomes.
