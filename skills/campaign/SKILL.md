@@ -35,7 +35,9 @@ From Diaphanous Dilettantes, WORKING has no long-lived coordinator. A launchd ti
 lists into a lane (`pi-lane.sh`, `lane-codex.sh`, `lane-claude.sh`, `lane-fable.sh`), merges
 reviewed green heads, tags, pins and runs the LAN smoke under `[authority]`, and wakes Claude with
 one `claude -p` run only for judgment: a hand-back, a Fable FIX, a red smoke, an answered
-OWNER-QUEUE item. A wake answers with a decision row and `decision-N.md`, commits and ends; it holds
+OWNER-QUEUE item. Before waking on an owner answer, read back the persisted item
+and verify that `Answer:` contains the owner's decision; `cm owner-queue add`
+starts with a bare `Answer:` line. A wake answers with a decision row and `decision-N.md`, commits and ends; it holds
 no publish or deploy right. The pi lane needs no supervisor, so the Coordinator and Supervisor rows
 above and the handoff caps under Spend apply only to attended sessions (Cruciferous and earlier).
 

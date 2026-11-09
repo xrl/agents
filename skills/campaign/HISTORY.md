@@ -68,3 +68,29 @@ The complete former "Things that bite" section of [SKILL.md](SKILL.md), all 66 b
 64. When main moves under a lane, the re-check at the rebased head is mandatory, and every verify template names the other lanes that are writing the same crate. Parallel lanes on one crate are allowed; that re-check is what catches their seam. 2026-10-16, Cruciferous 09 S5b ruling 3: 07 S3 (#602) landed a GitHub listener holding a boot-time copy of the routes while 09 S5b made routes live-reloadable; neither lane's base could show it, and only the re-check after S5b's rebase found it (one Opus fix, about 40 minutes).
 65. A study's cleanup keeps every hashed artifact a later decision packet joins on until that packet is accepted. 2026-10-16, Cruciferous 13 S5 ruling 1: S3's cleanup removed the built Python Wasm and the run-copy broker after its review, so S5 could not hash them again and its comparison closed interim.
 66. Changelog trailer wording or category is never blocking in a Fable read; the reviewer notes it for the squash message, and the coordinator fixes it there. `CHANGELOG.md` is written only at release prep from `git log`, so a trailer is a breadcrumb, not a merge gate (owner, 2026-10-16). Every Fable prompt says so. Cruciferous #604 came back FIX BEFORE MERGE over one trailer word.
+
+
+## Diaphanous closing lessons (2026-11-09)
+
+Concise authorized lessons from the [overseer brief](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132), before MAC87 corpus
+tables exist. These are campaign receipts, not a transcript publication or a
+second rule home. Standing instructions remain in [SKILL.md](SKILL.md) and
+[LAWS.md](../../LAWS.md). Source links point to private campaign records.
+
+### Corpus-table evidence — PENDING MAC87
+
+Placeholder only. After MAC87 tables are complete, add their pinned source,
+coverage and measured qualifications here, then reconcile the lessons below.
+No corpus-table statistics or quantitative conclusions are asserted by this draft.
+The lessons PR remains withheld until that evidence is filled.
+
+### 1. Persisted owner answers
+
+[Overseer lesson 1](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) identifies the bare `Answer:` created by
+`cm owner-queue add`; adding an item does not persist a decision. The
+[journal's OQ62 read](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L52685-L52691) records a NO-GO while the answer was
+empty. The readback requirement precedes the wake, rather than treating a
+successful add or notification as proof of authority. This is a concrete
+campaign failure mode, not a measured frequency. [Dispositions F131/F178](https://github.com/dekopon-agents/campaign-trail/blob/ecec4880fd98e8a9f2646f70aef22c7a36218231/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md#L141)
+record that answer/edit commands shipped in cm 0.9.0; those commands do not
+remove the caller's obligation to verify the stored answer.
