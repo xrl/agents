@@ -173,3 +173,16 @@ token, register with a `trusted-publishing` token, then revoke both.
   build to S3; downstream jobs download it instead of rebuilding.
 - The same pinned `mozilla/sccache-action@eaed7fb9…` serves RDKit and Cheminee;
   `knievel/.github/actions/rust-setup/action.yml` centralizes Rust caches.
+
+
+### 45. Diaphanous auto-merge gates (2026-11-09 receipt)
+
+The [journal at 2026-11-01 03:46Z](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L37878)
+records that blanket Dependabot auto-merge re-enablement let #875 land with a
+red non-required Wasmtime optimization check, breaking main's locked build.
+At [04:20Z](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L37933), #890's fix push re-entered the queue and merged
+before its Astra receipt was collected. R412 later ACCEPTed that exact head
+with zero blocking findings; that later acceptance did not make the earlier
+gate ordering sound. §45 now names both checks: disable before any fix push,
+and collect review plus all-check green at the new head before re-enabling.
+No existing rule ID, anchor or named exception changes.

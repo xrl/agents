@@ -187,3 +187,32 @@ checklist merely names that input. The [attempt lesson](https://github.com/dekop
 ended an attempt at PR-ready and cm then refused begin/claim for the fix pass.
 Attempts now stay open until merge; this is a lifecycle correction, not a new
 attempt ledger. The reviewed-and-green merge rule stays in LAWS §45.
+
+### Other journal lessons and repeated follow-ups
+
+All 15 case-insensitive Lesson matches in the supplied journal extraction were
+reviewed. The four direct workflow lessons map to §8 above and LAWS §45's
+[auto-merge receipt](../../HISTORY.md#45-diaphanous-auto-merge-gates-2026-11-09-receipt).
+The remaining matches are retained as source evidence rather than new laws:
+
+| Journal lines | Lesson / existing home |
+|---|---|
+| [221, 233](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L221-L233) | Named base and its later landing receipt: §8. |
+| [492](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L492) | Review publish-authority/campaign-state changes before merge: LAWS §45. |
+| [563](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L563) | Child-written witness for the fork race: CODE_DESIGN_RULES §41 behavior witnesses. |
+| [1061](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L1061) | Provider re-pin scans affected configs/skills: LAWS §42 consumer inventory. |
+| [4821](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L4821) | cm lesson/queue operations: LAWS §60 mechanics; dispositions record subsequent commands. |
+| [4875, 4974](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L4875-L4974) | Relayed authority/permission refusal: LAWS §57 and the existing Things that bite authority bullet; no bypass rule. |
+| [9542](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L9542) | Proof before promoting context machinery: LAWS §60 measured failure before more machinery. |
+| [9589, 9639, 11129](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L9589-L9639) | Brief prohibitions at contract scope, one conflict list, explicit refusal/unbuilt behavior: steering/GPT.md scope and CODE_DESIGN_RULES §§36, 40; preserve the later brief-gap receipt at line 11129. |
+| [18939](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L18939) | End attempts at merge: §8. |
+| [37878, 37933](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L37878-L37933) | All-check green and disable before fix push: LAWS §45. |
+
+[Dispositions](https://github.com/dekopon-agents/campaign-trail/blob/ecec4880fd98e8a9f2646f70aef22c7a36218231/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md) are a source-backed classification of 223 headings, not
+223 proposed rules. Fixed commands do not prove live acceptance; a filed issue
+is not a fix; a next-epoch recommendation is not admitted scope. Repetitive
+[FOLLOW-UPS](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/FOLLOW-UPS.md) entries about inherited findings, flaky checks, stale live
+versions, unavailable grants, missing receipts and moved work fit existing
+review, authority and evidence homes. They do not authorize more retries,
+new grants or another scheduler. The corpus-table placeholder above remains
+pending; none of these source counts comes from MAC87 tables.
