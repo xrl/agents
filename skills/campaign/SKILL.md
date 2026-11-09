@@ -67,11 +67,14 @@ navigation does not change the generic folder contract for other campaigns.
 
 1. `LIMITS.toml`: not paused, spend under the runaway ceiling, free disk minus kache headroom over the floor, heavy builds under the cap.
 2. A worktree cut from the integration head, upstream unset, fixtures fetched.
-3. The step prompt: the row verbatim, the packages, the witnesses, what the previous step landed in one paragraph, "decide under ambiguity and record it; never end a turn with a question".
+3. The step prompt: the full base commit SHA, the row verbatim, the packages, the witnesses, what the previous step landed in one paragraph, "decide under ambiguity and record it; never end a turn with a question".
 4. The verify template: `verifier-role.md` + the range + the row + the step's specific checks + this sentence, never a copy of the decisions: "Every row of EXECUTION.md §Rows and `<NN>/DECISIONS.md` is settled; a finding that contradicts one is not a finding; quote the row ID." Execution rows are `E…`, unit rows carry their prefix (`09-D21`).
 5. The supervisor packet from `templates/SUPERVISOR.example.md` (pi-drive's template, adapted: the supervisor runs the verifier itself, reads the driver's gate log instead of rerunning it, writes S-numbers in its own file, never in DECISIONS.md).
 6. STATE alive table and a journal line, then `pi() { command pi -ne "$@"; }; export -f pi; pi-turn.sh <step folder> <session> openai-codex/gpt-6-sol:high <log> kickoff.md` with `run_in_background`, every path absolute (`pi-turn.sh` changes into the step folder before it writes the log).
 7. For a release: list every repo that links the changed contract, not only the ones that implement it. A client that embeds the runtime or decodes the wire (an operator console, a CLI) is a fleet member and re-pins and releases with the providers. Leave one out only when the release provably changes no type it decodes, and say so in the plan.
+
+Keep a Codex attempt open through review and fix turns; end it at merge, not
+when the PR becomes ready.
 
 ## The coordinator loop
 

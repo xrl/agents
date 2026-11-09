@@ -177,3 +177,13 @@ completion evidence already supported by cm. F185/F219 record that cm 0.10.0
 checks tag ancestry; the old claim that any resolving tag suffices is stale.
 No fake release tags are a route to done for docs or studies. A tooling block,
 a real defect and an unproven live check require different labels and receipts.
+
+### 8. Codex bases and attempt lifetime
+
+The [journal base-SHA lesson](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L221-L233) found a burn-in checkout rather
+than main; the named full SHA let the executor select the intended base.
+`steering/GPT.md` already covers named PR bases, so the existing step-prompt
+checklist merely names that input. The [attempt lesson](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L18939)
+ended an attempt at PR-ready and cm then refused begin/claim for the fix pass.
+Attempts now stay open until merge; this is a lifecycle correction, not a new
+attempt ledger. The reviewed-and-green merge rule stays in LAWS §45.
