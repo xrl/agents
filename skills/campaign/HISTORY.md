@@ -155,3 +155,25 @@ its file to be opened is not a substitute for presenting decisions. This
 clarifies Closing's old “asks no question” wording while preserving the dated
 owner constraint against a question as the last act and the live-only timing
 rule. No notification delivery or click-through success rate is claimed.
+
+### 7. Completion routes and evidence
+
+[Overseer lesson 7](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) and the [close report's cm gap](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/CLOSE-REPORT.md#cm-gap-for-the-next-epochs-cm)
+identify [cm#96](https://github.com/dekopon-agents/cm/issues/96): cm 0.13.0
+could not finish units or merged no-release steps. The final report separates
+137 complete units, 10 units with real gaps and 10 not-run units; among steps,
+39 synced homelab merges and 18 no-release repository merges were complete-work
+blocks, while 10 other steps had real release/deploy gaps. These are the
+report's state-accounting counts, not finished corpus-table findings. The
+[FOLLOW-UPS close pass](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/FOLLOW-UPS.md#next-epoch-coordinator-10-2026-11-09-oq68-close-pass)
+uses 61 blocked merged steps including four unreleased merges; that is not 61
+complete steps. Missing deployment evidence remains missing evidence.
+
+This replaces the skill's overbroad Cruciferous-close recipe (2026-10-17)
+requiring tags/digests for everything; its historical wording remains in this
+file's original bullet 26. [Dispositions F003/F009/F172](https://github.com/dekopon-agents/campaign-trail/blob/ecec4880fd98e8a9f2646f70aef22c7a36218231/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md#L13)
+distinguish study-kind repair, rollout evidence without a tag, and coordinator
+completion evidence already supported by cm. F185/F219 record that cm 0.10.0
+checks tag ancestry; the old claim that any resolving tag suffices is stale.
+No fake release tags are a route to done for docs or studies. A tooling block,
+a real defect and an unproven live check require different labels and receipts.
