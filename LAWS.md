@@ -219,10 +219,10 @@ verify, the expensive reviewer finds the gaps. The coordinator rules on each
 finding (fix, accepted trade-off named in the PR, or ignore) before routing it
 back, never pushes onto a reviewed branch, and merges only the reviewed SHA;
 rebases and fixes stay with the author agent. A result that meets the letter
-but misses the target is redone on its branch, not merged as progress. Disable
-auto-merge before sending a queued PR back for any push. Re-enable it only
-after the new head has its review receipt and every check is green, including
-non-required checks.
+but misses the target is redone on its branch, not merged as progress. Enable
+auto-merge only on a head whose every check, required or not, is green and whose
+review receipt, where one is owed, names that head; disable it before sending a
+queued PR back for any push.
 
 ### 49. Cost follows how long a context lives, not how much work it does.
 

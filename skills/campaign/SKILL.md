@@ -113,11 +113,11 @@ Before promising a close date, dry-run `cm close --json` on a scratch copy of
 the epoch. Classify the violations and repeat after repairs; close the real
 epoch only after the scratch run is clean.
 
-Do not leave a question as the last act of a closing session (owner, 2026-10-05). The owner still decides the rules ("We should always strive to improve our rules by asking me", 2026-10-04). Walk owner decisions in a session through batched question-tool prompts with context, options and a recommendation; do not require the owner to open Markdown to decide. A notification banner alerts him to the session; it does not replace the decision walk:
+Do not leave a question as the last act of a closing session (owner, 2026-10-05). The owner still decides the rules ("We should always strive to improve our rules by asking me", 2026-10-04). Walk owner decisions in a session through batched question-tool prompts with context, options and a recommendation; do not require the owner to open Markdown to decide.
 
 1. **Lessons become an open PR.** One commit per lesson, each body carrying its receipt, on the skill's or rule file's repo. Leave it unmerged: his merge, edit or partial revert is the vote. Journal-only lessons get lost. Every open lessons PR is merged or closed in one owner batch at the next OPEN → PLANNING kickoff; no skill pin while one is open (owner, 2026-10-17: "Batch vote at kickoff").
 2. **Scope calls take the cheaper default.** Apply the no-spend or smaller option, file the alternative as an issue with a recommendation and its cost, and journal it as applied by default. He vetoes in any later session.
-3. **Anything that cannot default goes in `OWNER-QUEUE.md`,** one item per heading with the recommendation and a line for his answer. The coordinator presents the batch in the session, persists his answers and verifies them before any wake or new `/loop` (below).
+3. **Anything that cannot default goes in `OWNER-QUEUE.md`,** one item per heading with the recommendation and a line for his answer. He drains it with the coordinator before any new `/loop` (below).
 4. **Ask live only while he is demonstrably present** (he wrote in the last few minutes), batched early, per standing order 2. Never as the last act of a session.
 
 Every coordinator session ends, at a close or a clean stop, with a fenced `/loop …` command that runs in a fresh context: the next unit's, filled in (folder, scope, end state, version), or this unit's resume if it stopped early. Write the same command into the `RESUME.md` banner.
@@ -130,9 +130,10 @@ Every coordinator session ends, at a close or a clean stop, with a fenced `/loop
 
 ## Spend
 
-Audit coordinator judgment when trying a cheaper effort setting; retain the
-acceptance bar and restore the previous setting if it fails. Measure context
-size and repeated reads alongside effort when comparing cost.
+When trying a cheaper effort setting, audit coordinator judgment against the
+same bar (9 of 12 shadow rulings, [HISTORY §5](HISTORY.md#5-coordinator-effort-and-context-cost));
+restore the previous setting if it fails. Measure context size and repeated
+reads alongside effort when comparing cost.
 
 pi: `pi-usage.sh <worktree> <supervisor folder>` plus each verifier's printed `cost_usd` (dry runs have no session). Claude: by role, not model (pi-drive §Cost accounting). Journal spend at every landing as a record, not a gate. There is no funding step, no budget and no money tripwire (owner, 2026-10-08: "ditch the money thing, it hasn't really caught anything"). The one money stop is the runaway ceiling in `LIMITS.toml`, $1,000 per epoch, which catches a loop burning money, not ordinary spend. Sub-campaign 4 actuals: ≈ $154 for 13 steps and ≈ 9,400 lines; pi ≈ $78 (≈ $4.60 per step of driver + supervisor, ≈ $1.20 of verifiers per step), Claude ≈ $76 (two coordinator sessions with ≈ 20 wakes, the A2 Opus build, two Fable reads, the ship supervisor). A sol supervisor session carried across resumes grew to $7: start a fresh one every few steps.
 

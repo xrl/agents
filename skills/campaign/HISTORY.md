@@ -72,23 +72,11 @@ The complete former "Things that bite" section of [SKILL.md](SKILL.md), all 66 b
 
 ## Diaphanous closing lessons (2026-11-09)
 
-Concise authorized lessons from the [overseer brief](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132), with the MAC87 derived snapshot linked below. These are campaign receipts, not a transcript publication or a
+Concise authorized lessons from the [overseer brief](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132). These are campaign receipts, not a transcript publication or a
 second rule home. Standing instructions remain in [SKILL.md](SKILL.md) and
 [LAWS.md](../../LAWS.md). Source links point to private campaign records.
 
-### Corpus-table evidence — MAC87 derived snapshot
-
-The [private campaign PR](https://github.com/dekopon-agents/campaign-trail/pull/29) and [immutable tables/source pin](https://github.com/dekopon-agents/campaign-trail/blob/840c0bfb62c4ff2d96b7d0b46ecbda8c0e8003c3/store/history/corpus/diaphanous-dilettantes/tables.md) supply bounded evidence for the drafted Diaphanous closing lessons. The frozen interval is **2026-10-15T04:05:06Z ≤ timestamp < 2026-11-09T16:36:18.206Z**: **2,247 sessions/captures, 195,950 ledger rows, 2,600 cards and 1,229 unit narratives**. Individual lesson receipts remain unchanged.
-
-Retained sources comprise trail **1,032**, pi-home **57**, local Claude **54**, Codex **282**, and cloud **822** sessions/captures. These follow documented timestamp, workspace, mtime and dedup filters, rather than an all-files inventory. Captures can overlap across systems; there is no universal cross-source event union. Trail-header precedence suppresses pi-home twins even when a twin is more complete; cloud selection uses maximum parsed manifest capture time.
-
-Codex metadata marks **169/282 sessions (59.9%)** as guardian assessments; **113** retain agent role. Assessments can concern other work and do not establish product implementation. All source-role labels reflect parser/metadata provenance, not an independent semantic role census.
-
-Historical recorded/allocated dollars are **$629.81 trail, $562.17 pi-home, $2,132.06 local Claude and $9,602.26 cloud**. Pi records message costs; local Claude allocates cost-state by price-shaped token weight; cloud uses weighted manifest costs. Codex subscription dollars are unknown, not zero. These fields are neither corpus-build charges nor a complete campaign bill. Separately, subscription analysis used **2,600 map**, **1 merge-ID**, and **1,247 unit-stage** successful invocations, all at low effort; unit calls include intermediate summaries. Build dollars remain unmetered. This documents execution, not model/effort routing guidance.
-
-Context and coordination measurements include **10,175 local Claude coordinator-labelled messages**, with **3,229M tokens** at table precision, and **20,240 read calls**, including **2,452 repeats**. These are parser-labelled repeats within ten minutes; they can include rereads, polling or retries and are not a count of waste. Historical tokens include cache reads; repeated tokens do not measure unique work. Seven oversized units required bounded intermediate summaries, introducing another compression layer that can omit detail. These measurements provide context for the lessons, without establishing causal costs or universal efficiency gains.
-
-Finally, **673 of 885 indexed PR references** receive the alive classification through merge ancestry/file survival, not behavioral testing. Cards remain model analysis: 164 selected excerpts and 25 distinct model PR references are flagged in the corpus checks. Unknown references remain unknown, and withdrawn watches are not passes. Separate feedback dispositions are not corpus-inferred fixes. The tables support qualified historical observations, not a new law.
+Corpus tables: [campaign-trail#29](https://github.com/dekopon-agents/campaign-trail/pull/29).
 
 ### 1. Persisted owner answers
 
@@ -139,7 +127,7 @@ production traffic or changing a probe's permission boundary.
 ### 5. Coordinator effort and context cost
 
 [Overseer lesson 5](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) reports the low-effort judgment audit at about 6.7/12
-against a 9/12 bar, with no saving, and attributes the dominant cost to context
+against a bar of 9 of 12 shadow rulings, with no saving, and attributes the dominant cost to context
 (IDEA-0137). The [journal](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L52649-L52681) records restoration to medium and
 its start proof; [OQ63's context](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L54762) confirms the failed audit and
 rollback. These are observations from this campaign, not universal proof that
@@ -151,8 +139,7 @@ cost law or model routing table is introduced.
 
 ### 6. Owner decisions happen in the session
 
-[Overseer lesson 6](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) requires a batched question-tool walk in a session,
-with the notification banner serving as an alert, not the decision surface.
+[Overseer lesson 6](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) requires a batched question-tool walk in a session.
 The [journal drawdown](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L7294) records a tutorial/question-tool walk;
 [later drawdowns](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L8012-L8134) also record cases settled directly by the
 owner's words during the tutorial. Already explicit owner decisions need no
@@ -160,7 +147,7 @@ repeat question. The Markdown queue remains the durable record; requiring
 its file to be opened is not a substitute for presenting decisions. This
 clarifies Closing's old “asks no question” wording while preserving the dated
 owner constraint against a question as the last act and the live-only timing
-rule. No notification delivery or click-through success rate is claimed.
+rule.
 
 ### 7. Completion routes and evidence
 
@@ -196,9 +183,9 @@ attempt ledger. The reviewed-and-green merge rule stays in LAWS §45.
 
 ### Other journal lessons and repeated follow-ups
 
-All 15 case-insensitive Lesson matches in the supplied journal extraction were
-reviewed. The four direct workflow lessons map to §8 above and LAWS §45's
-[auto-merge receipt](../../HISTORY.md#45-diaphanous-auto-merge-gates-2026-11-09-receipt).
+The 11 `Lesson` lines plus four lower-case mentions in the supplied journal
+extraction were reviewed. The four direct workflow lessons map to §8 above and LAWS §45's
+[auto-merge receipt](../../HISTORY.md#45-merge-the-head-that-was-reviewed).
 The remaining matches are retained as source evidence rather than new laws:
 
 | Journal lines | Lesson / existing home |
@@ -210,7 +197,8 @@ The remaining matches are retained as source evidence rather than new laws:
 | [4821](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L4821) | cm lesson/queue operations: LAWS §60 mechanics; dispositions record subsequent commands. |
 | [4875, 4974](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L4875-L4974) | Relayed authority/permission refusal: LAWS §57 and the existing Things that bite authority bullet; no bypass rule. |
 | [9542](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L9542) | Proof before promoting context machinery: LAWS §60 measured failure before more machinery. |
-| [9589, 9639, 11129](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L9589-L9639) | Brief prohibitions at contract scope, one conflict list, explicit refusal/unbuilt behavior: steering/GPT.md scope and CODE_DESIGN_RULES §§36, 40; preserve the later brief-gap receipt at line 11129. |
+| [9589, 9639](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L9589-L9639) | Brief prohibitions at contract scope and one conflict list: steering/GPT.md scope and CODE_DESIGN_RULES §36. |
+| [11129](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L11129) | Explicit refusal text and unbuilt-command behavior remain brief-specific checklist findings; no new standing rule proposed. |
 | [18939](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L18939) | End attempts at merge: §8. |
 | [37878, 37933](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L37878-L37933) | All-check green and disable before fix push: LAWS §45. |
 
@@ -220,4 +208,4 @@ is not a fix; a next-epoch recommendation is not admitted scope. Repetitive
 [FOLLOW-UPS](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/FOLLOW-UPS.md) entries about inherited findings, flaky checks, stale live
 versions, unavailable grants, missing receipts and moved work fit existing
 review, authority and evidence homes. They do not authorize more retries,
-new grants or another scheduler. The corpus-table evidence above is separate from these contemporaneous source receipts; it does not independently validate the historical watch or audit outcomes.
+new grants or another scheduler.
