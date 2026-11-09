@@ -75,6 +75,17 @@ Evidence and one-off recipes for rules in [LAWS.md](LAWS.md), moved verbatim wit
   gap (a replay orphan, a pre-expansion bug, a dead-end default, a permission
   failure against live state) came from the fresh expensive reviewer.
 
+- **Receipt, dekopon, 2026-11-01:** the [03:46Z journal entry](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L37878)
+  records that blanket Dependabot auto-merge re-enablement let #875 land with a
+  red non-required Wasmtime optimization check, breaking main's locked build.
+  The [04:20Z entry](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L37933)
+  records #890's fix push re-entering the queue and its 03:59Z merge before its
+  Astra receipt was collected. R412 later ACCEPTed that exact head with zero
+  blocking findings; that later acceptance did not make the earlier gate
+  ordering sound. §45 requires every check green before enabling auto-merge,
+  a receipt naming that head where review is owed, and disabling auto-merge
+  before sending a queued PR back for any push.
+
 ### 49. Cost follows how long a context lives, not how much work it does.
 
 - **Receipt, dekopon, 2026-09-29:** on this machine's logs for 15 to 28

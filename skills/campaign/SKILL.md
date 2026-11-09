@@ -35,7 +35,9 @@ From Diaphanous Dilettantes, WORKING has no long-lived coordinator. A launchd ti
 lists into a lane (`pi-lane.sh`, `lane-codex.sh`, `lane-claude.sh`, `lane-fable.sh`), merges
 reviewed green heads, tags, pins and runs the LAN smoke under `[authority]`, and wakes Claude with
 one `claude -p` run only for judgment: a hand-back, a Fable FIX, a red smoke, an answered
-OWNER-QUEUE item. A wake answers with a decision row and `decision-N.md`, commits and ends; it holds
+OWNER-QUEUE item. Before waking on an owner answer, read back the persisted item
+and verify that `Answer:` contains the owner's decision; `cm owner-queue add`
+starts with a bare `Answer:` line. A wake answers with a decision row and `decision-N.md`, commits and ends; it holds
 no publish or deploy right. The pi lane needs no supervisor, so the Coordinator and Supervisor rows
 above and the handoff caps under Spend apply only to attended sessions (Cruciferous and earlier).
 
@@ -65,15 +67,20 @@ navigation does not change the generic folder contract for other campaigns.
 
 1. `LIMITS.toml`: not paused, spend under the runaway ceiling, free disk minus kache headroom over the floor, heavy builds under the cap.
 2. A worktree cut from the integration head, upstream unset, fixtures fetched.
-3. The step prompt: the row verbatim, the packages, the witnesses, what the previous step landed in one paragraph, "decide under ambiguity and record it; never end a turn with a question".
+3. The step prompt: the full base commit SHA, the row verbatim, the packages, the witnesses, what the previous step landed in one paragraph, "decide under ambiguity and record it; never end a turn with a question".
 4. The verify template: `verifier-role.md` + the range + the row + the step's specific checks + this sentence, never a copy of the decisions: "Every row of EXECUTION.md §Rows and `<NN>/DECISIONS.md` is settled; a finding that contradicts one is not a finding; quote the row ID." Execution rows are `E…`, unit rows carry their prefix (`09-D21`).
 5. The supervisor packet from `templates/SUPERVISOR.example.md` (pi-drive's template, adapted: the supervisor runs the verifier itself, reads the driver's gate log instead of rerunning it, writes S-numbers in its own file, never in DECISIONS.md).
 6. STATE alive table and a journal line, then `pi() { command pi -ne "$@"; }; export -f pi; pi-turn.sh <step folder> <session> openai-codex/gpt-6-sol:high <log> kickoff.md` with `run_in_background`, every path absolute (`pi-turn.sh` changes into the step folder before it writes the log).
 7. For a release: list every repo that links the changed contract, not only the ones that implement it. A client that embeds the runtime or decodes the wire (an operator console, a CLI) is a fleet member and re-pins and releases with the providers. Leave one out only when the release provably changes no type it decodes, and say so in the plan.
 
+Keep a Codex attempt open through review and fix turns; end it at merge, not
+when the PR becomes ready.
+
 ## The coordinator loop
 
-Wake only on a completion notice. A supervisor's notice comes at the end of its turn, up to 100 minutes, so a merge or a deploy inside the turn is invisible until then. Every status to the owner says when it was read ("as of 19:19Z") and what may have happened since; when the owner asks about a running lane, re-read its state file and the live artifacts before answering. On each notice:
+Wake only on a completion notice. A supervisor's notice comes at the end of its turn, up to 100 minutes, so a merge or a deploy inside the turn is invisible until then. Every status to the owner says when it was read ("as of 19:19Z") and what may have happened since; when the owner asks about a running lane, re-read its state file and the live artifacts before answering. For a Codex queue backlog, send an authoritative current-state steer that names
+which earlier instructions it supersedes. Do not replay obsolete work from the
+backlog. On each notice:
 
 | Event | Do |
 |---|---|
@@ -88,6 +95,10 @@ Rulings that recur: a fix re-check that raises new pre-existing defects is not g
 **A retiring coordinator keeps deciding until its successor is up (owner, 2026-10-16).** Past its handoff cap it launches nothing new: no new step, no new Opus build, no new Fable read. But it still answers a completion notice whose next action is only a decision: it reads the blockers, writes `decision-N.md` and resumes that lane's supervisor with a two-line prompt. It stops when the RESUME banner carries a newer session's line (the fresh session writes that first) or when a notice needs anything beyond a decision, and journals each wake it takes as retired. 2026-10-16: Cruciferous Loop 6 retired at 10:23Z, all three supervisors handed back by 10:35Z, and nothing ran until the owner started the next session at 14:56Z.
 
 
+Prefer bounded active probes with a named witness and stop over accumulating
+passive watches when the probe is authorized. Preserve unresolved and withdrawn
+outcomes as such; neither is a pass.
+
 ## Measuring both ways (when a step is worth it)
 
 Same row, same decisions, same verifier; separate worktrees; neither may read the other. Judge blind: detached worktrees `-x`/`-y` by coin flip, reports and verify files redacted of model, tool, branch and PR names, the key in a file the judge is not pointed to. The judge returns findings per build, a verdict, fix-before-landing vs carry, and at most three ports from the loser. The winner's author makes the fixes as a second commit; a scoped re-check; the coordinator squash-lands. Record per-role spend, wall clock, passes and the verdict.
@@ -98,7 +109,13 @@ Coordinator only, on the integration branch: `git merge --squash origin/<branch>
 
 ## Closing
 
-The closing session asks no question: a question at the end means reviving an expensive context to answer it (owner, 2026-10-05). The owner still decides the rules ("We should always strive to improve our rules by asking me", 2026-10-04); the closing step leaves the decisions where he can answer them without Claude:
+Before promising a close date, dry-run `cm close --json` on a scratch copy of
+the epoch. Classify the violations and repeat after repairs; close the real
+epoch only after the scratch run is clean.
+
+Do not leave a question as the last act of a closing session (owner, 2026-10-05). The owner still decides the rules ("We should always strive to improve our rules by asking me", 2026-10-04). Walk owner decisions in a session through batched question-tool prompts with context, options and a recommendation; do not require the owner to open Markdown to decide.
+
+The closing step follows these rules:
 
 1. **Lessons become an open PR.** One commit per lesson, each body carrying its receipt, on the skill's or rule file's repo. Leave it unmerged: his merge, edit or partial revert is the vote. Journal-only lessons get lost. Every open lessons PR is merged or closed in one owner batch at the next OPEN → PLANNING kickoff; no skill pin while one is open (owner, 2026-10-17: "Batch vote at kickoff").
 2. **Scope calls take the cheaper default.** Apply the no-spend or smaller option, file the alternative as an issue with a recommendation and its cost, and journal it as applied by default. He vetoes in any later session.
@@ -114,6 +131,11 @@ Every coordinator session ends, at a close or a clean stop, with a fenced `/loop
 ```
 
 ## Spend
+
+When trying a cheaper effort setting, audit coordinator judgment against the
+same bar (9 of 12 shadow rulings, [HISTORY §5](HISTORY.md#5-coordinator-effort-and-context-cost));
+restore the previous setting if it fails. Measure context size and repeated
+reads alongside effort when comparing cost.
 
 pi: `pi-usage.sh <worktree> <supervisor folder>` plus each verifier's printed `cost_usd` (dry runs have no session). Claude: by role, not model (pi-drive §Cost accounting). Journal spend at every landing as a record, not a gate. There is no funding step, no budget and no money tripwire (owner, 2026-10-08: "ditch the money thing, it hasn't really caught anything"). The one money stop is the runaway ceiling in `LIMITS.toml`, $1,000 per epoch, which catches a loop burning money, not ordinary spend. Sub-campaign 4 actuals: ≈ $154 for 13 steps and ≈ 9,400 lines; pi ≈ $78 (≈ $4.60 per step of driver + supervisor, ≈ $1.20 of verifiers per step), Claude ≈ $76 (two coordinator sessions with ≈ 20 wakes, the A2 Opus build, two Fable reads, the ship supervisor). A sol supervisor session carried across resumes grew to $7: start a fresh one every few steps.
 
@@ -140,7 +162,7 @@ Incident receipts for the other 51 bullets, and the original wording of all 66, 
 - The classifier refuses `gh pr merge` into a shared workflow repo whose `@main` other repos call. Ask the owner for that merge up front.
 - Before a push, the driver runs CI's own steps for what it touched: every generated artifact CI byte-compares, every docs check its change triggers, `cargo doc` with `-D warnings`, `cargo deny`. The repo's own list lives in its agent guide. 2026-10-03: four CI reds (a rustdoc link, an advisory, generated bytes, an undocumented event) each cost a fix turn plus a CI cycle.
 - Every background probe, watch or poll loop runs under `timeout <s>`, never `while true`. A loop left by the v0.32 rollout session hit the WhatsApp webhook every 5 s for 23 hours; a day later its 15,000 refusals looked like a production fault and cost a diagnosis.
-- `cm close` needs every step at `done` or `blocked:<reason>`, and `done` comes only after `released` (a tag) and `deployed` (a digest). Take the tag from `git tag --contains <merge sha>` in the step's repo; `cm` accepts any tag that resolves, so the closer checks that the tag contains the merge. Take the digest from what the RPi runs: the pod's image ID, or a provider-set pin matched against its registry tag. Pass `--repo` once the worktree is reaped. A step that was released but is not live, docs only, a study, or superseded by a split closes as `blocked:<one-word-reason>` (Cruciferous close, 2026-10-17).
+- Close units and steps through their real completion route: release/deploy receipts for shipped work, merge or sync evidence for no-release work, and acceptance evidence for docs/studies. Never invent a tag to satisfy closure or declare deployed without a receipt. A release tag must contain the merge; take the digest from the running image or verified provider pin, and pass `--repo` after a worktree is reaped. If cm cannot represent completed work, record a complete-work block and the tool issue separately from missing evidence or a defect; superseded work names its successor. See [the closeout receipt](HISTORY.md#7-completion-routes-and-evidence).
 - A smoke leg's verdict never comes from scraping the console TUI. Bordered echoes, repaint and sidebar text, and a provider printing its own `[exit code: 0]` each fooled a matcher: three verifier rounds in sub-campaign 11 (CONSOLE-DEV, R11-14..16). A leg passes on the broker's record of the call (Succeeded in the leg's window) plus a result line the supervisor quotes from the saved screen. The script only captures.
 - A gate counts only what its own lane created. A container or image another session left behind is recorded as pre-existing, never stopped, and never turns the gate red. A local pre-push step never runs a repo CI script or Compose file that starts Docker (a chart permission script, an OpenObserve smoke): the PR's CI runs it on GitHub's runner and is authoritative. Advanced-schlubbing: a pre-existing labelled container stopped the 0.39.0 rollout, and repo CI scripts that start Docker stopped the 0.40.0 release three times.
 - A core release is two tags, core then chart, and the chart is cut from main. Every other core PR holds until the chart tag exists, then merges one at a time, each riding the next minor. A merge between the two tags puts unreleased code under the chart's tag.

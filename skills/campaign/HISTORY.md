@@ -68,3 +68,144 @@ The complete former "Things that bite" section of [SKILL.md](SKILL.md), all 66 b
 64. When main moves under a lane, the re-check at the rebased head is mandatory, and every verify template names the other lanes that are writing the same crate. Parallel lanes on one crate are allowed; that re-check is what catches their seam. 2026-10-16, Cruciferous 09 S5b ruling 3: 07 S3 (#602) landed a GitHub listener holding a boot-time copy of the routes while 09 S5b made routes live-reloadable; neither lane's base could show it, and only the re-check after S5b's rebase found it (one Opus fix, about 40 minutes).
 65. A study's cleanup keeps every hashed artifact a later decision packet joins on until that packet is accepted. 2026-10-16, Cruciferous 13 S5 ruling 1: S3's cleanup removed the built Python Wasm and the run-copy broker after its review, so S5 could not hash them again and its comparison closed interim.
 66. Changelog trailer wording or category is never blocking in a Fable read; the reviewer notes it for the squash message, and the coordinator fixes it there. `CHANGELOG.md` is written only at release prep from `git log`, so a trailer is a breadcrumb, not a merge gate (owner, 2026-10-16). Every Fable prompt says so. Cruciferous #604 came back FIX BEFORE MERGE over one trailer word.
+
+
+## Diaphanous closing lessons (2026-11-09)
+
+Concise authorized lessons from the [overseer brief](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132). These are campaign receipts, not a transcript publication or a
+second rule home. Standing instructions remain in [SKILL.md](SKILL.md) and
+[LAWS.md](../../LAWS.md). Source links point to private campaign records.
+
+Corpus tables: [campaign-trail#29](https://github.com/dekopon-agents/campaign-trail/pull/29).
+
+### 1. Persisted owner answers
+
+[Overseer lesson 1](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) identifies the bare `Answer:` created by
+`cm owner-queue add`; adding an item does not persist a decision. The
+[journal's OQ62 read](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L52685-L52691) records a NO-GO while the answer was
+empty. The readback requirement precedes the wake, rather than treating a
+successful add or notification as proof of authority. This is a concrete
+campaign failure mode, not a measured frequency. [Dispositions F131/F178](https://github.com/dekopon-agents/campaign-trail/blob/f11507be8e38ef5d45bd52f59e7e605953f24e8b/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md#L141)
+record that answer/edit commands shipped in cm 0.9.0; those commands do not
+remove the caller's obligation to verify the stored answer.
+
+### 2. Codex backlog steering
+
+[Overseer lesson 2](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) reports FIFO delivery of one queued message per turn:
+a stale backlog can execute superseded instructions. The skill asks for an
+explicit current-state steer, not a replay of the backlog. This describes the
+campaign's observed queue behavior, not a throughput benchmark or a claim about
+every Codex interface. It adds no second queue or scheduler.
+
+### 3. Rehearse the close before forecasting it
+
+[Overseer lesson 3](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) records a promised morning close that encountered
+554 violations. [OQ67's journal receipt](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L57654-L57677) dates the scratch
+snapshot to `9da09a5e7` at 09:00Z: one closed-queue violation and 553
+closed-track violations. These are state-machine violations, not 554 product
+defects. The [close report](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/CLOSE-REPORT.md#what-the-owner-queue-closeout-did-oq67-oq68)
+records a later snapshot with one remaining queue violation; the journal later
+records a clean scratch run. Different snapshots must not be combined into a
+single unresolved count. The operational change is a scratch rehearsal before
+a forecast, not a new closeout system.
+
+### 4. Active probes and honest outcomes
+
+[Overseer lesson 4](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) reports 53 of 675 watches resolved and observes that
+every real defect encountered at close was caught in minutes by active probes
+(IDEA-0139). The broad “every real defect” statement is the overseer's
+observation, not an independent model finding, a complete defect census or a
+controlled comparison. Unresolved or withdrawn watches are not passes; the
+[close report](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/CLOSE-REPORT.md#tracks-by-final-state) explicitly distinguishes them.
+[FOLLOW-UPS](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/FOLLOW-UPS.md#L99-L104) distinguishes unproven live checks, a payload capture
+that established a defect, and recurring failures without a proven root cause.
+Its [meter-row carry](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/FOLLOW-UPS.md#L147) calls for deterministic fault injection rather
+than another live-turn race. Existing historical bullets 46–47 already cover
+forced witnesses; the skill now favors bounded probes without authorizing new
+production traffic or changing a probe's permission boundary.
+
+### 5. Coordinator effort and context cost
+
+[Overseer lesson 5](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) reports the low-effort judgment audit at about 6.7/12
+against a bar of 9 of 12 shadow rulings, with no saving, and attributes the dominant cost to context
+(IDEA-0137). The [journal](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L52649-L52681) records restoration to medium and
+its start proof; [OQ63's context](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L54762) confirms the failed audit and
+rollback. These are observations from this campaign, not universal proof that
+low effort cannot work, a controlled causal estimate of cost, or a global
+model/effort pin. [Disposition F173](https://github.com/dekopon-agents/campaign-trail/blob/f11507be8e38ef5d45bd52f59e7e605953f24e8b/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md#L183) carries context/cost measurement
+forward and warns that this audit does not validate the earlier window-only
+hypothesis. Existing LAWS §49 already covers context lifetime; no duplicate
+cost law or model routing table is introduced.
+
+### 6. Owner decisions happen in the session
+
+[Overseer lesson 6](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) requires a batched question-tool walk in a session.
+The [journal drawdown](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L7294) records a tutorial/question-tool walk;
+[later drawdowns](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L8012-L8134) also record cases settled directly by the
+owner's words during the tutorial. Already explicit owner decisions need no
+repeat question. The Markdown queue remains the durable record; requiring
+its file to be opened is not a substitute for presenting decisions. This
+clarifies Closing's old “asks no question” wording while preserving the dated
+owner constraint against a question as the last act and the live-only timing
+rule.
+
+### 7. Completion routes and evidence
+
+[Overseer lesson 7](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) and the [close report's cm gap](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/CLOSE-REPORT.md#cm-gap-for-the-next-epochs-cm)
+identify [cm#96](https://github.com/dekopon-agents/cm/issues/96): cm 0.13.0
+could not finish units or merged no-release steps. The final report separates
+137 complete units, 10 units with real gaps and 10 not-run units; among steps,
+39 synced homelab merges and 18 no-release repository merges were complete-work
+blocks, while 10 other steps had real release/deploy gaps. These are the
+report's state-accounting counts. The
+[FOLLOW-UPS close pass](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/FOLLOW-UPS.md#next-epoch-coordinator-10-2026-11-09-oq68-close-pass)
+uses 61 blocked merged steps including four unreleased merges; that is not 61
+complete steps. Missing deployment evidence remains missing evidence.
+
+This replaces the skill's overbroad Cruciferous-close recipe (2026-10-17)
+requiring tags/digests for everything; its historical wording remains in this
+file's original bullet 26. [Dispositions F003/F009/F172](https://github.com/dekopon-agents/campaign-trail/blob/f11507be8e38ef5d45bd52f59e7e605953f24e8b/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md#L13)
+distinguish study-kind repair, rollout evidence without a tag, and coordinator
+completion evidence already supported by cm. F185/F219 record that cm 0.10.0
+checks tag ancestry; the old claim that any resolving tag suffices is stale.
+No fake release tags are a route to done for docs or studies. A tooling block,
+a real defect and an unproven live check require different labels and receipts.
+
+### 8. Codex bases and attempt lifetime
+
+The [journal base-SHA lesson](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L221-L233) found a burn-in checkout rather
+than main; the named full SHA let the executor select the intended base.
+`steering/GPT.md` already covers named PR bases, so the existing step-prompt
+checklist merely names that input. The [attempt lesson](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L18939)
+ended an attempt at PR-ready and cm then refused begin/claim for the fix pass.
+Attempts now stay open until merge; this is a lifecycle correction, not a new
+attempt ledger. The reviewed-and-green merge rule stays in LAWS §45.
+
+### Other journal lessons and repeated follow-ups
+
+The 11 `Lesson` lines plus four lower-case mentions in the supplied journal
+extraction were reviewed. The four direct workflow lessons map to §8 above and LAWS §45's
+[auto-merge receipt](../../HISTORY.md#45-merge-the-head-that-was-reviewed).
+The remaining matches are retained as source evidence rather than new laws:
+
+| Journal lines | Lesson / existing home |
+|---|---|
+| [221, 233](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L221-L233) | Named base and its later landing receipt: §8. |
+| [492](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L492) | Review publish-authority/campaign-state changes before merge: LAWS §45. |
+| [563](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L563) | Child-written witness for the fork race: CODE_DESIGN_RULES §41 behavior witnesses. |
+| [1061](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L1061) | Provider re-pin scans affected configs/skills: LAWS §42 consumer inventory. |
+| [4821](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L4821) | cm lesson/queue operations: LAWS §60 mechanics; dispositions record subsequent commands. |
+| [4875, 4974](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L4875-L4974) | Relayed authority/permission refusal: LAWS §57 and the existing Things that bite authority bullet; no bypass rule. |
+| [9542](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L9542) | Proof before promoting context machinery: LAWS §60 measured failure before more machinery. |
+| [9589, 9639](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L9589-L9639) | Brief prohibitions at contract scope and one conflict list: steering/GPT.md scope and CODE_DESIGN_RULES §36. |
+| [11129](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L11129) | Explicit refusal text and unbuilt-command behavior remain brief-specific checklist findings; no new standing rule proposed. |
+| [18939](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L18939) | End attempts at merge: §8. |
+| [37878, 37933](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L37878-L37933) | All-check green and disable before fix push: LAWS §45. |
+
+[Dispositions](https://github.com/dekopon-agents/campaign-trail/blob/f11507be8e38ef5d45bd52f59e7e605953f24e8b/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md) are a source-backed classification of 223 headings, not
+223 proposed rules. Fixed commands do not prove live acceptance; a filed issue
+is not a fix; a next-epoch recommendation is not admitted scope. Repetitive
+[FOLLOW-UPS](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/FOLLOW-UPS.md) entries about inherited findings, flaky checks, stale live
+versions, unavailable grants, missing receipts and moved work fit existing
+review, authority and evidence homes. They do not authorize more retries,
+new grants or another scheduler.
