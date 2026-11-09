@@ -127,6 +127,10 @@ Every coordinator session ends, at a close or a clean stop, with a fenced `/loop
 
 ## Spend
 
+Audit coordinator judgment when trying a cheaper effort setting; retain the
+acceptance bar and restore the previous setting if it fails. Measure context
+size and repeated reads alongside effort when comparing cost.
+
 pi: `pi-usage.sh <worktree> <supervisor folder>` plus each verifier's printed `cost_usd` (dry runs have no session). Claude: by role, not model (pi-drive §Cost accounting). Journal spend at every landing as a record, not a gate. There is no funding step, no budget and no money tripwire (owner, 2026-10-08: "ditch the money thing, it hasn't really caught anything"). The one money stop is the runaway ceiling in `LIMITS.toml`, $1,000 per epoch, which catches a loop burning money, not ordinary spend. Sub-campaign 4 actuals: ≈ $154 for 13 steps and ≈ 9,400 lines; pi ≈ $78 (≈ $4.60 per step of driver + supervisor, ≈ $1.20 of verifiers per step), Claude ≈ $76 (two coordinator sessions with ≈ 20 wakes, the A2 Opus build, two Fable reads, the ship supervisor). A sol supervisor session carried across resumes grew to $7: start a fresh one every few steps.
 
 Claude's number is the coordinator session's `/cost`, which includes its subagents. ccusage 5-hour blocks count Claude only: never subtract pi from them (2026-10-02: reported $15, real $62).

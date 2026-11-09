@@ -129,3 +129,16 @@ Its [meter-row carry](https://github.com/dekopon-agents/campaign-trail/blob/9f87
 than another live-turn race. Existing historical bullets 46–47 already cover
 forced witnesses; the skill now favors bounded probes without authorizing new
 production traffic or changing a probe's permission boundary.
+
+### 5. Coordinator effort and context cost
+
+[Overseer lesson 5](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) reports the low-effort judgment audit at about 6.7/12
+against a 9/12 bar, with no saving, and attributes the dominant cost to context
+(IDEA-0137). The [journal](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L52649-L52681) records restoration to medium and
+its start proof; [OQ63's context](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L54762) confirms the failed audit and
+rollback. These are observations from this campaign, not universal proof that
+low effort cannot work, a controlled causal estimate of cost, or a global
+model/effort pin. [Disposition F173](https://github.com/dekopon-agents/campaign-trail/blob/ecec4880fd98e8a9f2646f70aef22c7a36218231/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md#L183) carries context/cost measurement
+forward and warns that this audit does not validate the earlier window-only
+hypothesis. Existing LAWS §49 already covers context lifetime; no duplicate
+cost law or model routing table is introduced.
