@@ -85,7 +85,7 @@ Corpus tables: [campaign-trail#29](https://github.com/dekopon-agents/campaign-tr
 [journal's OQ62 read](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L52685-L52691) records a NO-GO while the answer was
 empty. The readback requirement precedes the wake, rather than treating a
 successful add or notification as proof of authority. This is a concrete
-campaign failure mode, not a measured frequency. [Dispositions F131/F178](https://github.com/dekopon-agents/campaign-trail/blob/ecec4880fd98e8a9f2646f70aef22c7a36218231/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md#L141)
+campaign failure mode, not a measured frequency. [Dispositions F131/F178](https://github.com/dekopon-agents/campaign-trail/blob/f11507be8e38ef5d45bd52f59e7e605953f24e8b/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md#L141)
 record that answer/edit commands shipped in cm 0.9.0; those commands do not
 remove the caller's obligation to verify the stored answer.
 
@@ -132,7 +132,7 @@ against a bar of 9 of 12 shadow rulings, with no saving, and attributes the domi
 its start proof; [OQ63's context](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L54762) confirms the failed audit and
 rollback. These are observations from this campaign, not universal proof that
 low effort cannot work, a controlled causal estimate of cost, or a global
-model/effort pin. [Disposition F173](https://github.com/dekopon-agents/campaign-trail/blob/ecec4880fd98e8a9f2646f70aef22c7a36218231/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md#L183) carries context/cost measurement
+model/effort pin. [Disposition F173](https://github.com/dekopon-agents/campaign-trail/blob/f11507be8e38ef5d45bd52f59e7e605953f24e8b/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md#L183) carries context/cost measurement
 forward and warns that this audit does not validate the earlier window-only
 hypothesis. Existing LAWS §49 already covers context lifetime; no duplicate
 cost law or model routing table is introduced.
@@ -157,14 +157,14 @@ could not finish units or merged no-release steps. The final report separates
 137 complete units, 10 units with real gaps and 10 not-run units; among steps,
 39 synced homelab merges and 18 no-release repository merges were complete-work
 blocks, while 10 other steps had real release/deploy gaps. These are the
-report's state-accounting counts, not finished corpus-table findings. The
+report's state-accounting counts. The
 [FOLLOW-UPS close pass](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/FOLLOW-UPS.md#next-epoch-coordinator-10-2026-11-09-oq68-close-pass)
 uses 61 blocked merged steps including four unreleased merges; that is not 61
 complete steps. Missing deployment evidence remains missing evidence.
 
 This replaces the skill's overbroad Cruciferous-close recipe (2026-10-17)
 requiring tags/digests for everything; its historical wording remains in this
-file's original bullet 26. [Dispositions F003/F009/F172](https://github.com/dekopon-agents/campaign-trail/blob/ecec4880fd98e8a9f2646f70aef22c7a36218231/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md#L13)
+file's original bullet 26. [Dispositions F003/F009/F172](https://github.com/dekopon-agents/campaign-trail/blob/f11507be8e38ef5d45bd52f59e7e605953f24e8b/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md#L13)
 distinguish study-kind repair, rollout evidence without a tag, and coordinator
 completion evidence already supported by cm. F185/F219 record that cm 0.10.0
 checks tag ancestry; the old claim that any resolving tag suffices is stale.
@@ -202,7 +202,7 @@ The remaining matches are retained as source evidence rather than new laws:
 | [18939](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L18939) | End attempts at merge: §8. |
 | [37878, 37933](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L37878-L37933) | All-check green and disable before fix push: LAWS §45. |
 
-[Dispositions](https://github.com/dekopon-agents/campaign-trail/blob/ecec4880fd98e8a9f2646f70aef22c7a36218231/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md) are a source-backed classification of 223 headings, not
+[Dispositions](https://github.com/dekopon-agents/campaign-trail/blob/f11507be8e38ef5d45bd52f59e7e605953f24e8b/store/epochs/diaphanous-dilettantes/FEEDBACK-DISPOSITIONS.md) are a source-backed classification of 223 headings, not
 223 proposed rules. Fixed commands do not prove live acceptance; a filed issue
 is not a fix; a next-epoch recommendation is not admitted scope. Repetitive
 [FOLLOW-UPS](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/FOLLOW-UPS.md) entries about inherited findings, flaky checks, stale live

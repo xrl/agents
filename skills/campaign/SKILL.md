@@ -115,6 +115,8 @@ epoch only after the scratch run is clean.
 
 Do not leave a question as the last act of a closing session (owner, 2026-10-05). The owner still decides the rules ("We should always strive to improve our rules by asking me", 2026-10-04). Walk owner decisions in a session through batched question-tool prompts with context, options and a recommendation; do not require the owner to open Markdown to decide.
 
+The closing step follows these rules:
+
 1. **Lessons become an open PR.** One commit per lesson, each body carrying its receipt, on the skill's or rule file's repo. Leave it unmerged: his merge, edit or partial revert is the vote. Journal-only lessons get lost. Every open lessons PR is merged or closed in one owner batch at the next OPEN → PLANNING kickoff; no skill pin while one is open (owner, 2026-10-17: "Batch vote at kickoff").
 2. **Scope calls take the cheaper default.** Apply the no-spend or smaller option, file the alternative as an issue with a recommendation and its cost, and journal it as applied by default. He vetoes in any later session.
 3. **Anything that cannot default goes in `OWNER-QUEUE.md`,** one item per heading with the recommendation and a line for his answer. He drains it with the coordinator before any new `/loop` (below).
