@@ -102,6 +102,10 @@ Coordinator only, on the integration branch: `git merge --squash origin/<branch>
 
 ## Closing
 
+Before promising a close date, dry-run `cm close --json` on a scratch copy of
+the epoch. Classify the violations and repeat after repairs; close the real
+epoch only after the scratch run is clean.
+
 The closing session asks no question: a question at the end means reviving an expensive context to answer it (owner, 2026-10-05). The owner still decides the rules ("We should always strive to improve our rules by asking me", 2026-10-04); the closing step leaves the decisions where he can answer them without Claude:
 
 1. **Lessons become an open PR.** One commit per lesson, each body carrying its receipt, on the skill's or rule file's repo. Leave it unmerged: his merge, edit or partial revert is the vote. Journal-only lessons get lost. Every open lessons PR is merged or closed in one owner batch at the next OPEN → PLANNING kickoff; no skill pin while one is open (owner, 2026-10-17: "Batch vote at kickoff").

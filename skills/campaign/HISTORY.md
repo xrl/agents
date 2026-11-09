@@ -102,3 +102,15 @@ a stale backlog can execute superseded instructions. The skill asks for an
 explicit current-state steer, not a replay of the backlog. This describes the
 campaign's observed queue behavior, not a throughput benchmark or a claim about
 every Codex interface. It adds no second queue or scheduler.
+
+### 3. Rehearse the close before forecasting it
+
+[Overseer lesson 3](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) records a promised morning close that encountered
+554 violations. [OQ67's journal receipt](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/JOURNAL.md#L57654-L57677) dates the scratch
+snapshot to `9da09a5e7` at 09:00Z: one closed-queue violation and 553
+closed-track violations. These are state-machine violations, not 554 product
+defects. The [close report](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/CLOSE-REPORT.md#what-the-owner-queue-closeout-did-oq67-oq68)
+records a later snapshot with one remaining queue violation; the journal later
+records a clean scratch run. Different snapshots must not be combined into a
+single unresolved count. The operational change is a scratch rehearsal before
+a forecast, not a new closeout system.
