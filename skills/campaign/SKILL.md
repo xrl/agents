@@ -92,6 +92,10 @@ Rulings that recur: a fix re-check that raises new pre-existing defects is not g
 **A retiring coordinator keeps deciding until its successor is up (owner, 2026-10-16).** Past its handoff cap it launches nothing new: no new step, no new Opus build, no new Fable read. But it still answers a completion notice whose next action is only a decision: it reads the blockers, writes `decision-N.md` and resumes that lane's supervisor with a two-line prompt. It stops when the RESUME banner carries a newer session's line (the fresh session writes that first) or when a notice needs anything beyond a decision, and journals each wake it takes as retired. 2026-10-16: Cruciferous Loop 6 retired at 10:23Z, all three supervisors handed back by 10:35Z, and nothing ran until the owner started the next session at 14:56Z.
 
 
+Prefer bounded active probes with a named witness and stop over accumulating
+passive watches when the probe is authorized. Preserve unresolved and withdrawn
+outcomes as such; neither is a pass.
+
 ## Measuring both ways (when a step is worth it)
 
 Same row, same decisions, same verifier; separate worktrees; neither may read the other. Judge blind: detached worktrees `-x`/`-y` by coin flip, reports and verify files redacted of model, tool, branch and PR names, the key in a file the judge is not pointed to. The judge returns findings per build, a verdict, fix-before-landing vs carry, and at most three ports from the loser. The winner's author makes the fixes as a second commit; a scoped re-check; the coordinator squash-lands. Record per-role spend, wall clock, passes and the verdict.

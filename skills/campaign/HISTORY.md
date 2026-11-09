@@ -114,3 +114,18 @@ records a later snapshot with one remaining queue violation; the journal later
 records a clean scratch run. Different snapshots must not be combined into a
 single unresolved count. The operational change is a scratch rehearsal before
 a forecast, not a new closeout system.
+
+### 4. Active probes and honest outcomes
+
+[Overseer lesson 4](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/designs/epoch-close-corpus-20261109-design/BRIEF.md#L115-L132) reports 53 of 675 watches resolved and observes that
+every real defect encountered at close was caught in minutes by active probes
+(IDEA-0139). The broad “every real defect” statement is the overseer's
+observation, not an independent model finding, a complete defect census or a
+controlled comparison. Unresolved or withdrawn watches are not passes; the
+[close report](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/CLOSE-REPORT.md#tracks-by-final-state) explicitly distinguishes them.
+[FOLLOW-UPS](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/FOLLOW-UPS.md#L99-L104) distinguishes unproven live checks, a payload capture
+that established a defect, and recurring failures without a proven root cause.
+Its [meter-row carry](https://github.com/dekopon-agents/campaign-trail/blob/9f87b24e74a4b38f774c0efa7df6df03d6d662df/store/epochs/diaphanous-dilettantes/FOLLOW-UPS.md#L147) calls for deterministic fault injection rather
+than another live-turn race. Existing historical bullets 46–47 already cover
+forced witnesses; the skill now favors bounded probes without authorizing new
+production traffic or changing a probe's permission boundary.
