@@ -244,6 +244,15 @@ call re-reads all of it (campaign skill: a fresh fixer works from the review and
 the author's notes). A fork is not the substitute: it re-reads the parent's whole context
 on every turn, runs only on the parent's model, and inherits its framing.
 
+Read narrow, because every read is carried. A file read at call 4 is re-sent on every
+later call: in one review, 62% of 1.28M input tokens were re-sent copies of about 70k
+tokens of reads (campaign-trail `astra-review-20261113-design/PILOT-COST.md`). Search
+first (`git grep -n`, `rg -n`, headings with `rg -n '^#'`), then read the line range.
+Read no file over 8 KB whole. When a tool truncates its output, narrow the range rather
+than repeating the read. Read a repository's AGENTS.md only when you work in that
+repository. When many agents need the same facts, one agent writes them down once, as
+pinned locators (`fact — path:line @ sha`), and the rest start from that.
+
 ### 50. A blocked call is free; a poll costs a full read of the context.
 
 Run scoped gates on touched crates at each commit and let CI be the full gate.
