@@ -11,8 +11,14 @@ Hosts: Backoffice `backoffice.pr-$N.pull-requests.scientist.com`, storefront `pr
 `argo/rx-pr-$N`; Rails web pods `-l app.kubernetes.io/name=rx,app.kubernetes.io/component=web` (container
 `rx`); rx-reveal `rx-pr-$N-rx-reveal-{0,1,2}` (container `rx-reveal`, 4Gi limit; prod has 8Gi).
 
-A PR site is neither local dev nor production: real customer data, writes allowed on bz data only, no
-workers. Every write is journaled (actor, command, target, outcome) before the next step.
+A PR site is neither local dev nor production: real customer data, no workers. Seeding and script writes
+are allowed on bz data only; QA agents' marketplace actions through the UI are the one exception (below).
+Every write is journaled (actor, command, target, outcome) before the next step.
+
+**bz's scope** (owner, 2026-11-11): bronzezilla exists only to test rx-reveal's slicing and dicing of data.
+It is not used to generate fake requests or any other marketplace records in the public schema. QA agents
+(campaign-trail IDEA-0022) build off whatever is already in the clone's marketplace: driving new requests
+and other marketplace actions is in scope. Fresh orgs or providers as a scenario precondition may come later.
 
 ## Scripts
 
@@ -70,15 +76,22 @@ Every script answers `--help`. Details: [data-loading](references/data-loading.m
 
 1. **The PR site runs rx-reveal 0.9.0 unless you pin it.** The PR ApplicationSet pins `rx-reveal.image.tag`
    inline, and inline values beat the branch chart, so a values bump on the branch does nothing. Pin by
-   hard-coding the tag in `rx-reveal/charts/rx-reveal/templates/statefulset.yaml`
-   (`image: "{{ .Values.image.repository }}:manual-<sha8>"`) in an `[integration-only]` commit.
+   hard-coding repository and tag in `rx-reveal/charts/rx-reveal/templates/statefulset.yaml`
+   (`image: "554546661178.dkr.ecr.eu-central-1.amazonaws.com/rx-reveal-pr:manual-<sha8>"`) in an
+   `[integration-only]` commit.
 2. **Build `manual-<sha8>`** with `gh workflow run rx-reveal-release.yml -R scientist-hq/rx --ref <scratch branch>`
    from a branch with no PR (`integration-rxr-build-*`), so the push doesn't start a second Rails build.
    Each dispatch posts to Slack through a hardcoded webhook (rx#43424): expected, not yours to silence.
+   **Manual builds go to `rx-reveal-pr`, never `rx-reveal`.** `rx-reveal` keeps only 15 images (three per
+   build), and on 2026-11-09 five manual builds expired `0.11.1` while prod and staging pinned it: their `-0`
+   pods sat in ImagePullBackOff for 2d19h. The dispatch runs the workflow file from `--ref`, so the ref must
+   contain rx#43631 (infra#1009 creates the repo). Before dispatching, check
+   `git show <ref>:.github/workflows/rx-reveal-release.yml | grep rx-reveal-pr`. If it's missing, merge
+   staging into the ref first, and don't dispatch.
 3. **Env for rx-reveal goes in the statefulset template.** The ApplicationSet's `rx-reveal.env` replaces
    the chart's env list, so env set in chart values (DATAS, `DOTNET_gcServer` trials) never reaches the pods.
 4. **Push ordering.** (a) Pin only after the tag is in ECR:
-   `aws ecr describe-images --repository-name rx-reveal --image-ids imageTag=manual-<sha8> --region eu-central-1`.
+   `aws ecr describe-images --repository-name rx-reveal-pr --image-ids imageTag=manual-<sha8> --region eu-central-1`.
    (b) Before every push, `gh pr view $N --json mergeable,mergeStateStatus`: a PR CONFLICTING with its
    **base** runs no PR workflows, so Rails stays on the old image while rx-reveal rolls. (c) Argo syncs the new
    SHA at once and the hooks sit in ErrImagePull until the image lands: wait for `built`, don't diagnose.

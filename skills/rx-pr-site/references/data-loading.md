@@ -27,7 +27,7 @@ Both drop every VIEW chunk (107 on the 11-05 world) and refuse to write if a kep
 ## 2. Loader pod
 
 ```sh
-export PR=$N NAME=bz-loader IMAGE=554546661178.dkr.ecr.eu-central-1.amazonaws.com/rx-reveal:<tag running on the site>
+export PR=$N NAME=bz-loader IMAGE=<the exact image the site runs: rx-reveal-pr:manual-<sha8> or rx-reveal:X.Y.Z>
 envsubst < $S/loader-pod.yaml | kubectl --context k3 apply -f -
 $K wait --for=condition=Ready pod/bz-loader --timeout=180s
 ```
