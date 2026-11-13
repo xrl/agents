@@ -330,6 +330,15 @@ classes to fix in that code, rather than new judgement calls for the owner.
 Reuse the smallest adequate tool; build more machinery only when the measured
 failure earns it.
 
+Automation is code; agents adjudicate. Owner rule, 2026-11-13: "always do
+automation with code, agents are there for ajudication/judgement. We don't use
+agents to hook-like things." Anything that fires on an event, a schedule or a
+threshold is code: watching a log, polling a status, reading a dashboard number,
+posting a report, gating a rollout on a count. Write it as a CI job, an alert
+rule, a hook or a smoke test. An agent wakes only when that code hands it a
+decision no rule can make, and the wake carries the evidence; never give an agent
+a standing instruction to go and look.
+
 <a id="the-service--api-rules"></a>
 <a id="the-code--api-design-rules"></a>
 <a id="9-one-authoritative-api-contract-poem-openapi-for-implementation-first-rust-services"></a>

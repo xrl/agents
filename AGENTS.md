@@ -36,6 +36,7 @@ not automatic imports. If a required guide is unavailable, stop that action.
 ## Review checklist
 
 - Delete before add: could this change remove code, text or a rule instead of adding one?
+- Automation is code; agents only adjudicate. No agent does hook-like work: watching, polling or reporting on a schedule or threshold ([LAWS.md §60](LAWS.md#60-separate-judgement-from-mechanics)).
 
 ## Authority and upkeep
 
