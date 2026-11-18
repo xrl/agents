@@ -214,6 +214,40 @@ class Flow(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn(('stamp',), fake.log)
 
+    def test_fallback_yields_are_redacted_on_secret_pages(self):
+        flow = Path(tempfile.mkdtemp()) / 'f.toml'
+        flow.write_text('name="s"\nhosts=["h"]\n[[state]]\nid="admin"\nkind="nav"\nsecret=true\nmatch={path="^/admin"}\n'
+                        'do={click={role="button",name="Save"}}\n')
+        p = page('/admin', [('button', 'Save'), ('button', 'hunter2-in-a-label')], host='h')
+        p['headings'] = ['admin password: hunter2']
+        fake = Fake([p], {}, fail={(0, 'click', 0)})
+        d = Path(tempfile.mkdtemp())
+        self.assertEqual(bf.Run(bf.load_flow(flow), fake, d, args(var=[])).go(), bf.YIELDED)
+        for f in ('trace.jsonl', 'yield.json'):
+            self.assertNotIn('hunter2', (d / f).read_text())
+
+    def test_click_timeout_yields(self):
+        fake = Fake([page('/codex/device', [('textbox', 'Code'), ('button', 'Continue')])], {})
+        real_act = fake.act
+
+        def timeout(action, k=None, value=None, expect=None):
+            if action == 'click':
+                raise bf.FlowError('run-code failed: TimeoutError: locator.click: Timeout 8000ms exceeded')
+            return real_act(action, k, value, expect)
+        fake.act = timeout
+        code, d = run(fake)
+        self.assertEqual(code, bf.YIELDED)
+        self.assertTrue(json.loads((d / 'yield.json').read_text())['reason'].startswith('click failed'))
+
+    def test_resume_refuses_an_unnamed_tab_at_home(self):
+        fake = Fake([page('/codex/device/upsell', [('button', 'Not now')])], {}, window_name=lambda f: '')
+        with self.assertRaises(bf.FlowError):
+            run(fake, run='x')
+
+    def test_max_steps_must_be_positive(self):
+        with self.assertRaises(SystemExit):
+            bf.main(['run', str(DEVICE), '--tab', 'sitting', '--max-steps', '0'])
+
     def test_dry_run_never_acts(self):
         fake = Fake([page('/codex/device', [('textbox', 'Code'), ('button', 'Continue')])], {})
         code, _ = run(fake, dry_run=True, no_goto=False)

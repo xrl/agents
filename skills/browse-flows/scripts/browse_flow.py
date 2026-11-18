@@ -197,7 +197,11 @@ class PlaywrightCli:
         """Act on the k-th control, but only if it is still the expected (role, name) in the expected tab: the
         find and the act are separate run-code calls, and a page that re-rendered in between is refused."""
         if action == 'press':
-            return self.run('async page => { await page.keyboard.press(%s); return "pressed" }' % json.dumps(value))
+            out = self.run('async page => { if (await page.evaluate(() => window.name) !== %s) return "refused: tab renamed";'
+                           ' await page.keyboard.press(%s); return "pressed" }' % (json.dumps(self.tab), json.dumps(value)))
+            if str(out).startswith('refused'):
+                raise ActionRefused(out)
+            return out
         loc = 'page.locator(%s).nth(%d)' % (json.dumps(UNION), k)
         verb = 'click({timeout: 8000})' if action == 'click' else 'fill(%s, {timeout: 8000})' % json.dumps(value)
         out = self.run("""async page => {
@@ -205,7 +209,7 @@ class PlaywrightCli:
           const got = await %s.evaluate((e, tab) => {%s
             const role = roleOf(e); return {role, name: nameOf(e, role), tab: window.name};
           }, tab);
-          if (got.tab !== tab) return 'refused: tab is ' + (got.tab || 'unnamed');
+          if (got.tab !== tab) return 'refused: tab renamed';
           if (got.role !== role || got.name !== name) return 'refused: control changed';
           await %s.%s;
           return %s;
@@ -243,15 +247,17 @@ class Run:
         texts = {s['id']: s['match']['text'] for s in self.states if s.get('match', {}).get('text')}
         fp = self.backend.fingerprint(texts, self.flow.get('capture_headings', True))
         name = fp.get('window_name')
-        if name != self.backend.tab:
-            if allow_unnamed and not name:
-                # A cross-site navigation (an owner's SSO sign-in) clears window.name; claim the tab back once home.
-                if fp['host'] in self.flow['hosts']:
-                    self.backend.stamp()
-                    fp['window_name'] = self.backend.tab
-            else:
-                raise FlowError(f"the controller's tab is not named {self.backend.tab}; refusing to drive another tab")
-        return fp
+        if name == self.backend.tab:
+            return fp
+        home = fp['host'] in self.flow['hosts']
+        if not name and allow_unnamed and home:
+            # An owner's cross-site sign-in clears window.name; an owner wait claims the tab back once it is home.
+            self.backend.stamp()
+            fp['window_name'] = self.backend.tab
+            return fp
+        if not name and not home:
+            return fp  # mid-SSO on another site: nothing acts off the allowlist, so reading it is safe
+        raise FlowError(f"the controller's tab is not named {self.backend.tab}; refusing to drive another tab")
 
     def matching(self, fp):
         return [s for s in self.states if state_matches(s, fp, self.flow)]
@@ -267,6 +273,7 @@ class Run:
         return out
 
     def yield_to_agent(self, fp, reason, state=None, secret=False):
+        secret = secret or self.is_secret(self.matching(fp))
         packet = {'reason': reason, 'state': state, 'page': self.public(fp, secret),
                   'answer': f'browse_flow.py decide {self.dir} (--click N | --fill N --var NAME | --owner | --abort | --learn STATE.json)'}
         (self.dir / 'yield.json').write_text(json.dumps(packet, indent=2))
@@ -314,7 +321,8 @@ class Run:
         except (ActionRefused, FlowError) as e:
             self.trace(event='act-failed', by='agent', error=str(e)[:200])
             return self.yield_to_agent(self.fingerprint(), f"{d['action']} failed: {str(e)[:120]}")
-        self.trace(event='act', by='agent', action=d['action'], control=[ctl['role'], ctl['name']], result=result)
+        secret = self.is_secret(self.matching(fp))
+        self.trace(event='act', by='agent', action=d['action'], control=[ctl['role'], '' if secret else ctl['name']], result=result)
         time.sleep(float(self.flow.get('settle', 1.5)))
         return None
 
@@ -340,7 +348,7 @@ class Run:
             time.sleep(2)
         last, acted = None, False
         for _ in range(args.max_steps):
-            fp = self.fingerprint(allow_unnamed=bool(args.run))
+            fp = self.fingerprint()
             pending = self.decision(fp)
             if pending:
                 code = self.apply(pending, fp)
@@ -383,6 +391,8 @@ class Run:
                 if verb == 'wait':
                     time.sleep(float(spec))
                     continue
+                if verb == 'fill' and spec.get('var') not in self.vars:
+                    raise FlowError(f"state {state['id']} fills undeclared var {spec.get('var')!r}")
                 try:
                     if verb == 'press':
                         result = self.backend.act('press', value=spec)
@@ -391,16 +401,22 @@ class Run:
                     ctl = resolve(spec, fp)
                     if ctl is None:
                         return self.yield_to_agent(fp, f'{verb} target not unique or absent', state['id'], secret=secret)
-                    if verb == 'fill' and spec.get('var') not in self.vars:
-                        raise FlowError(f"state {state['id']} fills undeclared var {spec.get('var')!r}")
                     result = self.backend.act(verb, ctl['k'], self.vars.get(spec.get('var')), (ctl['role'], ctl['name']))
-                    self.trace(event='act', state=state['id'], action=verb, control=[ctl['role'], ctl['name']], result=result)
-                except ActionRefused as e:
+                    self.trace(event='act', state=state['id'], action=verb,
+                               control=[ctl['role'], '' if secret else ctl['name']], result=result)
+                except (ActionRefused, FlowError) as e:
                     self.trace(event='act-failed', state=state['id'], error=str(e)[:200])
                     return self.yield_to_agent(self.fingerprint(), f'{verb} failed: {str(e)[:120]}', state['id'])
             acted = True
             time.sleep(float(flow.get('settle', 1.5)))
         return self.yield_to_agent(fp, 'max steps reached')
+
+
+def positive(text):
+    n = int(text)
+    if n < 1:
+        raise argparse.ArgumentTypeError('must be at least 1')
+    return n
 
 
 def cmd_decide(args):
@@ -435,7 +451,7 @@ def main(argv=None):
     r = sub.add_parser('run'); r.add_argument('flow'); r.add_argument('--tab', required=True)
     r.add_argument('--var', action='append', default=[]); r.add_argument('--trace-dir', default=os.path.expanduser('~/.cache/browse-flows'))
     r.add_argument('--run'); r.add_argument('--dry-run', action='store_true')
-    r.add_argument('--owner-timeout', type=float, default=600); r.add_argument('--max-steps', type=int, default=40)
+    r.add_argument('--owner-timeout', type=float, default=600); r.add_argument('--max-steps', type=positive, default=40)
     r.add_argument('--no-goto', action='store_true')
     d = sub.add_parser('decide'); d.add_argument('run_dir')
     g = d.add_mutually_exclusive_group(required=True)

@@ -89,7 +89,7 @@ do = [{ fill = { role = "textbox", var = "user_code" } }, { click = { role = "bu
 - **Owner kinds:** `consent`, `payment`, `permission` and `owner` states never act. The runner prints `OWNER: <owner_says>` and waits for the page to change, up to `--owner-timeout`. A flow file that gives one of these a `do` is refused.
 - **Secrets never enter page code.** `secret = true` vars are refused, because `playwright-cli` echoes the code it runs. A `secret` state yields, so the agent fills it with its own clipboard helper. A state marked `secret = true` traces roles without names.
 - **No snapshots and no downloads.** `run-code` writes neither. Raw `playwright-cli` output stays in memory, and only a first error line reaches stderr.
-- **Tab name:** a cross-site sign-in by the owner clears `window.name`. During an owner wait the runner accepts an unnamed tab and stamps it again once it's back on an allowlisted host. Any other name is refused.
+- **Tab name:** a cross-site sign-in by the owner clears `window.name`. Off the allowlist an unnamed tab is read but never acted on; only an owner wait stamps it again once it's back on an allowlisted host. An unnamed tab at home outside an owner wait, or any other name, is refused: run `claude-tab.sh <name> <url>` again.
 
 ## Flows live with their repository
 
