@@ -18,6 +18,7 @@ not automatic imports. If a required guide is unavailable, stop that action.
 | Choosing delegation | [orchestration skill](skills/choose-orchestration/SKILL.md) |
 | Offloading decided work to pi, driving it from Claude | [pi skills snapshot](skills/PI-SKILLS.md) |
 | Landing one coupled multi-lane Rust change with concurrent editors | [rust-feature-swarm](skills/rust-feature-swarm/SKILL.md) |
+| Scripted browsing: flows, click traces, yield-to-agent | [browse-flows](skills/browse-flows/SKILL.md) |
 
 ## Agent and model evaluations
 
