@@ -1,0 +1,43 @@
+# OpenAI Codex device login: approve a user code shown by a device-flow CLI (e.g. `codex login --device-auth`
+# or `dekopon-gatewayd auth chatgpt login`). Mapped 2026-11-18 from two live runs: choose-an-account → code →
+# consent (one Continue, the owner's click by design) → callback.
+name = "openai-codex-device"
+hosts = ["auth.openai.com"]
+start = "https://auth.openai.com/codex/device"
+capture_headings = true
+
+[permissions]
+deny = ["notifications"]
+
+[vars.user_code]
+required = true
+pattern = "^[A-Z0-9]{4}-[A-Z0-9]{4,6}$"
+
+[[state]]
+id = "choose-account"
+kind = "nav"
+match = { path = "^/choose-an-account", controls = [{ role = "button", name_re = "^Select account " }] }
+do = { click = { role = "button", name_re = "^Select account " } }
+
+[[state]]
+id = "code-entry"
+kind = "nav"
+match = { path = "^/codex/device", controls = [{ role = "textbox" }] }
+do = [{ fill = { role = "textbox", var = "user_code" } }, { click = { role = "button", name_re = "^(Continue|Submit|Next)$" } }]
+
+[[state]]
+id = "consent"
+kind = "consent"
+match = { path = "^/sign-in-with-chatgpt/codex/consent", controls = [{ role = "button", name_re = "^Continue$" }] }
+owner_says = "click Continue on OpenAI's Codex consent page (it authorizes the device login)"
+
+[[state]]
+id = "sign-in"
+kind = "owner"
+match = { controls = [{ role = "password" }] }
+owner_says = "sign in to OpenAI in the tab"
+
+[[state]]
+id = "done"
+kind = "done"
+match = { path = "^/deviceauth/callback", text = ["signed in to codex"] }

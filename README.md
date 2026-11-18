@@ -18,6 +18,7 @@ Opinionated engineering guides. **Start with the task, not a full-library read.*
 | Current Codex Cloud jobs, environments, logs and API access using Pi OAuth | [codex-cloud](skills/codex-cloud/SKILL.md) |
 | Landing one coupled multi-lane Rust change with a swarm | [rust-feature-swarm](skills/rust-feature-swarm/SKILL.md) |
 | Standing up and proving a change on an rx `run-in-k3` PR site (prod clone) | [rx-pr-site](skills/rx-pr-site/SKILL.md) |
+| Driving a web UI from a flow file that traces every click and yields unknown pages to the agent | [browse-flows](skills/browse-flows/SKILL.md) |
 
 ## Loading and installation
 
