@@ -342,7 +342,9 @@ class Run:
         start = flow.get('start')
         if start and not args.run and not args.no_goto and not args.dry_run:
             # A fresh run always starts at the flow's start URL, so a tab left on an old "done" page can't end it.
-            self.fingerprint()
+            # It navigates, so it needs the named tab itself: an unnamed tab (perhaps the owner's own) is refused.
+            if self.fingerprint()['window_name'] != self.backend.tab:
+                raise FlowError(f"the controller's tab is not named {self.backend.tab}; refusing to drive another tab")
             self.trace(event='goto', url=start.split('?')[0], result=self.backend.goto(start))
             self.backend.stamp()
             time.sleep(2)

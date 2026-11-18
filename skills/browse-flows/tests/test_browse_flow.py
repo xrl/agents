@@ -248,6 +248,12 @@ class Flow(unittest.TestCase):
         with self.assertRaises(SystemExit):
             bf.main(['run', str(DEVICE), '--tab', 'sitting', '--max-steps', '0'])
 
+    def test_fresh_run_refuses_an_unnamed_tab_off_the_allowlist(self):
+        fake = Fake([page('/inbox', [('button', 'Send')], host='mail.example.com')], {}, window_name=lambda f: '')
+        with self.assertRaises(bf.FlowError):
+            run(fake, no_goto=False)
+        self.assertFalse([x for x in fake.log if x[0] in ('goto', 'stamp')])
+
     def test_dry_run_never_acts(self):
         fake = Fake([page('/codex/device', [('textbox', 'Code'), ('button', 'Continue')])], {})
         code, _ = run(fake, dry_run=True, no_goto=False)
