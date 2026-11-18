@@ -39,7 +39,7 @@ The runner yields when:
 - a `secret` state needs a value;
 - or `--max-steps` is reached.
 
-It writes `yield.json`: the reason, the page (host, path, headings, numbered controls `[n, role, name]`) and its signature. Then it exits 75. With `--wait SECONDS` it polls for a decision instead.
+It writes `yield.json`: the reason, the page (host, path, headings, numbered controls `[n, role, name]`) and its signature. Then it exits 75. To wait without blocking, run the command in the background and read `yield.json` when it exits.
 
 The owning agent reads the packet, decides, and answers with one command:
 
@@ -50,7 +50,11 @@ python3 -I "$BF" decide <run-dir> --learn state.json  # a new state, applied now
 python3 -I "$BF" decide <run-dir> --abort
 ```
 
-Then it reruns the same `run` command with `--run <run-dir>`. A decision is bound to the page signature, so it is ignored if the page has moved on (traced as `decision-stale`).
+Then it reruns the same `run` command with `--run <run-dir>`. A resumed run never navigates; it picks up on the live page. A decision is bound to the page signature, including control order, so it is ignored if the page has moved on (traced as `decision-stale`).
+
+The runner refuses an agent's `--click` or `--fill` on a page that matches an owner-kind state, or that is off the host allowlist (traced as `decision-refused`), and waits for the owner instead.
+
+**A secret state** yields `secret fill`. Fill the field out of band with your own clipboard helper, then `decide --click <submit>` and resume. Nothing about a secret page's controls or headings is traced.
 
 **Learning:** a `--learn` state lands in `learned.jsonl`. Copy it into the flow file in a reviewed commit, so the next run doesn't yield there. Yields per run is the metric; a flow is settled after several consecutive runs with none.
 
@@ -61,10 +65,6 @@ name = "openai-codex-device"
 hosts = ["auth.openai.com"]          # allowlist: any other host yields
 start = "https://auth.openai.com/codex/device"
 capture_headings = true              # false where headings can hold secrets (some consoles print passwords)
-
-[permissions]                        # set before acting, so Chrome raises no prompt the script can't see
-grant = []                           # e.g. ["clipboard-read"]
-deny = ["notifications"]
 
 [vars.user_code]
 required = true
@@ -79,15 +79,18 @@ do = [{ fill = { role = "textbox", var = "user_code" } }, { click = { role = "bu
 
 - **Controls** are addressed by `role` plus `name` (exact) or `name_re` (regex), and must resolve to exactly one visible control. Roles: `button`, `link`, `textbox`, `password`, `searchbox`, `combobox`, `checkbox`, `radio`, `menuitem`, `menuitemradio`, `option`, `tab`.
 - **`text`** holds case-insensitive substrings checked inside the page. Body text never leaves the page.
-- **`do`** steps: `click`, `fill` (non-secret `var` only), `press = "Enter"`, `wait = 2`.
+- **`do`** steps: `click`, `fill` (non-secret `var` only), `press = "Enter"`, `wait = 2`. A `click` or `press` must be the last step: it can change the page, and later steps would address stale controls.
+- **One fingerprint per act.** Each act re-checks, in the same `run-code` call, that the control is still the expected role and name and that the tab is still the named one; otherwise it yields. The runner never acts twice on an unchanged page.
+- **Browser permission prompts** (notifications, clipboard) are browser UI outside the page, so no fingerprint sees them. Grant or deny them once by hand per site; per-flow permissions are a later slice.
 
 ## Policy, enforced by the runner
 
 - **Auto-acting kinds:** only `nav` (moves a form forward) and `dismiss` (banners and tours). Each flow names its own controls.
 - **Owner kinds:** `consent`, `payment`, `permission` and `owner` states never act. The runner prints `OWNER: <owner_says>` and waits for the page to change, up to `--owner-timeout`. A flow file that gives one of these a `do` is refused.
 - **Secrets never enter page code.** `secret = true` vars are refused, because `playwright-cli` echoes the code it runs. A `secret` state yields, so the agent fills it with its own clipboard helper. A state marked `secret = true` traces roles without names.
-- **No snapshots and no downloads.** Raw `playwright-cli` output goes to a private temporary directory, deleted after each call.
+- **No snapshots and no downloads.** `run-code` writes neither. Raw `playwright-cli` output stays in memory, and only a first error line reaches stderr.
+- **Tab name:** a cross-site sign-in by the owner clears `window.name`. During an owner wait the runner accepts an unnamed tab and stamps it again once it's back on an allowlisted host. Any other name is refused.
 
 ## Flows live with their repository
 
-The skill ships the generic runner and one example flow, `flows/openai-codex-device.toml`, mapped from live runs on 2026-11-18. Private flows stay in their own repositories: campaign-trail `tools/cloud-env/flows/`, rpi-homelab `skills/*/flows/`. Migrate an existing helper by writing its states, running `--dry-run` on each page, and then running it live with the owner watching.
+The skill ships the generic runner and one example flow, `flows/openai-codex-device.toml`. Its page map comes from live runs of an earlier helper, and the runner itself was validated live on its account and consent pages on 2026-11-18. Private flows stay in their own repositories: campaign-trail `tools/cloud-env/flows/`, rpi-homelab `skills/*/flows/`. Migrate an existing helper by writing its states, running `--dry-run` on each page, and then running it live with the owner watching.

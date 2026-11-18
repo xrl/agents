@@ -1,13 +1,10 @@
 # OpenAI Codex device login: approve a user code shown by a device-flow CLI (e.g. `codex login --device-auth`
-# or `dekopon-gatewayd auth chatgpt login`). Mapped 2026-11-18 from two live runs: choose-an-account → code →
-# consent (one Continue, the owner's click by design) → callback.
+# or `dekopon-gatewayd auth chatgpt login`). Page map from two live runs of the earlier bash helper (2026-11-18):
+# choose-an-account → code → consent (matched on path alone: every button there is the owner's) → callback.
 name = "openai-codex-device"
 hosts = ["auth.openai.com"]
 start = "https://auth.openai.com/codex/device"
 capture_headings = true
-
-[permissions]
-deny = ["notifications"]
 
 [vars.user_code]
 required = true
@@ -22,13 +19,13 @@ do = { click = { role = "button", name_re = "^Select account " } }
 [[state]]
 id = "code-entry"
 kind = "nav"
-match = { path = "^/codex/device", controls = [{ role = "textbox" }] }
+match = { path = "^/codex/device/?$", controls = [{ role = "textbox" }] }
 do = [{ fill = { role = "textbox", var = "user_code" } }, { click = { role = "button", name_re = "^(Continue|Submit|Next)$" } }]
 
 [[state]]
 id = "consent"
 kind = "consent"
-match = { path = "^/sign-in-with-chatgpt/codex/consent", controls = [{ role = "button", name_re = "^Continue$" }] }
+match = { path = "^/sign-in-with-chatgpt/codex/consent" }
 owner_says = "click Continue on OpenAI's Codex consent page (it authorizes the device login)"
 
 [[state]]
