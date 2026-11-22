@@ -246,7 +246,7 @@ Do not put `RUSTC_BOOTSTRAP=1` or nightly Cargo into the global developer path t
 ## Agent rules
 
 Moved to [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md), the single canonical copy that
-`~/.claude/CLAUDE.md` imports and `~/.pi/agent/AGENTS.md` mirrors.
+`~/.claude/CLAUDE.md` imports and `~/.codex/AGENTS.md` points at (pi's mirror retired 2026-11-21).
 
 ## Sources
 

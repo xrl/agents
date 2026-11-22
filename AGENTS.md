@@ -10,13 +10,12 @@ not automatic imports. If a required guide is unavailable, stop that action.
 | Code or API design/review | [CODE_DESIGN_RULES.md](CODE_DESIGN_RULES.md) |
 | Builds, releases, GitOps, worktree conventions, multi-PR and multi-agent campaigns | [LAWS.md](LAWS.md) |
 | Host Cargo, compiler cache, target cleanup | [RUST_AGENT_RULES.md](RUST_AGENT_RULES.md) |
-| Writing a prompt for a GPT executor (pi driver, Codex) | [steering/GPT.md](steering/GPT.md): one line reading it at a pinned SHA, first line quoted back; the brief leaves out what it already says |
+| Writing a prompt for a GPT executor (`codex exec`, Codex Cloud) | [steering/GPT.md](steering/GPT.md): one line reading it at a pinned SHA, first line quoted back; the brief leaves out what it already says |
 | Local-host rules: secrets, checkouts, worktrees, browsers (local hosts only; cloud agents skip) | [HOST.md](HOST.md) |
 | Cache diagnosis, upgrades, verification | Host rules, then [RUST_CACHE_VALIDATION.md](RUST_CACHE_VALIDATION.md) |
 | Worktree/cache architecture | [RUST_WORKTREES.md](RUST_WORKTREES.md) |
 | Measurements or past rollout decisions | [RUST_CACHE_HISTORY.md](RUST_CACHE_HISTORY.md) |
-| Choosing delegation | [orchestration skill](skills/choose-orchestration/SKILL.md) |
-| Offloading decided work to pi, driving it from Claude | [pi skills snapshot](skills/PI-SKILLS.md) |
+| Offloading decided work to GPT | official Codex: `codex exec` locally, Codex Cloud for cloud tasks ([codex-cloud](skills/codex-cloud/SKILL.md)); never pi |
 | Landing one coupled multi-lane Rust change with concurrent editors | [rust-feature-swarm](skills/rust-feature-swarm/SKILL.md) |
 
 ## Agent and model evaluations
