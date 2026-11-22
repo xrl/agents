@@ -1,11 +1,11 @@
 ---
 name: codex-cloud
-description: Operate current Codex Cloud with Pi's auto-loaded Codex OAuth. Discover environments/jobs, create or continue coding jobs, inspect status/logs/diffs, and access cataloged APIs. Use for Codex Cloud requests or when the legacy codex cloud CLI misses web jobs/environments. Not blanket authority for paid work, mutations, secrets, approvals or deployment.
+description: Operate current Codex Cloud with the official Codex CLI's ChatGPT login. Discover environments/jobs, create or continue coding jobs, inspect status/logs/diffs, and access cataloged APIs. Use for Codex Cloud requests; `codex cloud --env` can't reach current environments (openai/codex#50182). Not blanket authority for paid work, mutations, secrets, approvals or deployment.
 ---
 
 # Codex Cloud
 
-Use this skill's `scripts/codex_cloud.py`, not `codex cloud`. It loads the current `openai-codex` record from `~/.pi/agent/auth.json` at invocation time. Pi owns refresh: refresh expired tokens through Pi, never modify its store, copy tokens into prompts/environment variables, or read another provider's credentials.
+Use this skill's `scripts/codex_cloud.py` for Codex Cloud: the official `codex cloud --env` can't see current environments (openai/codex#50182); switch to `codex cloud exec` when that closes. Local GPT work is plain `codex exec`. The script loads the official Codex login from `${CODEX_HOME:-~/.codex}/auth.json` (`codex login`) at invocation time. The codex CLI owns refresh: when the access token is within five minutes of expiry, the script runs `codex cloud list` once so codex refreshes its own login, then re-reads it. Never modify the store yourself, copy tokens into prompts/environment variables, or read another provider's credentials. A refresh rotates the refresh token, so each concurrent consumer (the Mac, each cloud VM) needs its own `codex login`.
 
 Resolve paths relative to this skill. Examples use `CC="$HOME/.claude/skills/codex-cloud/scripts/codex_cloud.py"`; set it in each shell call. `uv run` isolates dependencies. Help, catalogs, schemas and `--dry-run` need no credentials or network. Output is bounded, credential-redacted JSON/JSONL: compact workflow summaries by default, `--full` for details; generic `api` calls stay raw.
 
@@ -29,7 +29,7 @@ uv run "$CC" environments show 'ACCOUNT~asenvcfg_ID' --browser-session dekopon
 
 Job listing selects user-created Cloud jobs; `--include-children` adds `codex_work_cca`, not arbitrary Work conversations. `--max-pages` bounds scans; exhaustion fails rather than claiming completeness.
 
-**Jobs need only Pi OAuth.** Current environments (`/api/codex-cloud/v1/environment-configs`) additionally needed same-account ChatGPT cookies on the observed account. Opt in with `--browser-session dekopon`; cookies stay in memory. A known environment-config ID avoids browser/catalog access for dispatch. Config IDs (`asenvcfg_`), versions (`cecfgver_`), runtimes (`ccarenv_`) and thread UUIDs are not interchangeable.
+**Jobs need only the Codex login.** Current environments (`/api/codex-cloud/v1/environment-configs`) additionally needed same-account ChatGPT cookies on the observed account. Opt in with `--browser-session dekopon`; cookies stay in memory. A known environment-config ID avoids browser/catalog access for dispatch. Config IDs (`asenvcfg_`), versions (`cecfgver_`), runtimes (`ccarenv_`) and thread UUIDs are not interchangeable.
 
 Run browser commands from scratch space outside source checkouts. Check `playwright-cli list` and ownership; reuse the owner's `dekopon` session, never another profile. If no ChatGPT tab exists, open a task-owned tab:
 
@@ -67,7 +67,7 @@ uv run "$CC" jobs logs THREAD_ID --limit 50
 uv run "$CC" jobs diff THREAD_ID
 ```
 
-Use a process manager for long waits/follows, not repeated agent turns. Waits reload Pi credentials between polls; local deadlines do not cancel jobs. Safe reads/pre-effect connections retry transient failures up to three attempts per operation (0.5s/1s backoff), logging only to stderr; bad/auth/conflict requests and sent writes/session messages are not replayed. Runtime `idle` is not success: check terminal turn status. Failed/interrupted waits exit nonzero; unknown outcomes/wait expiry exit 2.
+Use a process manager for long waits/follows, not repeated agent turns. Waits reload the Codex login between polls; local deadlines do not cancel jobs. Safe reads/pre-effect connections retry transient failures up to three attempts per operation (0.5s/1s backoff), logging only to stderr; bad/auth/conflict requests and sent writes/session messages are not replayed. Runtime `idle` is not success: check terminal turn status. Failed/interrupted waits exit nonzero; unknown outcomes/wait expiry exit 2.
 
 Logs default to 800-character previews and paths-only file changes; use `--full` for details. They are paginated snapshots: use `--cursor` for history. `--follow --deadline 120 --interval 5` polls a bounded newest page and reports detected gaps; it is not resume/attach or a lossless stream. Persisted logs need not expose private reasoning. Diffs report patches without applying them. See [history details](references/API.md#persisted-history-and-status).
 

@@ -101,23 +101,66 @@ def context(**kwargs):
 
 
 class CliTests(unittest.TestCase):
-    def test_auth_reloads_the_current_pi_token(self):
-        def token(account, label, expiry):
-            claims = {"exp": expiry, "https://api.openai.com/auth": {"chatgpt_account_id": account}}
-            return "header." + base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=") + "." + label
+    @staticmethod
+    def codex_auth(path, account, label, expiry):
+        claims = {"exp": expiry, "https://api.openai.com/auth": {"chatgpt_account_id": account}}
+        value = "header." + base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=") + "." + label
+        path.write_text(json.dumps({"auth_mode": "chatgpt", "OPENAI_API_KEY": None, "last_refresh": "2026-11-21T00:00:00Z",
+                                    "tokens": {"access_token": value, "refresh_token": "r", "id_token": "i", "account_id": account}}))
+        return value
+
+    def test_auth_reloads_the_current_codex_token(self):
         with tempfile.TemporaryDirectory() as temp:
             path = pathlib.Path(temp, "auth.json")
             for label in ("first", "second"):
-                value = token("account", label, time.time()+3600)
-                path.write_text(json.dumps({"openai-codex": {"access": value, "accountId": "account"}}))
-                self.assertEqual(cli.auth.load_auth(path), (value, "account"))
-            path.write_text(json.dumps({"openai-codex": {"access": token("account", "expired", 1), "accountId": "account"}}))
-            with self.assertRaisesRegex(transport.CloudError, "expired"):
-                cli.auth.load_auth(path)
+                value = self.codex_auth(path, "account", label, time.time()+3600)
+                self.assertEqual(cli.auth.load_auth(path, refresh=self.fail), (value, "account"))
+
+    def test_expiring_token_is_refreshed_by_codex_then_reread(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = pathlib.Path(temp, "auth.json")
+            self.codex_auth(path, "account", "old", time.time()+60)
+            calls = []
+            def refresh(target):
+                calls.append(target)
+                self.codex_auth(path, "account", "new", time.time()+3600)
+            token, account = cli.auth.load_auth(path, refresh=refresh)
+            self.assertEqual((calls, token.rsplit(".", 1)[1], account), ([path], "new", "account"))
+
+    def test_expired_token_that_codex_cannot_refresh_fails(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = pathlib.Path(temp, "auth.json")
+            self.codex_auth(path, "account", "expired", 1)
+            with self.assertRaisesRegex(transport.CloudError, "codex login"):
+                cli.auth.load_auth(path, refresh=lambda target: None)
+
+    def test_token_and_account_must_agree(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = pathlib.Path(temp, "auth.json")
+            self.codex_auth(path, "account", "label", time.time()+3600)
+            record = json.loads(path.read_text())
+            record["tokens"]["account_id"] = "other"
+            path.write_text(json.dumps(record))
+            with self.assertRaisesRegex(transport.CloudError, "disagree"):
+                cli.auth.load_auth(path, refresh=self.fail)
+
+    def test_refresh_runs_codex_with_the_auth_files_home(self):
+        with tempfile.TemporaryDirectory() as temp, mock.patch.object(cli.auth.subprocess, "run") as run, \
+                mock.patch.dict(cli.auth.os.environ, {"OPENAI_API_KEY": "k", "CODEX_API_KEY": "k"}):
+            cli.auth.refresh_with_codex(pathlib.Path(temp, "auth.json"))
+            argv, kwargs = run.call_args.args[0], run.call_args.kwargs
+            self.assertEqual(argv[:2], ["codex", "cloud"])
+            self.assertEqual(kwargs["env"]["CODEX_HOME"], temp)
+            self.assertNotIn("OPENAI_API_KEY", kwargs["env"])
+            self.assertNotIn("CODEX_API_KEY", kwargs["env"])
+
+    def test_default_auth_file_follows_codex_home(self):
+        with mock.patch.dict(cli.auth.os.environ, {"CODEX_HOME": "/codex-home"}):
+            self.assertEqual(cli.auth.default_auth_file(), "/codex-home/auth.json")
 
     def test_missing_auth_error_retains_cause_without_credentials(self):
         with self.assertRaisesRegex(transport.CloudError, "FileNotFoundError"):
-            cli.auth.load_auth("/does-not-exist/pi-auth-fixture")
+            cli.auth.load_auth("/does-not-exist/codex-auth-fixture")
 
     def test_cookie_redaction_preserves_noncredential_ids(self):
         secrets = transport.credential_secrets("oauth-token", {"Cookie": "oai-hlib=1; _account=account-id; __Secure-next-auth.session-token.0=private-cookie-123456789"})

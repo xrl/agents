@@ -22,10 +22,10 @@ Subprotocols from the deployed browser serializer:
 ```text
 codex-app-server
 codex-client.browser
-openai-bearer.<Pi access token>
+openai-bearer.<Codex access token>
 ```
 
-The selected `ChatGPT-Account-Id` header and origin `https://chatgpt.com` accompany the handshake. The token never appears in command arguments, URLs, output or files. A short-lived process loads Pi's current auth record; waits reload it between polling connections.
+The selected `ChatGPT-Account-Id` header and origin `https://chatgpt.com` accompany the handshake. The token never appears in command arguments, URLs, output or files. A short-lived process loads the current Codex `auth.json`; waits reload it between polling connections.
 
 The transport owns the `initialize` RPC and subsequent `initialized` notification. The captured client identifies itself as `codex-browser`, version `browser`, with `experimentalApi=true`, `requestAttestation=false`. Matching those fields is not an approval bypass. There is no automatic attestation generation, approval acceptance, server-request handling, execution attach or task resume. Transient connection setup and safe-read failures have bounded retries (see below); sent writes and session messages are never replayed.
 
@@ -127,9 +127,9 @@ Sensitive vault/identity reads require `--show-secrets`. For catalog-marked sens
 
 ### Browser cookie bridge
 
-The environment catalog needs the web session in addition to Pi's bearer on the observed account. Pi bearer + signed-in cookies returned four environments; bearer without session cookies returned 404 HTML/403 challenge; the same cookies without a bearer returned 401. Removing `next-auth` cookies also returned 404. Do not interpret this as proof of exactly which internal proxy/auth layer routes the request.
+The environment catalog needs the web session in addition to the Codex bearer on the observed account. Codex bearer + signed-in cookies returned four environments; bearer without session cookies returned 404 HTML/403 challenge; the same cookies without a bearer returned 401. Removing `next-auth` cookies also returned 404. Do not interpret this as proof of exactly which internal proxy/auth layer routes the request.
 
-`--browser-session` invokes the already-running session's Playwright Node API, checks the ChatGPT tab's selected account against Pi's, and sends its cookies/user agent to a nonce-protected loopback receiver. The receiver accepts one bounded POST, no browser Origin header, has socket timeouts, and is shut down after the call. Cookies stay in memory. No browser bearer token is exported. No challenge solving, proxy/account switching, browser launch or persistent auth modification is performed.
+`--browser-session` invokes the already-running session's Playwright Node API, checks the ChatGPT tab's selected account against the Codex login's, and sends its cookies/user agent to a nonce-protected loopback receiver. The receiver accepts one bounded POST, no browser Origin header, has socket timeouts, and is shut down after the call. Cookies stay in memory. No browser bearer token is exported. No challenge solving, proxy/account switching, browser launch or persistent auth modification is performed.
 
 ## Output and retries
 
@@ -141,7 +141,7 @@ Retries use at most three attempts per connection/read operation, with 0.5s then
 
 - HTTP GET retries transient connection failures and HTTP 408/429/500/502/503/504. JSON-RPC cataloged safe reads retry transient transport loss/timeouts by reconnecting and initializing, not server error responses.
 - WebSocket setup may retry transient connection/HTTP failures **before any application request is sent**. HTTP writes may retry only URL-open connection refusal or temporary DNS failure that proves the request was not sent.
-- No retry for invalid input/schema/JSON, auth, conflicts, unsupported methods/statuses, redirects, certificate/protocol failures, or JSON-RPC server error responses (no speculative transient-code inference). There is no request repair, credential refresh, API fallback or idempotency claim.
+- No retry for invalid input/schema/JSON, auth, conflicts, unsupported methods/statuses, redirects, certificate/protocol failures, or JSON-RPC server error responses (no speculative transient-code inference). There is no request repair, API fallback or idempotency claim. Credential refresh happens only before a connection opens, by running codex (see SKILL.md).
 - No replay of sent/ambiguous writes or session messages, even reads in a session. Final errors retain code, cause and outcome; a failed send is not proof of non-execution. Initial session connection setup can retry before messages are sent. A later invalid session line still preserves uncertainty for earlier pending writes.
 
 ## Bounds and exit status

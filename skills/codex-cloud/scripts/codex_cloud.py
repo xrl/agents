@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["websockets>=15,<17", "jsonschema>=4.23,<5"]
 # ///
-"""Current Codex Cloud CLI. Auto-loads Pi OAuth; never invokes the codex CLI.
+"""Current Codex Cloud CLI. Loads the official Codex ChatGPT login; runs codex only to refresh it.
 
 All output is JSON. Global flags work before or after subcommands. --write is a
 mechanical guard, NOT authorization. --dry-run constructs requests without auth,
@@ -366,7 +366,7 @@ def wait_status(ctx, args):
         if remaining <= 0:
             raise CloudError("Wait deadline reached; job was NOT cancelled", outcome="still-running", receipt=result)
         time.sleep(min(args.interval, remaining))
-        # New connection reloads updated Pi credentials during a long wait.
+        # New connection reloads (and if needed refreshes) the Codex login during a long wait.
         ctx.token, ctx.account = None, None
 
 
@@ -556,7 +556,7 @@ def page_size(value):
 
 def build_parser():
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--auth-file", default="~/.pi/agent/auth.json")
+    common.add_argument("--auth-file", default=auth.default_auth_file(), help="<CODEX_HOME>/auth.json of a ChatGPT login")
     common.add_argument("--browser-session", help="Existing signed-in playwright-cli session; no automatic browser launch")
     common.add_argument("--write", action="store_true", help="Permit explicitly user-authorized mutations/compute")
     common.add_argument("--dry-run", action="store_true", help="Offline request construction only")
