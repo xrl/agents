@@ -30,5 +30,5 @@ The Claude Code skills (`skills/rust-feature-swarm/`, `skills/rx-pr-site/`) inst
 as symlinks, `ln -s ~/code/xrl/agents/skills/<name> ~/.claude/skills/<name>`, and update with
 `git pull --ff-only` on `main`.
 The self-contained `skills/codex-cloud/` skill can instead be copied in full to
-`~/.claude/skills/codex-cloud/`; it needs `uv` and, only for web-session-assisted HTTP calls,
+`~/.claude/skills/codex-cloud/`; it needs `uv`, the official `codex` CLI signed in with `codex login`, and, only for web-session-assisted HTTP calls,
 an existing signed-in `playwright-cli` session. Its API catalog is pinned, not auto-updated.

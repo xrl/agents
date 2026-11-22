@@ -48,25 +48,37 @@ def read_auth(path):
 
 
 def refresh_with_codex(path):
-    """Have the official codex CLI refresh its own login: any authenticated codex call does it inside the window."""
-    env = {key: value for key, value in os.environ.items() if key not in ("OPENAI_API_KEY", "CODEX_API_KEY")}
-    env["CODEX_HOME"] = str(pathlib.Path(path).expanduser().parent)
+    """Have the official codex CLI refresh its own login: any authenticated codex call does it inside the window.
+
+    Returns why a refresh may not have happened (or None); the caller re-reads the file either way, because codex
+    persists a refresh before its list request, so a slow or failed list can still leave a fresh login on disk."""
+    path = pathlib.Path(path).expanduser().absolute()
+    if path.name != "auth.json":
+        return f"--auth-file must be <CODEX_HOME>/auth.json for codex to refresh it, not {path.name}"
+    home = str(path.parent)
+    env = {key: value for key, value in os.environ.items()
+           if key not in ("OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_ACCESS_TOKEN")}
+    env["CODEX_HOME"] = home
     try:
-        subprocess.run(["codex", "cloud", "list", "--limit", "1", "--json"], env=env,
+        # cwd=home: codex appends a relative error.log (with the account id) to its working directory.
+        subprocess.run(["codex", "cloud", "list", "--limit", "1", "--json"], env=env, cwd=home,
                        stdin=subprocess.DEVNULL, capture_output=True, timeout=60)
     except OSError as e:
-        raise CloudError(f"Cannot execute codex to refresh its login ({type(e).__name__}, errno={e.errno})") from e
-    except subprocess.TimeoutExpired as error:
-        raise CloudError("codex login refresh exceeded 60 seconds") from error
+        return f"cannot execute codex ({type(e).__name__}, errno={e.errno})"
+    except subprocess.TimeoutExpired:
+        return "codex ran past 60 seconds"
+    return None
 
 
 def load_auth(path, refresh=refresh_with_codex):
     token, account, expiry = read_auth(path)
     if expiry <= time.time() + REFRESH_WINDOW_SECONDS:
-        refresh(path)
+        reason = refresh(path)
         token, account, expiry = read_auth(path)
         if expiry <= time.time() + 30:
-            raise CloudError("Codex's ChatGPT login is expired and codex did not refresh it; run `codex login`")
+            why = f" ({reason})" if reason else ""
+            raise CloudError(f"Codex's ChatGPT login is expired and codex did not refresh it{why}; "
+                             "check `codex login status` and the network, and run `codex login` only if the refresh token is dead")
     return token, account
 
 

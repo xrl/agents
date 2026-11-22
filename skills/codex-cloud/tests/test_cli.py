@@ -68,6 +68,7 @@ def http_peer(responses):
 
         def respond(self):
             requests.append(self.command)
+            self.rfile.read(int(self.headers.get("Content-Length") or 0))
             status, body = next(responses)
             self.send_response(status)
             self.end_headers()
@@ -127,6 +128,24 @@ class CliTests(unittest.TestCase):
             token, account = cli.auth.load_auth(path, refresh=refresh)
             self.assertEqual((calls, token.rsplit(".", 1)[1], account), ([path], "new", "account"))
 
+    def test_failed_refresh_keeps_a_token_with_more_than_30_seconds_left(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = pathlib.Path(temp, "auth.json")
+            value = self.codex_auth(path, "account", "still-valid", time.time()+120)
+            self.assertEqual(cli.auth.load_auth(path, refresh=lambda target: "codex ran past 60 seconds"), (value, "account"))
+
+    def test_expired_token_that_codex_cannot_refresh_fails_with_the_reason(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = pathlib.Path(temp, "auth.json")
+            self.codex_auth(path, "account", "expired", 1)
+            with self.assertRaisesRegex(transport.CloudError, "past 60 seconds"):
+                cli.auth.load_auth(path, refresh=lambda target: "codex ran past 60 seconds")
+
+    def test_refresh_needs_a_file_named_auth_json(self):
+        with mock.patch.object(cli.auth.subprocess, "run") as run:
+            self.assertIn("auth.json", cli.auth.refresh_with_codex("/tmp/other.json"))
+            run.assert_not_called()
+
     def test_expired_token_that_codex_cannot_refresh_fails(self):
         with tempfile.TemporaryDirectory() as temp:
             path = pathlib.Path(temp, "auth.json")
@@ -146,13 +165,16 @@ class CliTests(unittest.TestCase):
 
     def test_refresh_runs_codex_with_the_auth_files_home(self):
         with tempfile.TemporaryDirectory() as temp, mock.patch.object(cli.auth.subprocess, "run") as run, \
-                mock.patch.dict(cli.auth.os.environ, {"OPENAI_API_KEY": "k", "CODEX_API_KEY": "k"}):
+                mock.patch.dict(cli.auth.os.environ, {"OPENAI_API_KEY": "k", "CODEX_API_KEY": "k", "CODEX_ACCESS_TOKEN": "k"}):
             cli.auth.refresh_with_codex(pathlib.Path(temp, "auth.json"))
             argv, kwargs = run.call_args.args[0], run.call_args.kwargs
             self.assertEqual(argv[:2], ["codex", "cloud"])
-            self.assertEqual(kwargs["env"]["CODEX_HOME"], temp)
+            home = str(pathlib.Path(temp).absolute())
+            self.assertEqual((kwargs["env"]["CODEX_HOME"], kwargs["cwd"]), (home, home))
+            self.assertTrue(kwargs["capture_output"])
             self.assertNotIn("OPENAI_API_KEY", kwargs["env"])
             self.assertNotIn("CODEX_API_KEY", kwargs["env"])
+            self.assertNotIn("CODEX_ACCESS_TOKEN", kwargs["env"])
 
     def test_default_auth_file_follows_codex_home(self):
         with mock.patch.dict(cli.auth.os.environ, {"CODEX_HOME": "/codex-home"}):
