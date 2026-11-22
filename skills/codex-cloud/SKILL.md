@@ -20,14 +20,15 @@ Run it with `uv run`; set `CC="$HOME/.claude/skills/codex-cloud/scripts/codex_cl
 
 ```sh
 uv run "$CC" jobs list
-uv run "$CC" environments list --browser-session dekopon
 ```
 
-Lists default to user-created Cloud jobs; `--include-children` adds `codex_work_cca` child jobs, not arbitrary Work conversations. `--max-pages` caps scans without presenting partial results as complete.
+Lists default to user-created Cloud jobs; `--include-children` adds `codex_work_cca` child jobs, not arbitrary Work conversations. `--max-pages` caps scans without presenting partial results as complete. Jobs need only the Codex login.
 
-Jobs need only the Codex login; environment discovery required same-account ChatGPT cookies in observed checks. `--browser-session` opts into borrowing them in memory. Known `asenvcfg_` config IDs avoid browser lookup; version/runtime/thread IDs are not substitutes.
+## Environment IDs come from the caller
 
-Run browser commands from scratch space outside source checkouts. Check `playwright-cli list` and ownership; reuse the owner's `dekopon` session. If needed, open a task-owned ChatGPT tab; a human handles login. Never create/delete profiles, copy browser tokens, export cookies or close unrelated tabs. Close only the task-owned tab, recheck `playwright-cli list`, and preserve the shared session/login. HTML/challenges are not empty catalogs.
+Dispatch takes `--environment-id 'ACCOUNT~asenvcfg_ID'` and nothing else: the skill never looks an environment up by name. Read the ID from the target workspace's `AGENTS.md`. Version (`cecfgver_`), runtime (`ccarenv_`) and thread IDs are not substitutes.
+
+No bearer-only API lists current environments (openai/codex#50182). When an ID is missing or an environment is added, ask the owner, or refresh once with `environments list --browser-session dekopon`, which borrows same-account ChatGPT cookies in memory, and record the ID in that `AGENTS.md`. Run browser commands from scratch space outside source checkouts. Check `playwright-cli list` and ownership; reuse the owner's `dekopon` session. If needed, open a task-owned ChatGPT tab; a human handles login. Never create/delete profiles, copy browser tokens, export cookies or close unrelated tabs. Close only the task-owned tab, recheck `playwright-cli list`, and preserve the shared session/login. HTML/challenges are not empty catalogs.
 
 ## Dispatch
 
@@ -43,7 +44,7 @@ uv run "$CC" jobs continue THREAD_ID --prompt-file /absolute/path/followup.txt -
 
 `jobs create` requires both `--model` and `--effort`, because an omitted model is the account default at its own default effort. Continue checks the effort against the thread's own model (read with `thread/read`) and refuses a `--model` that differs. Create checks the echo and refuses a mismatch before the turn; continue's effort is turn-only and unechoed.
 
-For authorized creation, replace `--dry-run` with `--write`; to resolve a published config by name, use `--environment 'my-project' --browser-session dekopon` instead of `--environment-id`. Creation is non-atomic: preserve pre-creation and thread/turn/client-message receipts. A timeout/disconnect after a sent write means **unknown outcome**. Inspect the known thread; never automatically retry, replace the task or silently delete an orphan. `--client-message-id` does not make creation idempotent.
+For authorized creation, replace `--dry-run` with `--write`. Creation is non-atomic: preserve pre-creation and thread/turn/client-message receipts. A timeout/disconnect after a sent write means **unknown outcome**. Inspect the known thread; never automatically retry, replace the task or silently delete an orphan. `--client-message-id` does not make creation idempotent.
 
 ## Inspect
 
