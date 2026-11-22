@@ -1,5 +1,6 @@
 """Official Codex ChatGPT login and opt-in existing-browser cookie handoff. No persistence."""
 import base64
+import fcntl
 import http.server
 import json
 import math
@@ -73,12 +74,24 @@ def refresh_with_codex(path):
 def load_auth(path, refresh=refresh_with_codex):
     token, account, expiry = read_auth(path)
     if expiry <= time.time() + REFRESH_WINDOW_SECONDS:
-        reason = refresh(path)
-        token, account, expiry = read_auth(path)
-        if expiry <= time.time() + 30:
-            why = f" ({reason})" if reason else ""
-            raise CloudError(f"Codex's ChatGPT login is expired and codex did not refresh it{why}; "
-                             "check `codex login status` and the network, and run `codex login` only if the refresh token is dead")
+        # Refresh tokens are single-use: parallel callers (an Astra gate and its shadows) take turns, and each
+        # re-reads after the lock, so only the first one refreshes and the rest pick up its new token.
+        lock = pathlib.Path(path).expanduser().absolute().with_name("codex-cloud-refresh.lock")
+        try:
+            handle = open(lock, "a")
+        except OSError as e:
+            raise CloudError(f"Cannot open the refresh lock ({type(e).__name__}, errno={e.errno})") from e
+        with handle:
+            fcntl.flock(handle, fcntl.LOCK_EX)
+            reason = None
+            token, account, expiry = read_auth(path)
+            if expiry <= time.time() + REFRESH_WINDOW_SECONDS:
+                reason = refresh(path)
+                token, account, expiry = read_auth(path)
+            if expiry <= time.time() + 30:
+                why = f" ({reason})" if reason else ""
+                raise CloudError(f"Codex's ChatGPT login is expired and codex did not refresh it{why}; "
+                                 "check `codex login status` and the network, and run `codex login` only if the refresh token is dead")
     return token, account
 
 

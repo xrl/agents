@@ -128,6 +128,26 @@ class CliTests(unittest.TestCase):
             token, account = cli.auth.load_auth(path, refresh=refresh)
             self.assertEqual((calls, token.rsplit(".", 1)[1], account), ([path], "new", "account"))
 
+    def test_parallel_callers_refresh_once(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = pathlib.Path(temp, "auth.json")
+            self.codex_auth(path, "account", "old", time.time()+60)
+            calls, barrier = [], threading.Barrier(4)
+            def refresh(target):
+                calls.append(target)
+                time.sleep(0.2)
+                self.codex_auth(path, "account", "new", time.time()+3600)
+            results = []
+            def caller():
+                barrier.wait()
+                results.append(cli.auth.load_auth(path, refresh=refresh)[0].rsplit(".", 1)[1])
+            threads = [threading.Thread(target=caller) for _ in range(4)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            self.assertEqual((len(calls), results), (1, ["new"] * 4))
+
     def test_failed_refresh_keeps_a_token_with_more_than_30_seconds_left(self):
         with tempfile.TemporaryDirectory() as temp:
             path = pathlib.Path(temp, "auth.json")
