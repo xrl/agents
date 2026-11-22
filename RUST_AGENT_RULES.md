@@ -1,7 +1,6 @@
 # Rust agent rules for this machine
 
-Canonical text. `~/.claude/CLAUDE.md` imports this file; `~/.pi/agent/AGENTS.md` §"Rust worktrees
-and compiler cache" is a verbatim copy. Change all three together. Other local-host rules: [HOST.md](HOST.md). Rationale and measurements:
+Canonical text, the only copy. `~/.claude/CLAUDE.md` imports this file and `~/.codex/AGENTS.md` points at it. Other local-host rules: [HOST.md](HOST.md). Rationale and measurements:
 [RUST_WORKTREES.md](RUST_WORKTREES.md). Updated 2026-09-28.
 
 ## Machine state

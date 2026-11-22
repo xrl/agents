@@ -12,10 +12,8 @@ Opinionated engineering guides. **Start with the task, not a full-library read.*
 | Why private targets and copy-on-write | [RUST_WORKTREES.md](RUST_WORKTREES.md) |
 | Cache checks and evidence requirements | [RUST_CACHE_VALIDATION.md](RUST_CACHE_VALIDATION.md) |
 | Dated experiments and superseded plans | [RUST_CACHE_HISTORY.md](RUST_CACHE_HISTORY.md) |
-| Choosing a delegation engine | [orchestration skill](skills/choose-orchestration/SKILL.md) |
-| Handing work to a cheap pi driver and supervising it | [pi skills snapshot](skills/PI-SKILLS.md): [pi-subagent-plan](skills/pi-subagent-plan/SKILL.md), [pi-drive](skills/pi-drive/SKILL.md) |
-| Running a campaign's WORKING phase from a launchd tick, with scripted lanes | [campaign runner](skills/campaign/runner/README.md) |
-| Current Codex Cloud jobs, environments, logs and API access using Pi OAuth | [codex-cloud](skills/codex-cloud/SKILL.md) |
+| Handing work to a GPT executor | official Codex: `codex exec` locally, Codex Cloud for cloud tasks; prompts open with [steering/GPT.md](steering/GPT.md) |
+| Current Codex Cloud jobs, environments, logs and API access using the official Codex login | [codex-cloud](skills/codex-cloud/SKILL.md) |
 | Landing one coupled multi-lane Rust change with a swarm | [rust-feature-swarm](skills/rust-feature-swarm/SKILL.md) |
 | Standing up and proving a change on an rx `run-in-k3` PR site (prod clone) | [rx-pr-site](skills/rx-pr-site/SKILL.md) |
 
@@ -25,16 +23,12 @@ These are navigation links, not `@include` directives. The repository `AGENTS.md
 routes relevant reads; it does not concatenate the guides or apply them globally
 when working in another repository. kache remains the standard host wrapper.
 
-Claude's global file references `RUST_AGENT_RULES.md`; Pi's global file mirrors
-its operational body without expanding Claude-style imports. Keep the canonical
-host file and both adapters synchronized when host policy changes.
+Claude's global file imports `RUST_AGENT_RULES.md`; Codex's global `AGENTS.md` points at it. There
+is one copy.
 
-To install the skill, copy the complete `skills/choose-orchestration/` directory
-into `~/.pi/agent/skills/`, reviewing any existing copy first, then run `/reload`.
-Invoke `/skill:choose-orchestration` with a task. Selection does not authorize launch.
-The Claude Code skills (`skills/campaign/`, `skills/pi-*`, `skills/rust-feature-swarm/`, `skills/rx-pr-site/`) install
+The Claude Code skills (`skills/rust-feature-swarm/`, `skills/rx-pr-site/`) install
 as symlinks, `ln -s ~/code/xrl/agents/skills/<name> ~/.claude/skills/<name>`, and update with
-`git pull --ff-only` on `main`; [skills/PI-SKILLS.md](skills/PI-SKILLS.md) has their requirements.
+`git pull --ff-only` on `main`.
 The self-contained `skills/codex-cloud/` skill can instead be copied in full to
 `~/.claude/skills/codex-cloud/`; it needs `uv` and, only for web-session-assisted HTTP calls,
 an existing signed-in `playwright-cli` session. Its API catalog is pinned, not auto-updated.
