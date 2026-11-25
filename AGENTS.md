@@ -17,6 +17,7 @@ not automatic imports. If a required guide is unavailable, stop that action.
 | Measurements or past rollout decisions | [RUST_CACHE_HISTORY.md](RUST_CACHE_HISTORY.md) |
 | Offloading decided work to GPT | official Codex: `codex exec` locally, Codex Cloud for cloud tasks ([codex-cloud](skills/codex-cloud/SKILL.md)); never pi |
 | Landing one coupled multi-lane Rust change with concurrent editors | [rust-feature-swarm](skills/rust-feature-swarm/SKILL.md) |
+| Stress-testing a plan before the owner reviews it (post-landing failure timelines) | [future-tabletop](skills/future-tabletop/SKILL.md) |
 
 ## Agent and model evaluations
 
