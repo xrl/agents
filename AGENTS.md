@@ -18,6 +18,7 @@ not automatic imports. If a required guide is unavailable, stop that action.
 | Offloading decided work to GPT | official Codex: `codex exec` locally, Codex Cloud for cloud tasks ([codex-cloud](skills/codex-cloud/SKILL.md)); never pi |
 | Landing one coupled multi-lane Rust change with concurrent editors | [rust-feature-swarm](skills/rust-feature-swarm/SKILL.md) |
 | Stress-testing a plan before the owner reviews it (post-landing failure timelines) | [future-tabletop](skills/future-tabletop/SKILL.md) |
+| GitHub Actions minutes: spend, minutes per merged PR, waste, month-end projection | [github-ci-accounting](skills/github-ci-accounting/SKILL.md) |
 
 ## Agent and model evaluations
 
