@@ -3,7 +3,7 @@
 
 usage    minutes by repo for a month (Minutes only), storage listed separately
 runs     runs, billed-minutes estimate and minutes per merged PR per ISO week
-project  month-to-date minutes, trailing-7-day rate, projected month-end vs included
+project  month-to-date minutes, trailing 7- and 3-day rates, projected month-end vs included
 
 See ../SKILL.md for the method and its limits.
 """
@@ -19,6 +19,8 @@ import time
 
 RETRIES = 4
 TIMEOUT = 60
+RESULT_CAP = 1000
+LINUX = "Actions Linux"
 
 
 class NotFound(Exception):
@@ -42,7 +44,8 @@ def gh_api(path, params=None):
             error = done.stderr.strip()
             if "HTTP 404" in error:
                 raise NotFound(path)
-        time.sleep(2 ** attempt)
+        if attempt < RETRIES - 1:
+            time.sleep(2 ** attempt)
     raise SystemExit(f"gh api {path} failed after {RETRIES} attempts: {error}")
 
 
@@ -63,8 +66,22 @@ def usage_items(api, owner, year, month):
 
 
 def billed_minutes(items):
-    """Only Minutes; Actions storage (GigabyteHours) shares the `actions` product."""
-    return [i for i in items if i["unitType"] == "Minutes"]
+    """Only Linux Minutes: storage (GigabyteHours) shares the product; other runners bill at multipliers."""
+    return [i for i in items if i["unitType"] == "Minutes" and i["sku"] == LINUX]
+
+
+def unnormalized_minutes(items):
+    """Minutes on runner SKUs other than Linux, by SKU, left for a person to apply multipliers to."""
+    other = collections.Counter()
+    for i in items:
+        if i["unitType"] == "Minutes" and i["sku"] != LINUX:
+            other[i["sku"]] += i["quantity"]
+    return {sku: round(q) for sku, q in other.most_common()}
+
+
+def render_unnormalized(other):
+    return [f"  {q:>6}  {sku} minutes: not normalized; check GitHub's multipliers"
+            for sku, q in other.items()]
 
 
 def visibility(api, owner, repo, cache):
@@ -86,9 +103,11 @@ def usage(api, owner, month):
     items = usage_items(api, owner, year, mon)
     minutes = collections.Counter()
     storage = collections.Counter()
+    for item in billed_minutes(items):
+        minutes[item["repositoryName"]] += item["quantity"]
     for item in items:
-        bucket = minutes if item["unitType"] == "Minutes" else storage
-        bucket[item["repositoryName"]] += item["quantity"]
+        if item["unitType"] != "Minutes":
+            storage[item["repositoryName"]] += item["quantity"]
     cache = {}
     repos = [
         {"repo": repo, "visibility": visibility(api, owner, repo, cache), "minutes": round(q)}
@@ -100,6 +119,7 @@ def usage(api, owner, month):
         "minutes": repos,
         "quota_minutes": sum(r["minutes"] for r in repos if draws_on_quota(r["visibility"])),
         "free_minutes": sum(r["minutes"] for r in repos if not draws_on_quota(r["visibility"])),
+        "unnormalized_minutes": unnormalized_minutes(items),
         "storage_gb_hours": [
             {"repo": repo, "gb_hours": round(q, 1)} for repo, q in storage.most_common()
         ],
@@ -107,10 +127,11 @@ def usage(api, owner, month):
 
 
 def render_usage(r):
-    out = [f"{r['owner']} {r['month']}: Actions minutes (unitType Minutes only)"]
+    out = [f"{r['owner']} {r['month']}: Actions Linux minutes (unitType Minutes only)"]
     out += [f"  {m['minutes']:>6}  {m['repo']} ({m['visibility']})" for m in r["minutes"]]
     out.append(f"  {r['quota_minutes']:>6}  draws on included minutes (private + unknown)")
     out.append(f"  {r['free_minutes']:>6}  free (public)")
+    out += render_unnormalized(r["unnormalized_minutes"])
     out.append("Actions storage, GB-hours (not minutes)")
     out += [f"  {s['gb_hours']:>8}  {s['repo']}" for s in r["storage_gb_hours"]]
     return "\n".join(out)
@@ -119,12 +140,19 @@ def render_usage(r):
 # ---- runs --------------------------------------------------------------------
 
 def paged(api, path, params, key):
-    page = 1
+    page, count = 1, 0
     while True:
         payload = api(path, {**params, "per_page": 100, "page": page})
+        if payload.get("incomplete_results"):
+            raise SystemExit(f"{path} {params}: GitHub returned incomplete_results; rerun")
         rows = payload[key]
+        count += len(rows)
         yield from rows
         if len(rows) < 100:
+            return
+        if count >= RESULT_CAP:
+            print(f"warning: {path} {params} reached the {RESULT_CAP}-result cap; counts are low",
+                  file=sys.stderr)
             return
         page += 1
 
@@ -139,11 +167,12 @@ def week_windows(since, until):
 
 
 def list_runs(api, repo, since, until):
-    runs = []
+    runs = {}
     for start, end in week_windows(since, until):
-        runs += paged(api, f"/repos/{repo}/actions/runs",
-                      {"created": f"{start.isoformat()}..{end.isoformat()}"}, "workflow_runs")
-    return runs
+        for run in paged(api, f"/repos/{repo}/actions/runs",
+                         {"created": f"{start.isoformat()}..{end.isoformat()}"}, "workflow_runs"):
+            runs[run["id"]] = run
+    return list(runs.values())
 
 
 def job_minutes(job):
@@ -156,11 +185,24 @@ def job_minutes(job):
     return max(1, math.ceil(seconds / 60))
 
 
+def billable_jobs(jobs):
+    """A later attempt re-lists, under new ids, the jobs it did not re-run: same name and
+    timestamps as in an earlier attempt. Drop those; keep every distinct job of one attempt."""
+    earlier, keep = set(), []
+    attempts = collections.defaultdict(list)
+    for job in jobs:
+        attempts[job.get("run_attempt", 1)].append(job)
+    for attempt in sorted(attempts):
+        rows = attempts[attempt]
+        keys = [(j["name"], j.get("started_at"), j.get("completed_at")) for j in rows]
+        keep += [j for j, k in zip(rows, keys) if k not in earlier]
+        earlier.update(keys)
+    return keep
+
+
 def run_minutes(api, repo, run_id):
-    """All attempts; a later attempt re-lists the jobs it did not re-run, so count each once."""
     jobs = paged(api, f"/repos/{repo}/actions/runs/{run_id}/jobs", {"filter": "all"}, "jobs")
-    unique = {(j["name"], j.get("started_at"), j.get("completed_at")): j for j in jobs}
-    return sum(job_minutes(j) for j in unique.values())
+    return sum(job_minutes(j) for j in billable_jobs(list(jobs)))
 
 
 def run_week(run):
@@ -168,11 +210,11 @@ def run_week(run):
 
 
 def pick_sample(runs, n):
-    """Round-robin over (workflow, week) strata, largest first, evenly spaced inside each."""
+    """Round-robin over (workflow, week) strata, newest week first, evenly spaced inside each."""
     strata = collections.defaultdict(list)
     for run in sorted(runs, key=lambda r: r["created_at"]):
         strata[(run["name"], run_week(run))].append(run)
-    order = sorted(strata, key=lambda k: (-len(strata[k]), k))
+    order = sorted(strata, key=lambda k: (k[1], len(strata[k]), k[0]), reverse=True)
     quota = dict.fromkeys(order, 0)
     left = min(n, len(runs))
     while left:
@@ -200,21 +242,28 @@ def merged_prs(api, repo, since):
 
 
 def billed_by_week(api, repo, since, until):
-    """Actual billed minutes for the repo from the owner's usage report, per ISO week."""
+    """Actual billed Linux minutes for the repo from the owner's usage report, per ISO week.
+    A public repo's minutes are free, so it bills nothing."""
     owner, name = repo.split("/")
     weeks = collections.Counter()
+    if not draws_on_quota(visibility(api, owner, name, {})):
+        return weeks
     month = since.replace(day=1)
     while month <= until:
-        try:
-            items = billed_minutes(usage_items(api, owner, month.year, month.month))
-        except NotFound:
-            return weeks
-        for item in items:
+        for item in billed_minutes(usage_items(api, owner, month.year, month.month)):
             day = parse_time(item["date"]).date()
             if item["repositoryName"] == name and since <= day <= until:
                 weeks[iso_week(day)] += item["quantity"]
         month = (month + dt.timedelta(days=32)).replace(day=1)
     return weeks
+
+
+def newest_price(by_stratum):
+    """Each workflow's price from its newest sampled week, so a fixed workflow prices as fixed."""
+    prices = {}
+    for (name, _week), minutes in sorted(by_stratum.items(), key=lambda kv: kv[0][1]):
+        prices[name] = round(mean(minutes), 1)
+    return dict(sorted(prices.items()))
 
 
 def per_pr(minutes, prs):
@@ -267,7 +316,7 @@ def runs_report(api, repo, since, until, sample_size):
         "repo": repo,
         "since": since.isoformat(),
         "sampled_runs": len(sample),
-        "minutes_per_run": {k: round(mean(v), 1) for k, v in sorted(by_workflow.items())},
+        "minutes_per_run": newest_price(by_stratum),
         "weeks": rows,
     }
 
@@ -289,55 +338,75 @@ def render_runs(r):
 
 # ---- project -----------------------------------------------------------------
 
-def daily_quota_minutes(api, owner, year, month):
-    cache = {}
-    days = collections.Counter()
-    for item in billed_minutes(usage_items(api, owner, year, month)):
+WINDOWS = (7, 3)
+
+
+def daily_quota_minutes(api, owner, year, month, cache):
+    days, items = collections.Counter(), usage_items(api, owner, year, month)
+    for item in billed_minutes(items):
         if draws_on_quota(visibility(api, owner, item["repositoryName"], cache)):
             days[parse_time(item["date"]).date()] += item["quantity"]
-    return days
+    return days, unnormalized_minutes(items)
 
 
 def project(api, owner, included, today):
-    days = daily_quota_minutes(api, owner, today.year, today.month)
-    window_start = today - dt.timedelta(days=7)
-    if window_start.month != today.month:
-        days.update(daily_quota_minutes(api, owner, window_start.year, window_start.month))
+    cache = {}
+    days, other = daily_quota_minutes(api, owner, today.year, today.month, cache)
+    first = today - dt.timedelta(days=max(WINDOWS))
+    if first.month != today.month:
+        days.update(daily_quota_minutes(api, owner, first.year, first.month, cache)[0])
     month_start = today.replace(day=1)
     mtd = sum(q for d, q in days.items() if d >= month_start)
     complete = sum(q for d, q in days.items() if month_start <= d < today)
-    rate = sum(q for d, q in days.items() if window_start <= d < today) / 7
-    days_in_month = calendar.monthrange(today.year, today.month)[1]
-    remaining = days_in_month - today.day + 1
-    projected = complete + rate * remaining
-    result = {
+    remaining = calendar.monthrange(today.year, today.month)[1] - today.day + 1
+    exhausted = mtd >= included
+    rates = {}
+    for n in WINDOWS:
+        start = today - dt.timedelta(days=n)
+        rate = sum(q for d, q in days.items() if start <= d < today) / n
+        projected = max(mtd, complete + rate * remaining)
+        runs_out_on = None
+        if not exhausted and projected > included and rate:
+            ahead = max(0, math.ceil((included - complete) / rate) - 1)
+            runs_out_on = (today + dt.timedelta(days=ahead)).isoformat()
+        rates[f"{n}_day"] = {"rate": round(rate, 1), "projected_month_end": round(projected),
+                             "runs_out_on": runs_out_on}
+    return {
         "owner": owner,
         "today": today.isoformat(),
         "month_to_date": round(mtd),
-        "trailing_7_day_rate": round(rate, 1),
-        "projected_month_end": round(projected),
         "included": included,
-        "runs_out_on": None,
+        "exhausted": exhausted,
+        "trailing": rates,
+        "unnormalized_minutes": other,
     }
-    if projected > included and rate:
-        out_day = today + dt.timedelta(days=max(0, math.ceil((included - complete) / rate) - 1))
-        result["runs_out_on"] = out_day.isoformat()
-    return result
 
 
 def render_project(r):
     out = [
-        f"{r['owner']} as of {r['today']} (minutes that draw on included; public repos excluded)",
-        f"  month to date      {r['month_to_date']}",
-        f"  trailing 7-day     {r['trailing_7_day_rate']}/day",
-        f"  projected month    {r['projected_month_end']} of {r['included']} included",
+        f"{r['owner']} as of {r['today']} (Linux minutes that draw on included; public excluded)",
+        f"  month to date      {r['month_to_date']} of {r['included']} included",
     ]
-    if r["runs_out_on"]:
-        out.append(f"  runs out on        {r['runs_out_on']}")
+    if r["exhausted"]:
+        out.append("  already exhausted")
+    for name, t in r["trailing"].items():
+        line = (f"  trailing {name.replace('_', '-'):<6}   {t['rate']}/day -> {t['projected_month_end']}"
+                " at month end")
+        if t["runs_out_on"]:
+            line += f", runs out on {t['runs_out_on']}"
+        out.append(line)
+    out += render_unnormalized(r["unnormalized_minutes"])
     return "\n".join(out)
 
 
 # ---- cli ---------------------------------------------------------------------
+
+def positive_int(value):
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError("must be at least 1")
+    return number
+
 
 def main(argv=None, api=gh_api, today=None):
     today = today or dt.datetime.now(dt.timezone.utc).date()
@@ -350,7 +419,7 @@ def main(argv=None, api=gh_api, today=None):
     p = sub.add_parser("runs")
     p.add_argument("repo")
     p.add_argument("--since", required=True, type=dt.date.fromisoformat)
-    p.add_argument("--sample", type=int, default=30)
+    p.add_argument("--sample", type=positive_int, default=30)
     p = sub.add_parser("project")
     p.add_argument("--owner", default="xrl")
     p.add_argument("--included", type=int, default=2000)

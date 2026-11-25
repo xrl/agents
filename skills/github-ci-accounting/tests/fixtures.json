@@ -398,6 +398,7 @@
  "jobs": {
   "44007148321": [
    {
+    "id": 133785123519,
     "name": "kubernetes-mcp-check",
     "run_attempt": 1,
     "conclusion": "success",
@@ -408,6 +409,7 @@
     ]
    },
    {
+    "id": 133785123813,
     "name": "cloud-sandbox-mcp-check",
     "run_attempt": 1,
     "conclusion": "success",
@@ -418,6 +420,7 @@
     ]
    },
    {
+    "id": 133785123860,
     "name": "dekopon-check",
     "run_attempt": 1,
     "conclusion": "success",
@@ -428,6 +431,7 @@
     ]
    },
    {
+    "id": 133785124146,
     "name": "render",
     "run_attempt": 1,
     "conclusion": "success",
@@ -440,6 +444,7 @@
   ],
   "44007492444": [
    {
+    "id": 133786238170,
     "name": "render",
     "run_attempt": 1,
     "conclusion": "success",
@@ -450,6 +455,7 @@
     ]
    },
    {
+    "id": 133786238486,
     "name": "kubernetes-mcp-check",
     "run_attempt": 1,
     "conclusion": "success",
@@ -460,6 +466,7 @@
     ]
    },
    {
+    "id": 133786238693,
     "name": "dekopon-check",
     "run_attempt": 1,
     "conclusion": "success",
@@ -470,6 +477,7 @@
     ]
    },
    {
+    "id": 133786238756,
     "name": "cloud-sandbox-mcp-check",
     "run_attempt": 1,
     "conclusion": "success",
@@ -482,6 +490,7 @@
   ],
   "44016503880": [
    {
+    "id": 133815606086,
     "name": "dekopon-check",
     "run_attempt": 1,
     "conclusion": "success",
@@ -492,6 +501,7 @@
     ]
    },
    {
+    "id": 133815606355,
     "name": "cloud-sandbox-mcp-check",
     "run_attempt": 1,
     "conclusion": "success",
@@ -502,6 +512,7 @@
     ]
    },
    {
+    "id": 133815606500,
     "name": "render",
     "run_attempt": 1,
     "conclusion": "success",
@@ -512,6 +523,7 @@
     ]
    },
    {
+    "id": 133815606620,
     "name": "kubernetes-mcp-check",
     "run_attempt": 1,
     "conclusion": "success",
@@ -522,6 +534,7 @@
     ]
    },
    {
+    "id": 133816368519,
     "name": "dekopon-check",
     "run_attempt": 2,
     "conclusion": "success",
@@ -532,6 +545,7 @@
     ]
    },
    {
+    "id": 133816370229,
     "name": "render",
     "run_attempt": 2,
     "conclusion": "success",
@@ -542,6 +556,7 @@
     ]
    },
    {
+    "id": 133816371155,
     "name": "cloud-sandbox-mcp-check",
     "run_attempt": 2,
     "conclusion": "success",
@@ -552,6 +567,7 @@
     ]
    },
    {
+    "id": 133816371170,
     "name": "kubernetes-mcp-check",
     "run_attempt": 2,
     "conclusion": "success",
@@ -564,6 +580,7 @@
   ],
   "44988947270": [
    {
+    "id": 137105572727,
     "name": "probe",
     "run_attempt": 1,
     "conclusion": "success",
@@ -574,6 +591,7 @@
     ]
    },
    {
+    "id": 137106428536,
     "name": "revert",
     "run_attempt": 1,
     "conclusion": "skipped",
@@ -586,6 +604,7 @@
   ],
   "45697235354": [
    {
+    "id": 139497697380,
     "name": "checks",
     "run_attempt": 1,
     "conclusion": "success",
@@ -598,6 +617,7 @@
   ],
   "45697784514": [
    {
+    "id": 139499610995,
     "name": "probe",
     "run_attempt": 1,
     "conclusion": "success",
@@ -608,6 +628,7 @@
     ]
    },
    {
+    "id": 139502975051,
     "name": "revert",
     "run_attempt": 1,
     "conclusion": "skipped",
