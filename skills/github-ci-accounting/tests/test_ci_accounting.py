@@ -144,6 +144,17 @@ class Runs(unittest.TestCase):
         self.assertEqual(weeks["2026-W48"]["est_minutes"], 1 + 7)
         self.assertEqual(weeks["2026-W47"]["est_minutes"], 3 * 1 + 7)
 
+    def test_other_runner_skus_are_carried_into_runs(self):
+        api = make_api(usage=FIXTURES["usage_2026_11"]["usageItems"]
+                       + [linux("2026-11-20", 40, sku="Actions macOS 3-core")])
+        r = self.report(30, api=api)
+        self.assertEqual(r["unnormalized_minutes"], {"Actions macOS 3-core": 40})
+        self.assertEqual({w["week"]: w["billed_minutes"] for w in r["weeks"]}["2026-W47"], 684)
+        text = ci.render_runs(r)
+        self.assertIn("Linux billed", text)
+        self.assertIn("Actions macOS 3-core minutes: not normalized; check GitHub's multipliers",
+                      text)
+
     def test_public_repo_bills_nothing(self):
         r = ci.runs_report(fake_api, "xrl/external-secrets", dt.date(2026, 11, 1), NOV_25, 30)
         self.assertEqual({w["billed_minutes"] for w in r["weeks"]}, {0})

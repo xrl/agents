@@ -242,20 +242,21 @@ def merged_prs(api, repo, since):
 
 
 def billed_by_week(api, repo, since, until):
-    """Actual billed Linux minutes for the repo from the owner's usage report, per ISO week.
-    A public repo's minutes are free, so it bills nothing."""
+    """Actual billed Linux minutes for the repo from the owner's usage report, per ISO week,
+    plus its other runner SKUs unnormalized. A public repo's minutes are free: it bills nothing."""
     owner, name = repo.split("/")
-    weeks = collections.Counter()
+    weeks, items = collections.Counter(), []
     if not draws_on_quota(visibility(api, owner, name, {})):
-        return weeks
+        return weeks, {}
     month = since.replace(day=1)
     while month <= until:
-        for item in billed_minutes(usage_items(api, owner, month.year, month.month)):
-            day = parse_time(item["date"]).date()
-            if item["repositoryName"] == name and since <= day <= until:
-                weeks[iso_week(day)] += item["quantity"]
+        items += [i for i in usage_items(api, owner, month.year, month.month)
+                  if i["repositoryName"] == name
+                  and since <= parse_time(i["date"]).date() <= until]
         month = (month + dt.timedelta(days=32)).replace(day=1)
-    return weeks
+    for item in billed_minutes(items):
+        weeks[iso_week(parse_time(item["date"]).date())] += item["quantity"]
+    return weeks, unnormalized_minutes(items)
 
 
 def newest_price(by_stratum):
@@ -289,7 +290,7 @@ def runs_report(api, repo, since, until, sample_size):
         return mean(workflow) if workflow else overall
 
     merged = merged_prs(api, repo, since)
-    billed = billed_by_week(api, repo, since, until)
+    billed, other = billed_by_week(api, repo, since, until)
     weeks = collections.defaultdict(lambda: {"runs": 0, "reruns": 0, "minutes": 0.0,
                                              "by_workflow_event": collections.Counter()})
     for run in runs:
@@ -318,6 +319,7 @@ def runs_report(api, repo, since, until, sample_size):
         "sampled_runs": len(sample),
         "minutes_per_run": newest_price(by_stratum),
         "weeks": rows,
+        "unnormalized_minutes": other,
     }
 
 
@@ -326,13 +328,14 @@ def render_runs(r):
            " (ceil per job, per workflow and week)"]
     out += [f"  {v:>6} min/run  {k}" for k, v in r["minutes_per_run"].items()]
     out.append(f"  {'week':<9} {'runs':>5} {'reruns':>6} {'PRs':>4} {'est min':>8} {'est/PR':>7}"
-               f" {'billed':>7} {'billed/PR':>9}")
+               f" {'Linux billed':>12} {'billed/PR':>9}")
     for w in r["weeks"]:
         est, bill = (("-" if v is None else v)
                      for v in (w["est_minutes_per_pr"], w["billed_minutes_per_pr"]))
         out.append(f"  {w['week']:<9} {w['runs']:>5} {w['reruns']:>6} {w['merged_prs']:>4}"
-                   f" {w['est_minutes']:>8} {est:>7} {w['billed_minutes']:>7} {bill:>9}")
+                   f" {w['est_minutes']:>8} {est:>7} {w['billed_minutes']:>12} {bill:>9}")
         out += [f"      {n:>4}  {k}" for k, n in w["by_workflow_event"].items()]
+    out += render_unnormalized(r["unnormalized_minutes"])
     return "\n".join(out)
 
 
