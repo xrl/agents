@@ -16,6 +16,7 @@ Opinionated engineering guides. **Start with the task, not a full-library read.*
 | Current Codex Cloud jobs, environments, logs and API access using the official Codex login | [codex-cloud](skills/codex-cloud/SKILL.md) |
 | Landing one coupled multi-lane Rust change with a swarm | [rust-feature-swarm](skills/rust-feature-swarm/SKILL.md) |
 | Standing up and proving a change on an rx `run-in-k3` PR site (prod clone) | [rx-pr-site](skills/rx-pr-site/SKILL.md) |
+| Stress-testing a plan as if it had landed, before the owner reviews it | [future-tabletop](skills/future-tabletop/SKILL.md) |
 
 ## Loading and installation
 
@@ -26,7 +27,7 @@ when working in another repository. kache remains the standard host wrapper.
 Claude's global file imports `RUST_AGENT_RULES.md`; Codex's global `AGENTS.md` points at it. There
 is one copy.
 
-The Claude Code skills (`skills/rust-feature-swarm/`, `skills/rx-pr-site/`) install
+The Claude Code skills (`skills/rust-feature-swarm/`, `skills/rx-pr-site/`, `skills/future-tabletop/`) install
 as symlinks, `ln -s ~/code/xrl/agents/skills/<name> ~/.claude/skills/<name>`, and update with
 `git pull --ff-only` on `main`.
 The self-contained `skills/codex-cloud/` skill can instead be copied in full to
