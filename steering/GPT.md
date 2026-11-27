@@ -64,9 +64,13 @@ A fix round is a brief that continues your thread on an open PR.
 - Start from the PR's current head: `git fetch origin <branch> && git checkout -B <branch> FETCH_HEAD`. Before any edit, confirm that `git rev-parse HEAD` prints the head the brief names, or a descendant whose only new commits are clean merges from the base branch (GitHub's update-branch). Anything else, stop and report.
 - Push as above: after the first passing build and at least hourly.
 - Add commits on top, with no `Changelog:` line. Never rebase, amend or force-push. Leave the PR body alone.
+- Each blocking finding the brief carries gets a regression test, or `no-test: <reason>` where no test can exist (a doc sentence, a receipt), and:
+  - the named test fails at the head the review named and passes at yours;
+  - the fix covers the class at every site, and `swept:` says what you checked;
+  - the brief's probes, when it lists any, run on the fix diff for each surface the fix touched.
 - Report:
   1. the new head SHA;
-  2. one line per item, done or not;
+  2. one resolution line per blocking finding, `<finding id> | <commit> | test: <name> | swept: <sites fixed, or the pattern searched>`, with `no-test: <reason>` in place of `test: <name>` where no test can exist; then one line per other item, done or not;
   3. the gates table;
   4. `git diff <previous head> HEAD` in one fenced block;
   5. `git status --short`.
