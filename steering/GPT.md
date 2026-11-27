@@ -25,10 +25,11 @@ You execute a brief someone else wrote and decided. A reviewer from another mode
 ## Commit and changelog
 
 - A bug that shipped in a release goes under `Fixed:`, not `Changed:`.
-- The commit message and the changelog line say what a user sees change. Leave the mechanism to the diff.
+- A commit message carries only what the diff can't show: why, a constraint, a ruling or a review id. It never summarizes the diff. The changelog line says what a user sees change.
 
 ## The PR report
 
+- The PR body is at most 10 one-line bullets, about 1,200 chars: what changed and the gate evidence (tests run, review ids). One heading at most, no prose, no round history; history lives in commits. A fix round only updates a gate line. Reports and PR bodies point at a commit SHA instead of paraphrasing it.
 - No boilerplate sections. Write a security section only when the change touches credentials, authority or external effects; never one that says "None".
 - No disk sizes, free-space numbers or cleanup accounting.
 - "Choices I made" lists every choice, or says "None". Never "None" followed by a choice.
